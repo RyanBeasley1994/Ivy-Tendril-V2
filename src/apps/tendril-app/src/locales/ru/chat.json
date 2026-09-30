@@ -30,7 +30,7 @@
     "override_terminal": "Новый чат в терминале"
   },
   "planChat": {
-    "headline": "Попросите Tendril изменить что угодно"
+    "headline": "Попросите Forge изменить что угодно"
   },
   "systemEvent": {
     "linked": {
@@ -138,7 +138,7 @@
   "composer": {
     "attach": "Прикрепить файл",
     "promptLabel": "Промпт чата",
-    "placeholder": "Спросите Tendril о чём угодно…",
+    "placeholder": "Спросите Forge о чём угодно…",
     "voice": "Голосовой ввод",
     "voiceErrorDismiss": "Скрыть ошибку голосового ввода",
     "nothingTranscribed": "Ничего не распознано. Попробуйте ещё раз.",
@@ -206,7 +206,7 @@
       },
       "addProject": {
         "label": "Добавить новый проект",
-        "prompt": "Добавьте новый проект в мой Tendril"
+        "prompt": "Добавьте новый проект в мой Forge"
       },
       "editVerifications": {
         "label": "Изменить верификации",

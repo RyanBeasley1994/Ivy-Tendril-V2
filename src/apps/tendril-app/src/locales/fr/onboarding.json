@@ -7,7 +7,7 @@
     "createProject": "Créer le projet"
   },
   "wizard": {
-    "title": "Bienvenue sur Tendril",
+    "title": "Bienvenue sur Forge",
     "stepsLabel": "Étapes de configuration",
     "steps": {
       "codingAgent": "Agent de codage",
@@ -35,13 +35,13 @@
   },
   "codingAgent": {
     "title": "Quel est votre agent de codage ?",
-    "description": "Tendril est un orchestrateur de codage qui s'exécute au-dessus de votre propre agent de codage. Choisissez l'agent que vous souhaitez utiliser :"
+    "description": "Forge est un orchestrateur de codage qui s'exécute au-dessus de votre propre agent de codage. Choisissez l'agent que vous souhaitez utiliser :"
   },
   "prerequisites": {
-    "missing_one": "Tendril nécessite {{names, list}}, mais cet outil n'est pas installé. Installez-le, puis cliquez sur « Revérifier ».",
-    "missing_many": "Tendril nécessite {{names, list}}, mais ces outils ne sont pas installés. Installez-les, puis cliquez sur « Revérifier ».",
-    "missing_other": "Tendril nécessite {{names, list}}, mais ces outils ne sont pas installés. Installez-les, puis cliquez sur « Revérifier ».",
-    "description": "Les outils que Tendril lance sur votre machine.",
+    "missing_one": "Forge nécessite {{names, list}}, mais cet outil n'est pas installé. Installez-le, puis cliquez sur « Revérifier ».",
+    "missing_many": "Forge nécessite {{names, list}}, mais ces outils ne sont pas installés. Installez-les, puis cliquez sur « Revérifier ».",
+    "missing_other": "Forge nécessite {{names, list}}, mais ces outils ne sont pas installés. Installez-les, puis cliquez sur « Revérifier ».",
+    "description": "Les outils que Forge lance sur votre machine.",
     "recheck": "Revérifier",
     "checking": "Vérification…",
     "empty": "Aucune vérification signalée.",
@@ -55,9 +55,9 @@
   },
   "dataStorage": {
     "title": "Où stocker vos données ?",
-    "description": "Tendril conserve votre configuration et vos plans dans ce dossier.",
-    "homeLabel": "Répertoire Tendril",
-    "homeHint": "Le démon en cours d'exécution a résolu ce dossier. Pour le déplacer, définissez <code>{{envVar}}</code> avant de démarrer Tendril.",
+    "description": "Forge conserve votre configuration et vos plans dans ce dossier.",
+    "homeLabel": "Répertoire Forge",
+    "homeHint": "Le démon en cours d'exécution a résolu ce dossier. Pour le déplacer, définissez <code>{{envVar}}</code> avant de démarrer Forge.",
     "homeMissing": "Veuillez indiquer un chemin valide."
   },
   "repoPicker": {
@@ -71,7 +71,7 @@
   },
   "firstProject": {
     "title": "Configurez votre premier projet",
-    "description": "Un projet regroupe un ou plusieurs dépôts afin que Tendril puisse planifier et vérifier des modifications sur l'ensemble de ceux-ci.",
+    "description": "Un projet regroupe un ou plusieurs dépôts afin que Forge puisse planifier et vérifier des modifications sur l'ensemble de ceux-ci.",
     "browse": "Parcourir",
     "browseTitle": "Sélectionner le dossier du dépôt",
     "browseUnavailable": "Sélecteur de dossier indisponible ({{error}}). Saisissez plutôt un chemin.",
@@ -89,7 +89,7 @@
   },
   "agentRun": {
     "title": "Configuration de votre projet",
-    "wizardHint": "Tendril détecte votre stack technique et configure votre harnais agentique. Cela prendra quelques minutes : profitez-en pour vous offrir un ☕ en attendant.",
+    "wizardHint": "Forge détecte votre stack technique et configure votre harnais agentique. Cela prendra quelques minutes : profitez-en pour vous offrir un ☕ en attendant.",
     "noRun": "Aucune exécution de configuration n'est associée à ce projet. Une fois la configuration terminée, vous pourrez configurer ses vérifications et ses actions de revue depuis l'écran du projet.",
     "timedOut": "La configuration a dépassé le délai imparti.",
     "failed": "Échec de la configuration."
@@ -110,7 +110,7 @@
   },
   "complete": {
     "title": "Tout est prêt",
-    "description": "Votre projet est configuré. Cliquez sur « Terminer » pour commencer à utiliser Tendril.",
+    "description": "Votre projet est configuré. Cliquez sur « Terminer » pour commencer à utiliser Forge.",
     "newsletter": {
       "title": "Newsletter",
       "description": "Soyez parmi les premiers informés de nos nouvelles versions."
@@ -118,7 +118,7 @@
   },
   "addProject": {
     "title": "Ajouter un projet",
-    "hint": "Nommez le projet et associez-le à un ou plusieurs dépôts Git. Tendril les inspecte ensuite et configure le harnais de revue.",
+    "hint": "Nommez le projet et associez-le à un ou plusieurs dépôts Git. Forge les inspecte ensuite et configure le harnais de revue.",
     "nameLabel": "Nom",
     "namePlaceholder": "Nom du projet…",
     "creating": "Création…",
@@ -128,7 +128,7 @@
     "nameExists": "Un projet nommé « {{name}} » existe déjà.",
     "createFailed": "Impossible de créer le projet : {{error}}",
     "setupNotStarted": "Projet créé, mais l'agent de configuration n'a pas pu démarrer : {{error}}. Le projet est enregistré et peut être configuré depuis sa propre ligne.",
-    "agentHint": "Tendril détecte votre stack technique et configure votre harnais agentique. Cela prend quelques minutes.",
+    "agentHint": "Forge détecte votre stack technique et configure votre harnais agentique. Cela prend quelques minutes.",
     "verificationRequired": "obligatoire",
     "noVerifications": "Aucune vérification n'a été configurée. Ajoutez-en depuis les paramètres du projet.",
     "noReviewActions": "Aucune action de revue n'a été configurée. Ajoutez-en depuis les paramètres du projet.",
@@ -136,7 +136,7 @@
   },
   "folderBrowser": {
     "title": "Choisir un dossier de dépôt",
-    "description": "Dossiers de la machine qui exécute Tendril. Les dépôts sont signalés ; double-cliquez pour en choisir un.",
+    "description": "Dossiers de la machine qui exécute Forge. Les dépôts sont signalés ; double-cliquez pour en choisir un.",
     "up": "Remonter d'un niveau",
     "home": "Dossier personnel",
     "pathLabel": "Chemin du dossier",

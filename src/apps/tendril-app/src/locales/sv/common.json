@@ -141,8 +141,8 @@
     "showDetails": "Visa detaljer"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service är frånkopplad. Ansluter automatiskt igen om {{seconds}} s…",
-    "unreachable": "Det går inte att nå Tendril-Service-daemonen.",
+    "reconnecting": "Forge service är frånkopplad. Ansluter automatiskt igen om {{seconds}} s…",
+    "unreachable": "Det går inte att nå Forge service-daemonen.",
     "cachedState": "(Använder cachelagrat tillstånd)",
     "reconnect": "Anslut igen nu"
   },

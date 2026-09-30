@@ -154,15 +154,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "La saisie vocale nécessite une connexion sécurisée. Ouvrez Tendril en HTTPS ou sur localhost, puis réessayez.",
-      "mediaDevicesUnavailable": "La saisie vocale n'est pas disponible dans cette fenêtre. Sur macOS, quittez puis rouvrez Ivy Tendril après la mise à jour, puis autorisez l'accès au micro lorsque vous y êtes invité. Vous pouvez aussi exécuter « {{command}} » et utiliser la saisie vocale dans votre navigateur.",
+      "insecureContext": "La saisie vocale nécessite une connexion sécurisée. Ouvrez Forge en HTTPS ou sur localhost, puis réessayez.",
+      "mediaDevicesUnavailable": "La saisie vocale n'est pas disponible dans cette fenêtre. Sur macOS, quittez puis rouvrez Forge après la mise à jour, puis autorisez l'accès au micro lorsque vous y êtes invité. Vous pouvez aussi exécuter « {{command}} » et utiliser la saisie vocale dans votre navigateur.",
       "audioCaptureUnsupported": "Ce navigateur ne peut pas capturer l'audio pour la saisie vocale.",
       "captureInitFailed": "Échec de l'initialisation de la capture audio : {{error}}",
       "websocket": "Une erreur WebSocket s'est produite lors de la connexion au service de transcription.",
       "closedUnexpectedly": "La connexion WebSocket s'est fermée de manière inattendue (code {{code}} : {{reason}})",
       "closedUnexpectedlyNoReason": "La connexion WebSocket s'est fermée de manière inattendue (code {{code}} : aucune raison indiquée)",
       "connectionFailed": "Accès au micro refusé ou échec de la connexion : {{error}}",
-      "microphoneDenied": "L'accès au micro a été refusé. Autorisez l'accès au micro pour Ivy Tendril dans Réglages Système > Confidentialité et sécurité > Micro, puis réessayez.",
+      "microphoneDenied": "L'accès au micro a été refusé. Autorisez l'accès au micro pour Forge dans Réglages Système > Confidentialité et sécurité > Micro, puis réessayez.",
       "microphoneNotFound": "Aucun micro détecté. Branchez un périphérique d'entrée et réessayez."
     }
   },
@@ -216,7 +216,7 @@
       "stalled": "Bloqué"
     },
     "composer": {
-      "placeholder": "Décrivez ce que Tendril doit construire ensuite…",
+      "placeholder": "Décrivez ce que Forge doit construire ensuite…",
       "submit": "Créer le plan",
       "ariaLabel": "Décrire un nouveau plan"
     },

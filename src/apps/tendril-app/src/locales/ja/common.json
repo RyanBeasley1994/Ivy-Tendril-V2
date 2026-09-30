@@ -141,8 +141,8 @@
     "showDetails": "詳細を表示"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service との接続が切断されました。{{seconds}} 秒後に自動で再接続します…",
-    "unreachable": "Tendril-Service デーモンに接続できません。",
+    "reconnecting": "Forge service との接続が切断されました。{{seconds}} 秒後に自動で再接続します…",
+    "unreachable": "Forge service デーモンに接続できません。",
     "cachedState": "（キャッシュされた状態を表示しています）",
     "reconnect": "今すぐ再接続"
   },

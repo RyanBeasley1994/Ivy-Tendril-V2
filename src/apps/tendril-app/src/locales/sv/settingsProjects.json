@@ -318,7 +318,7 @@
     "defaultPort": {
       "label": "Standardport",
       "invalid": "Standardporten måste vara mellan 1 och 65535.",
-      "hint": "Önskad port. Om den redan är upptagen allokerar Tendril en ledig port i stället."
+      "hint": "Önskad port. Om den redan är upptagen allokerar Forge en ledig port i stället."
     },
     "description": {
       "label": "Beskrivning",

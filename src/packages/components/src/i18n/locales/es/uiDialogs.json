@@ -25,7 +25,7 @@
     "title": "Ajustes de aceptación automática",
     "save": "Guardar",
     "saving": "Guardando…",
-    "intro": "Importa automáticamente, a intervalos regulares, los issues de GitHub recién asignados como planes de Tendril.",
+    "intro": "Importa automáticamente, a intervalos regulares, los issues de GitHub recién asignados como planes de Forge.",
     "autoAcceptLabel": "Aceptar automáticamente los issues asignados",
     "intervalLabel": "Intervalo de comprobación",
     "intervalOption_one": "{{count}} minuto",
@@ -126,10 +126,10 @@
     "intro": "Esto elimina permanentemente el proyecto <name>{{name}}</name> y todo lo que tiene en el disco. No se puede deshacer.",
     "plans": "Todos los planes de este proyecto, con sus revisiones e informes de verificación.",
     "folder": "<code>{{root}}</code><code>{{name}}</code> — sus repositorios clonados, skills, definiciones MCP y memorias, incluido cualquier commit que nunca se haya enviado.",
-    "database": "Sus planes, trabajos y recomendaciones en la base de datos de Tendril.",
+    "database": "Sus planes, trabajos y recomendaciones en la base de datos de Forge.",
     "config": "Su entrada en config.yaml.",
     "logsKept": "Los registros de los trabajos se conservan: se almacenan por ID de trabajo, no por proyecto.",
-    "removeInstead": "Para quitar el proyecto de Tendril sin tocar nada en el disco, cancela y usa Quitar proyecto.",
+    "removeInstead": "Para quitar el proyecto de Forge sin tocar nada en el disco, cancela y usa Quitar proyecto.",
     "typeToConfirm": "Escribe <name>{{name}}</name> para confirmar",
     "typeToConfirmAriaLabel": "Escribe {{name}} para confirmar"
   },
@@ -196,7 +196,7 @@
   },
   "noProjects": {
     "title": "Sin proyectos",
-    "description": "Todo plan pertenece a un proyecto, y este directorio de Tendril aún no tiene ninguno.",
+    "description": "Todo plan pertenece a un proyecto, y este directorio de Forge aún no tiene ninguno.",
     "openSettings": "Ir a Proyectos",
     "body": "Añade un proyecto en <location>Ajustes → Proyectos</location> — un nombre, sus repositorios y las verificaciones que ejecutan sus planes — y vuelve a crear el plan."
   },
@@ -262,7 +262,7 @@
     "title": "Quitar proyecto",
     "confirm": "Quitar proyecto",
     "question": "¿Seguro que quieres quitar el proyecto <name>{{name}}</name>?",
-    "consequence": "Esto quita el proyecto de config.yaml. Sus repositorios clonados, carpetas de planes e historial se quedan en el disco, así que no se elimina nada de tu equipo - pero Tendril dejará de mostrar el proyecto, y sus planes y trabajos existentes harán referencia a un proyecto que ya no conoce."
+    "consequence": "Esto quita el proyecto de config.yaml. Sus repositorios clonados, carpetas de planes e historial se quedan en el disco, así que no se elimina nada de tu equipo - pero Forge dejará de mostrar el proyecto, y sus planes y trabajos existentes harán referencia a un proyecto que ya no conoce."
   },
   "shareTunnel": {
     "title": "Compartir progreso",
@@ -368,7 +368,7 @@
       "validator": "Validador"
     },
     "machineLabel": "Crear en",
-    "machineUnavailable": "No hay ningún servicio de Tendril en ejecución allí"
+    "machineUnavailable": "No hay ningún servicio de Forge en ejecución allí"
   },
   "recommendationNote": {
     "submit": "Enviar",

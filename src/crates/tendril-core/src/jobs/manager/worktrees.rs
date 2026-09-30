@@ -98,7 +98,9 @@ pub async fn prepare_plan_worktrees(
 
             // The checkout is what matters; a registry write failure is not worth failing the job
             // for, because the reaper also finds worktrees by directory scan.
-            if let Err(e) = register_worktree(
+            if creation.shared {
+                // The mission's shared checkout, already registered on its integration plan.
+            } else if let Err(e) = register_worktree(
                 &plan_folder_for_task,
                 PlanWorktreeEntry {
                     repo: creation.repo.to_string_lossy().to_string(),

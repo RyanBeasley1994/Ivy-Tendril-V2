@@ -37,8 +37,8 @@
       "tooltip": "与编程智能体讨论所选 Issue"
     },
     "fireOff": {
-      "label": "在 Tendril 中启动",
-      "labelWithCount": "在 Tendril 中启动（{{selected}}）"
+      "label": "在 Forge 中启动",
+      "labelWithCount": "在 Forge 中启动（{{selected}}）"
     }
   },
   "freshness": {
@@ -56,7 +56,7 @@
     }
   },
   "fireNotice": {
-    "success_other": "已在 Tendril 中启动 {{count}} 个 Issue",
+    "success_other": "已在 Forge 中启动 {{count}} 个 Issue",
     "partial": "已启动 {{fired}} / {{total}} 个。#{{number}} 失败：{{error}}",
     "partial_unknownIssue": "已启动 {{fired}} / {{total}} 个。某个 Issue 失败：{{error}}"
   },
@@ -113,8 +113,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "在 Tendril 中启动",
-        "tooltip": "在 Tendril 中启动此 Issue"
+        "label": "在 Forge 中启动",
+        "tooltip": "在 Forge 中启动此 Issue"
       },
       "viewDetails": {
         "label": "查看详情",

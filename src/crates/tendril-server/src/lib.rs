@@ -209,7 +209,8 @@ pub async fn run_server(
     spawn_mission_driver(state.clone());
     spawn_worktree_reaper(tendril_home.clone());
     spawn_cost_backfill(tendril_home.clone());
-    tasks::spawn_version_check(state.clone());
+    // No background release check: it polled upstream Ivy Tendril's GitHub releases, which this fork
+    // does not publish to. `/api/version` still answers with the running version.
     spawn_assigned_issues_importer(tendril_home.clone(), state.clone());
 
     // `into_make_service_with_connect_info` on both arms is what makes the socket peer address

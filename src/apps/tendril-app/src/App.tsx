@@ -1,4 +1,5 @@
 import { isMissionPlan, useMissionPlanIds } from "./state/missionPlans";
+import { PRODUCT_NAME } from "./branding";
 import React, { useState, useEffect, useMemo } from "react";
 import { useShortcut } from "@ivy-interactive/components/tendril";
 import { uiStore, type UiState } from "./state/uiStore";
@@ -33,7 +34,6 @@ import {
   type ProjectSummary,
   type VersionInfo,
 } from "./types/api";
-import { getUpdateCommand } from "./utils/updateCommand";
 import { useTranslation } from "./i18n";
 
 import { Spinner } from "@ivy-interactive/components/ui";
@@ -141,6 +141,9 @@ const InsightsView = React.lazy(() =>
 );
 const RecommendationsView = React.lazy(() =>
   import("./views/RecommendationsView").then((m) => ({ default: m.RecommendationsView })),
+);
+const AboutView = React.lazy(() =>
+  import("./views/AboutView").then((m) => ({ default: m.AboutView })),
 );
 const IceboxView = React.lazy(() =>
   import("./views/IceboxView").then((m) => ({ default: m.IceboxView })),
@@ -759,32 +762,6 @@ export const App: React.FC = () => {
     [jobsState.jobs],
   );
 
-  const handleCheckForUpdates = async () => {
-    try {
-      const info = await bridge.checkVersionNow();
-      setVersionInfo(info);
-      const { toast } = await import("@ivy-interactive/components");
-      if (info.hasUpdate) {
-        toast({
-          title: t("updateCheck.available.title"),
-          description: t("updateCheck.available.description", { version: info.latestVersion }),
-        });
-      } else {
-        toast({
-          title: t("updateCheck.upToDate.title"),
-          description: t("updateCheck.upToDate.description", { version: info.currentVersion }),
-        });
-      }
-    } catch (err) {
-      const { toast } = await import("@ivy-interactive/components");
-      toast({
-        title: t("updateCheck.failed.title"),
-        description: describeBridgeError(err),
-        variant: "destructive",
-      });
-    }
-  };
-
   const activeNav = uiState.activeNav;
 
   // V1 `TendrilAppShell.HandleOpenPage`: the sidebar section belongs to the page app, so it is
@@ -1045,7 +1022,7 @@ export const App: React.FC = () => {
         summary ?? {
           id: jobId,
           type: t("jobPage.placeholderType"),
-          project: "Tendril",
+          project: PRODUCT_NAME,
           status: "Running" as const,
         };
       const events = jobsStore.getSessionEvents(jobId);
@@ -1065,6 +1042,9 @@ export const App: React.FC = () => {
             jobs={jobsState.jobs}
             onSelectJob={handleSelectJob}
             onSelectPlan={(planId) => void handleSelectPlan(planId)}
+            onSelectMission={(missionId) =>
+              uiStore.setActiveNav("missions", { mission: missionId })
+            }
             projects={projects}
             serviceOnline={serviceState.status === "online"}
             onNavigate={(nav) => uiStore.setActiveNav(nav)}
@@ -1195,6 +1175,9 @@ export const App: React.FC = () => {
       case "debug":
         return <DebugView />;
 
+      case "about":
+        return <AboutView version={versionInfo?.currentVersion} />;
+
       case "icebox":
         return (
           <IceboxView
@@ -1253,6 +1236,9 @@ export const App: React.FC = () => {
             plans={plansState.plans}
             jobs={jobsState.jobs}
             onSelectJob={handleSelectJob}
+            onSelectMission={(missionId) =>
+              uiStore.setActiveNav("missions", { mission: missionId })
+            }
             onNavigate={(nav) => uiStore.setActiveNav(nav)}
             onNewPlan={() => {
               setNewPlanPrefill({});
@@ -1350,17 +1336,12 @@ export const App: React.FC = () => {
         onViewDiagnostics={() => {
           uiStore.setActiveNav("settings");
         }}
-        versionInfo={versionInfo}
-        dismissedUpdateVersion={uiState.dismissedUpdateVersion}
-        onDismissUpdate={(version) => uiStore.setDismissedUpdateVersion(version)}
-        onCopyUpdateCommand={() => void navigator.clipboard.writeText(getUpdateCommand())}
         draftCount={draftCount}
         reviewCount={reviewCount}
         recommendationsCount={recommendationsCount}
         jobCount={jobCount}
         runningJobCount={jobsState.jobs.filter((j) => j.status === "Running").length}
         chatCount={chatSessionsCount}
-        onCheckForUpdates={handleCheckForUpdates}
         sidebarList={sidebarList}
         onSelectSidebarItem={handleSelectSidebarItem}
         // V1's `showPlanSearchDialog`. It has to be a search over the plan database rather than a

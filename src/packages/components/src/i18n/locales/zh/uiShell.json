@@ -150,15 +150,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "语音输入需要安全连接。请通过 HTTPS 或在 localhost 上打开 Tendril，然后重试。",
-      "mediaDevicesUnavailable": "此窗口中无法使用语音输入。在 macOS 上，请在更新后退出并重新打开 Ivy Tendril，然后在出现提示时允许访问麦克风。您也可以运行“{{command}}”，并在浏览器中使用语音输入。",
+      "insecureContext": "语音输入需要安全连接。请通过 HTTPS 或在 localhost 上打开 Forge，然后重试。",
+      "mediaDevicesUnavailable": "此窗口中无法使用语音输入。在 macOS 上，请在更新后退出并重新打开 Forge，然后在出现提示时允许访问麦克风。您也可以运行“{{command}}”，并在浏览器中使用语音输入。",
       "audioCaptureUnsupported": "此浏览器无法为语音输入采集音频。",
       "captureInitFailed": "音频采集初始化失败：{{error}}",
       "websocket": "连接转写服务时发生 WebSocket 错误。",
       "closedUnexpectedly": "WebSocket 连接意外关闭（代码 {{code}}：{{reason}}）",
       "closedUnexpectedlyNoReason": "WebSocket 连接意外关闭（代码 {{code}}：未提供原因）",
       "connectionFailed": "麦克风访问被拒绝或连接失败：{{error}}",
-      "microphoneDenied": "麦克风访问被拒绝。请在“系统设置 > 隐私与安全性 > 麦克风”中允许 Ivy Tendril 访问麦克风，然后重试。",
+      "microphoneDenied": "麦克风访问被拒绝。请在“系统设置 > 隐私与安全性 > 麦克风”中允许 Forge 访问麦克风，然后重试。",
       "microphoneNotFound": "未找到麦克风。请连接输入设备后重试。"
     }
   },
@@ -210,7 +210,7 @@
       "stalled": "已停滞"
     },
     "composer": {
-      "placeholder": "描述 Tendril 接下来要构建的内容…",
+      "placeholder": "描述 Forge 接下来要构建的内容…",
       "submit": "创建计划",
       "ariaLabel": "描述新计划"
     },

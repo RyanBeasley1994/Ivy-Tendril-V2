@@ -131,6 +131,7 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
   settings: app("settings", () => i18n.t("common:appTitles.settings"), { fullBleed: true }),
   "pull-requests": app("pull-requests", () => i18n.t("common:appTitles.pullRequests")),
   icebox: app("icebox", () => i18n.t("common:appTitles.icebox")),
+  about: app("about", () => i18n.t("common:appTitles.about")),
   "review-action": app("review-action", () => i18n.t("common:appTitles.reviewAction"), {
     allowDuplicateTabs: true,
     fullBleed: true,

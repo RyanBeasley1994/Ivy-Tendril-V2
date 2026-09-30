@@ -9,7 +9,6 @@ import {
   GitBranch,
   ListOrdered,
   Lock,
-  Mail,
   Sun,
   Wand,
 } from "lucide-react";
@@ -35,7 +34,6 @@ export const SettingsTag = {
   /** V1 keeps a separate tag that selects the same row and the same view as `security`. */
   Tunnel: "tunnel",
   Advanced: "advanced",
-  Newsletter: "newsletter",
 } as const;
 
 export type SettingsTagValue = (typeof SettingsTag)[keyof typeof SettingsTag];
@@ -66,7 +64,7 @@ export interface SettingsSection {
 /**
  * `SettingsApp.Build`'s `sections` list plus its `rows` list, in order: Coding Agent, Plans,
  * Appearance, Projects, Team Vault (beta only), Workflow Agents, Levels, Notifications, Security &
- * Tunneling, Advanced, Newsletter. "Open config.yaml" is deliberately absent - V1 renders it as an
+ * Tunneling, Advanced. "Open config.yaml" is deliberately absent - V1 renders it as an
  * action row that never becomes the selection, so it is not a section.
  *
  * `sections` is also what drives the `Breakpoint.Mobile`/`Tablet` `MobileItemPicker`, which is why
@@ -104,7 +102,6 @@ export function settingsSections(isBeta: boolean, t: TFunction<"settings">): Set
     { label: t("sections.notifications"), tag: SettingsTag.Notifications, icon: Bell },
     { label: t("sections.security"), tag: SettingsTag.Security, icon: Lock },
     { label: t("sections.advanced"), tag: SettingsTag.Advanced, icon: Cog },
-    { label: t("sections.newsletter"), tag: SettingsTag.Newsletter, icon: Mail },
   ];
 }
 

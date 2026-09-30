@@ -46,11 +46,11 @@
   },
   "vaultSection": {
     "title": "Team Vault",
-    "hint": "Dela och synkronisera Tendril-projekt, anpassade färdigheter, MCP-servrar och säkerhetsregler i teamet via ett versionshanterat Git-arkiv."
+    "hint": "Dela och synkronisera Forge-projekt, anpassade färdigheter, MCP-servrar och säkerhetsregler i teamet via ett versionshanterat Git-arkiv."
   },
   "notifications": {
     "title": "Aviseringar",
-    "hint": "Ställ in hur Tendril aviserar dig om slutförda och misslyckade jobb och andra händelser.",
+    "hint": "Ställ in hur Forge aviserar dig om slutförda och misslyckade jobb och andra händelser.",
     "desktopLabel": "Aktivera skrivbordsaviseringar",
     "saved": "Aviseringsinställningarna har sparats"
   },
@@ -64,7 +64,7 @@
     "minutesSuffix": "min",
     "betaHeading": "Betafunktioner",
     "betaLabel": "Aktivera betafunktioner",
-    "restartNote": "Tendril måste startas om för att ändringarna ska börja gälla.",
+    "restartNote": "Forge måste startas om för att ändringarna ska börja gälla.",
     "saved": "Inställningarna har sparats och tillämpats"
   },
   "diagnostics": {
@@ -92,7 +92,7 @@
   },
   "newsletterSection": {
     "title": "Nyhetsbrev",
-    "hint": "Prenumerera på nyhetsbrevet från Ivy & Tendril för att få uppdateringar, nyheter om funktioner och versionsanteckningar."
+    "hint": "Prenumerera på nyhetsbrevet från Forge för att få uppdateringar, nyheter om funktioner och versionsanteckningar."
   },
   "promptwares": {
     "title": "Arbetsflödesagenter",
@@ -129,14 +129,14 @@
   "appearance": {
     "language": {
       "title": "Språk",
-      "hint": "Välj vilket språk Tendril ska använda. Systemstandard följer ditt operativsystem.",
+      "hint": "Välj vilket språk Forge ska använda. Systemstandard följer ditt operativsystem.",
       "label": "Språk",
       "system": "Systemstandard",
       "saved": "Språket har ställts in på {{language}}",
-      "loadFailed": "Det gick inte att läsa in {{language}}. Tendril behåller det språk som redan används."
+      "loadFailed": "Det gick inte att läsa in {{language}}. Forge behåller det språk som redan används."
     },
     "title": "Utseende",
-    "hint": "Välj hur Tendril ska se ut. System följer inställningen i operativsystemet.",
+    "hint": "Välj hur Forge ska se ut. System följer inställningen i operativsystemet.",
     "themeMode": {
       "light": "Ljust",
       "dark": "Mörkt",
@@ -147,7 +147,7 @@
     },
     "theme": {
       "title": "Tema",
-      "hint": "Välj en förinställd färgskala för Tendril.",
+      "hint": "Välj en förinställd färgskala för Forge.",
       "label": "Tema",
       "vaultOption": "{{name}} (valv: {{vault}})",
       "vaultFallback": "Team",
@@ -231,9 +231,9 @@
   },
   "security": {
     "title": "Säkerhet och tunnling",
-    "hint": "Kräv ett lösenord för att komma åt Tendril och exponera den här instansen via en offentlig tunnel.",
+    "hint": "Kräv ett lösenord för att komma åt Forge och exponera den här instansen via en offentlig tunnel.",
     "cloudflared": {
-      "intro": "Båda tunnlarna nedan kör Cloudflares <code>cloudflared</code>. Det är ännu inte installerat på datorn som kör Tendril.",
+      "intro": "Båda tunnlarna nedan kör Cloudflares <code>cloudflared</code>. Det är ännu inte installerat på datorn som kör Forge.",
       "configuredPathTitle": "Konfigurerad sökväg",
       "installingTitle": "Installerar",
       "downloadingPercent": "Laddar ned {{asset}} — {{percent, percent}}",
@@ -267,7 +267,7 @@
     "tunnel": {
       "full": {
         "heading": "Tunnel",
-        "blurb": "Exponera din Tendril-instans mot internet via en Cloudflare-tunnel. Praktiskt för att nå Tendril från mobila enheter eller dela med andra.",
+        "blurb": "Exponera din Forge-instans mot internet via en Cloudflare-tunnel. Praktiskt för att nå Forge från mobila enheter eller dela med andra.",
         "startingTitle": "Tunneln startar",
         "activeTitle": "Tunneln är aktiv",
         "activeBody": "Tunneln körs och kan nås via URL:en nedan.",
@@ -279,7 +279,7 @@
       },
       "share": {
         "heading": "Delningstunnel",
-        "blurb": "Exponera en version av Tendril där teammedlemmar bara kan läsa och kommentera, så att de kan granska planer och utkast.",
+        "blurb": "Exponera en version av Forge där teammedlemmar bara kan läsa och kommentera, så att de kan granska planer och utkast.",
         "startingTitle": "Delningstunneln startar",
         "activeTitle": "Delningstunneln är aktiv",
         "activeBody": "Delningstunneln körs och kan nås via URL:en nedan.",
@@ -290,7 +290,7 @@
         "stopFailed": "Det gick inte att stoppa delningstunneln: {{error}}"
       },
       "warningTitle": "Det här publicerar allt",
-      "warningBody": "En tunnel med full åtkomst lägger ut hela den här Tendril-instansen på en offentlig URL. Den som har adressen och sessionslösenordet kan använda den som om hen satt vid den här datorn, så ett lösenord krävs innan tunneln kan startas. Delningstunneln nedan är alternativet med skrivskydd.",
+      "warningBody": "En tunnel med full åtkomst lägger ut hela den här Forge-instansen på en offentlig URL. Den som har adressen och sessionslösenordet kan använda den som om hen satt vid den här datorn, så ett lösenord krävs innan tunneln kan startas. Delningstunneln nedan är alternativet med skrivskydd.",
       "deactivatedTitle": "Inaktiverad",
       "copiedTitle": "URL:en har kopierats",
       "copyFailed": "Det gick inte att kopiera URL:en: {{error}}",
@@ -323,7 +323,7 @@
   },
   "modelCatalog": {
     "title": "Modellkatalog",
-    "hint": "Tendril slår samman den kurerade modelltabellen med en ögonblicksbild från models.dev som cachelagras på disken.",
+    "hint": "Forge slår samman den kurerade modelltabellen med en ögonblicksbild från models.dev som cachelagras på disken.",
     "refresh": "Uppdatera nu",
     "refreshing": "Uppdaterar…",
     "refreshed_one": "Uppdaterat: {{count}} modell från models.dev",
@@ -362,7 +362,7 @@
   },
   "remoteServer": {
     "title": "Fjärrserver",
-    "hint": "Använd Tendril på en annan dator, till exempel en VPS, i stället för den här. Servern måste ha ett lösenord (sessionsskydd).",
+    "hint": "Använd Forge på en annan dator, till exempel en VPS, i stället för den här. Servern måste ha ett lösenord (sessionsskydd).",
     "urlLabel": "Serveradress",
     "urlPlaceholder": "203.0.113.7 eller https://min-server.example.com",
     "urlHint": "En IP eller ett värdnamn använder port 5010. Ange https:// för en tunnel eller omvänd proxy.",
@@ -373,11 +373,11 @@
     "disconnect": "Koppla från och använd den här datorn",
     "connectedAs": "Ansluten som {{username}}",
     "notAuthenticated": "Inte inloggad: {{error}}",
-    "restarting": "Startar om Tendril…"
+    "restarting": "Startar om Forge…"
   },
   "git": {
     "title": "Git och grenar",
-    "hint": "Hur Tendril namnger grenarna för planer och uppdrag, och hur agenter committar.",
+    "hint": "Hur Forge namnger grenarna för planer och uppdrag, och hur agenter committar.",
     "prefixLabel": "Grenprefix",
     "prefixHint": "Vad {prefix} blir. Standard: tendril/.",
     "templateLabel": "Plangren",
@@ -411,7 +411,7 @@
     "save": "Spara",
     "saved": "Greninställningar sparade",
     "nativeLabel": "Skapa pull requests utan agenten",
-    "nativeHint": "Tendril pushar grenen, skapar eller uppdaterar PR:en, tillämpar dina val och mergar själv – på sekunder och utan tokens. Agenten anropas bara för mergekonflikter eller ovanliga grenar. Stäng av för att skicka varje PR via agenten.",
+    "nativeHint": "Forge pushar grenen, skapar eller uppdaterar PR:en, tillämpar dina val och mergar själv – på sekunder och utan tokens. Agenten anropas bara för mergekonflikter eller ovanliga grenar. Stäng av för att skicka varje PR via agenten.",
     "skipHooksLabel": "Hoppa över pre-push-hooks när PR skapas",
     "skipHooksHint": "Pushar plangrenar med --no-verify och HUSKY=0, så att en repo-hook som kör hela testsviten igen inte blockerar PR:en. Planens egna verifieringar har redan gått igenom. Påverkar bara pushen i Skapa PR: commits behåller sina hooks och dina egna pushar ändras inte."
   }

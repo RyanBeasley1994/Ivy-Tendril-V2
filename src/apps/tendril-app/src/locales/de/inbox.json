@@ -37,8 +37,8 @@
       "tooltip": "Die ausgewählten Issues mit dem Coding-Agenten besprechen"
     },
     "fireOff": {
-      "label": "In Tendril starten",
-      "labelWithCount": "In Tendril starten ({{selected}})"
+      "label": "In Forge starten",
+      "labelWithCount": "In Forge starten ({{selected}})"
     }
   },
   "freshness": {
@@ -56,8 +56,8 @@
     }
   },
   "fireNotice": {
-    "success_one": "{{count}} Issue in Tendril gestartet",
-    "success_other": "{{count}} Issues in Tendril gestartet",
+    "success_one": "{{count}} Issue in Forge gestartet",
+    "success_other": "{{count}} Issues in Forge gestartet",
     "partial": "{{fired}} von {{total}} gestartet. Fehlgeschlagen bei #{{number}}: {{error}}",
     "partial_unknownIssue": "{{fired}} von {{total}} gestartet. Fehlgeschlagen bei einem Issue: {{error}}"
   },
@@ -118,8 +118,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "In Tendril starten",
-        "tooltip": "Dieses Issue in Tendril starten"
+        "label": "In Forge starten",
+        "tooltip": "Dieses Issue in Forge starten"
       },
       "viewDetails": {
         "label": "Details anzeigen",

@@ -318,7 +318,7 @@
     "defaultPort": {
       "label": "Puerto predeterminado",
       "invalid": "El puerto predeterminado debe estar entre 1 y 65535.",
-      "hint": "Puerto preferido. Si ya está ocupado, Tendril asigna uno libre en su lugar."
+      "hint": "Puerto preferido. Si ya está ocupado, Forge asigna uno libre en su lugar."
     },
     "description": {
       "label": "Descripción",

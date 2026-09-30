@@ -30,7 +30,7 @@
     "override_terminal": "新建终端聊天"
   },
   "planChat": {
-    "headline": "让 Tendril 修改任何内容"
+    "headline": "让 Forge 修改任何内容"
   },
   "systemEvent": {
     "linked": {
@@ -117,7 +117,7 @@
   "composer": {
     "attach": "附加文件",
     "promptLabel": "聊天提示词",
-    "placeholder": "向 Tendril 提出任何问题…",
+    "placeholder": "向 Forge 提出任何问题…",
     "voice": "语音输入",
     "voiceErrorDismiss": "关闭语音输入错误提示",
     "nothingTranscribed": "未转写出任何内容，请重试。",
@@ -173,7 +173,7 @@
       },
       "addProject": {
         "label": "添加新项目",
-        "prompt": "向我的 Tendril 添加一个新项目"
+        "prompt": "向我的 Forge 添加一个新项目"
       },
       "editVerifications": {
         "label": "编辑验证",

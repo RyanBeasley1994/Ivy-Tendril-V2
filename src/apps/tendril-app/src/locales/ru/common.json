@@ -141,8 +141,8 @@
     "showDetails": "Показать подробности"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service отключён. Автоматическое переподключение через {{seconds}} с…",
-    "unreachable": "Демон Tendril-Service недоступен.",
+    "reconnecting": "Forge service отключён. Автоматическое переподключение через {{seconds}} с…",
+    "unreachable": "Демон Forge service недоступен.",
     "cachedState": "(Используется кэшированное состояние)",
     "reconnect": "Переподключиться"
   },

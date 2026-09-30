@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "Agente de Código",
-    "hint": "O Tendril se conecta ao agente de código de IA configurado ou a mecanismos de código aberto incluídos, como o OpenCode.",
+    "hint": "O Forge se conecta ao agente de código de IA configurado ou a mecanismos de código aberto incluídos, como o OpenCode.",
     "unknownAgent": "Agente de código desconhecido: \"{{value}}\". Agentes válidos: {{agents}}"
   },
   "byo": {
@@ -70,7 +70,7 @@
     "apiKey": "2. Chave de API",
     "or": "ou",
     "then": "Depois, no prompt: <code>{{command}}</code>",
-    "binary": "O Tendril procura <code>{{binary}}</code> no seu PATH."
+    "binary": "O Forge procura <code>{{binary}}</code> no seu PATH."
   },
   "actions": {
     "test": "Testar Agente",

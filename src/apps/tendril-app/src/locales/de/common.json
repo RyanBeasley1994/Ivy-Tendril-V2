@@ -141,8 +141,8 @@
     "showDetails": "Details anzeigen"
   },
   "offlineBanner": {
-    "reconnecting": "Verbindung zum Tendril-Service getrennt. Automatische Neuverbindung in {{seconds}} s…",
-    "unreachable": "Der Tendril-Service-Daemon ist nicht erreichbar.",
+    "reconnecting": "Verbindung zum Forge service getrennt. Automatische Neuverbindung in {{seconds}} s…",
+    "unreachable": "Der Forge service-Daemon ist nicht erreichbar.",
     "cachedState": "(Zwischengespeicherter Zustand wird verwendet)",
     "reconnect": "Jetzt neu verbinden"
   },

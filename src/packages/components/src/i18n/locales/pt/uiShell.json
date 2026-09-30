@@ -154,15 +154,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "A entrada por voz precisa de uma conexão segura. Abra o Tendril por HTTPS ou em localhost e tente novamente.",
-      "mediaDevicesUnavailable": "A entrada por voz não está disponível nesta janela. No macOS, encerre e reabra o Ivy Tendril após a atualização e permita o acesso ao microfone quando solicitado. Você também pode executar \"{{command}}\" e usar a entrada por voz no navegador.",
+      "insecureContext": "A entrada por voz precisa de uma conexão segura. Abra o Forge por HTTPS ou em localhost e tente novamente.",
+      "mediaDevicesUnavailable": "A entrada por voz não está disponível nesta janela. No macOS, encerre e reabra o Forge após a atualização e permita o acesso ao microfone quando solicitado. Você também pode executar \"{{command}}\" e usar a entrada por voz no navegador.",
       "audioCaptureUnsupported": "Este navegador não consegue capturar áudio para a entrada por voz.",
       "captureInitFailed": "Falha ao inicializar a captura de áudio: {{error}}",
       "websocket": "Ocorreu um erro de WebSocket ao conectar ao serviço de transcrição.",
       "closedUnexpectedly": "A conexão WebSocket foi fechada inesperadamente (código {{code}}: {{reason}})",
       "closedUnexpectedlyNoReason": "A conexão WebSocket foi fechada inesperadamente (código {{code}}: nenhum motivo informado)",
       "connectionFailed": "Acesso ao microfone negado ou falha na conexão: {{error}}",
-      "microphoneDenied": "O acesso ao microfone foi negado. Permita o acesso ao microfone para o Ivy Tendril em Ajustes do Sistema > Privacidade e Segurança > Microfone e tente novamente.",
+      "microphoneDenied": "O acesso ao microfone foi negado. Permita o acesso ao microfone para o Forge em Ajustes do Sistema > Privacidade e Segurança > Microfone e tente novamente.",
       "microphoneNotFound": "Nenhum microfone foi encontrado. Conecte um dispositivo de entrada e tente novamente."
     }
   },
@@ -216,7 +216,7 @@
       "stalled": "Parado"
     },
     "composer": {
-      "placeholder": "Descreva o que o Tendril deve construir a seguir…",
+      "placeholder": "Descreva o que o Forge deve construir a seguir…",
       "submit": "Criar plano",
       "ariaLabel": "Descreva um novo plano"
     },

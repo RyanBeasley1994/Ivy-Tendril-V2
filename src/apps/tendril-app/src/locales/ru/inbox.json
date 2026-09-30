@@ -37,8 +37,8 @@
       "tooltip": "Обсудить выбранные задачи с кодинг-агентом"
     },
     "fireOff": {
-      "label": "Запустить в Tendril",
-      "labelWithCount": "Запустить в Tendril ({{selected}})"
+      "label": "Запустить в Forge",
+      "labelWithCount": "Запустить в Forge ({{selected}})"
     }
   },
   "freshness": {
@@ -56,10 +56,10 @@
     }
   },
   "fireNotice": {
-    "success_one": "В Tendril запущена {{count}} задача",
-    "success_few": "В Tendril запущены {{count}} задачи",
-    "success_many": "В Tendril запущено {{count}} задач",
-    "success_other": "В Tendril запущено {{count}} задачи",
+    "success_one": "В Forge запущена {{count}} задача",
+    "success_few": "В Forge запущены {{count}} задачи",
+    "success_many": "В Forge запущено {{count}} задач",
+    "success_other": "В Forge запущено {{count}} задачи",
     "partial": "Запущено {{fired}} из {{total}}. Сбой на задаче #{{number}}: {{error}}",
     "partial_unknownIssue": "Запущено {{fired}} из {{total}}. Сбой на одной из задач: {{error}}"
   },
@@ -128,8 +128,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Запустить в Tendril",
-        "tooltip": "Запустить эту задачу в Tendril"
+        "label": "Запустить в Forge",
+        "tooltip": "Запустить эту задачу в Forge"
       },
       "viewDetails": {
         "label": "Подробнее",

@@ -35,7 +35,7 @@
       "label": "Aceptar",
       "tooltip": "Iniciar un plan para este issue en {{project}}"
     },
-    "fireOff": "Lanzar en Tendril",
+    "fireOff": "Lanzar en Forge",
     "noDescription": "No se proporcionó ninguna descripción."
   },
   "planRevisionSheet": {
@@ -244,9 +244,9 @@
   "updateTendril": {
     "cancel": "Cancelar",
     "retry": "Reintentar",
-    "title": "Actualizar Tendril",
+    "title": "Actualizar Forge",
     "available": "La <strong>v{{latest}}</strong> está disponible (tienes la v{{current}}).",
-    "selfUpdateHint": "Haz clic en «Actualizar ahora» para descargar e instalar la actualización automáticamente. Tendril se reiniciará automáticamente al terminar.",
+    "selfUpdateHint": "Haz clic en «Actualizar ahora» para descargar e instalar la actualización automáticamente. Forge se reiniciará automáticamente al terminar.",
     "manualHint": "La actualización automática no está disponible para este tipo de instalación. Ejecuta el siguiente comando en tu terminal para actualizar:",
     "failedTitle": "Error en la actualización",
     "updating": "Actualizando...",

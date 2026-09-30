@@ -35,7 +35,7 @@
       "label": "Accept",
       "tooltip": "Start a plan for this issue in {{project}}"
     },
-    "fireOff": "Fire off in Tendril",
+    "fireOff": "Fire off in Forge",
     "noDescription": "No description provided."
   },
   "planRevisionSheet": {
@@ -226,9 +226,9 @@
   "updateTendril": {
     "cancel": "Cancel",
     "retry": "Retry",
-    "title": "Update Tendril",
+    "title": "Update Forge",
     "available": "<strong>v{{latest}}</strong> is available (you have v{{current}}).",
-    "selfUpdateHint": "Click \"Update Now\" to automatically download and install the update. Tendril will automatically restart once finished.",
+    "selfUpdateHint": "Click \"Update Now\" to automatically download and install the update. Forge will automatically restart once finished.",
     "manualHint": "Automatic update is not available for this installation type. Run the following command in your terminal to update:",
     "failedTitle": "Update Failed",
     "updating": "Updating...",

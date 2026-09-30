@@ -43,13 +43,13 @@
   },
   "emptyState": {
     "title": "团队配置保管库",
-    "description": "通过带版本控制的 Git 仓库，在团队内共享和同步 Tendril 项目、自定义技能、MCP 服务器及安全规则。",
+    "description": "通过带版本控制的 Git 仓库，在团队内共享和同步 Forge 项目、自定义技能、MCP 服务器及安全规则。",
     "create": "创建 GitHub 保管库",
     "connect": "连接现有 Git 保管库"
   },
   "createDialog": {
     "title": "在 GitHub 上创建团队保管库",
-    "description": "创建一个私有 GitHub 仓库，与团队共享 Tendril 项目配置、自定义技能和 MCP 服务器。",
+    "description": "创建一个私有 GitHub 仓库，与团队共享 Forge 项目配置、自定义技能和 MCP 服务器。",
     "submit": "创建保管库",
     "name": {
       "label": "仓库名称"
@@ -64,7 +64,7 @@
   },
   "connectDialog": {
     "title": "连接现有团队保管库",
-    "description": "连接现有的 Tendril 保管库仓库，与团队同步项目、技能和配置。",
+    "description": "连接现有的 Forge 保管库仓库，与团队同步项目、技能和配置。",
     "submit": "连接保管库",
     "discovering": "🔍 正在您的 GitHub 账户和组织中搜索现有保管库…",
     "detected": {

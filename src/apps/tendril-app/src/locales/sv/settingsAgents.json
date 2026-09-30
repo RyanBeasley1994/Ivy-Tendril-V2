@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "Kodningsagent",
-    "hint": "Tendril ansluter till din konfigurerade AI-kodningsagent eller till medföljande motorer med öppen källkod som OpenCode.",
+    "hint": "Forge ansluter till din konfigurerade AI-kodningsagent eller till medföljande motorer med öppen källkod som OpenCode.",
     "unknownAgent": "Okänd kodningsagent ”{{value}}”. Giltiga agenter: {{agents}}"
   },
   "byo": {
@@ -69,7 +69,7 @@
     "apiKey": "2. API-nyckel",
     "or": "eller",
     "then": "Skriv sedan vid prompten: <code>{{command}}</code>",
-    "binary": "Tendril letar efter <code>{{binary}}</code> i din PATH."
+    "binary": "Forge letar efter <code>{{binary}}</code> i din PATH."
   },
   "actions": {
     "test": "Testa agent",

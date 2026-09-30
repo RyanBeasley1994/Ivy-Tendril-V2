@@ -46,11 +46,11 @@
   },
   "vaultSection": {
     "title": "Team Vault",
-    "hint": "Compartilhe e sincronize projetos do Tendril, habilidades personalizadas, servidores MCP e regras de segurança com sua equipe por meio de um repositório Git versionado."
+    "hint": "Compartilhe e sincronize projetos do Forge, habilidades personalizadas, servidores MCP e regras de segurança com sua equipe por meio de um repositório Git versionado."
   },
   "notifications": {
     "title": "Notificações",
-    "hint": "Configure como o Tendril notifica você sobre conclusões e falhas de tarefas e outros eventos.",
+    "hint": "Configure como o Forge notifica você sobre conclusões e falhas de tarefas e outros eventos.",
     "desktopLabel": "Ativar Notificações na Área de Trabalho",
     "saved": "Configurações de notificação salvas"
   },
@@ -64,7 +64,7 @@
     "minutesSuffix": "min",
     "betaHeading": "Recursos Beta",
     "betaLabel": "Ativar recursos beta",
-    "restartNote": "É necessário reiniciar o Tendril para que as alterações entrem em vigor.",
+    "restartNote": "É necessário reiniciar o Forge para que as alterações entrem em vigor.",
     "saved": "Configurações salvas e aplicadas"
   },
   "diagnostics": {
@@ -92,7 +92,7 @@
   },
   "newsletterSection": {
     "title": "Newsletter",
-    "hint": "Inscreva-se na newsletter do Ivy & Tendril para receber atualizações, destaques de recursos e notas de versão."
+    "hint": "Inscreva-se na newsletter do Forge para receber atualizações, destaques de recursos e notas de versão."
   },
   "promptwares": {
     "title": "Agentes de Fluxo de Trabalho",
@@ -129,14 +129,14 @@
   "appearance": {
     "language": {
       "title": "Idioma",
-      "hint": "Escolha o idioma usado pelo Tendril. Padrão do sistema segue o seu sistema operacional.",
+      "hint": "Escolha o idioma usado pelo Forge. Padrão do sistema segue o seu sistema operacional.",
       "label": "Idioma",
       "system": "Padrão do sistema",
       "saved": "Idioma definido como {{language}}",
-      "loadFailed": "Não foi possível carregar {{language}}. O Tendril continua no idioma em que estava."
+      "loadFailed": "Não foi possível carregar {{language}}. O Forge continua no idioma em que estava."
     },
     "title": "Aparência",
-    "hint": "Escolha a aparência do Tendril. Sistema segue a configuração do seu SO.",
+    "hint": "Escolha a aparência do Forge. Sistema segue a configuração do seu SO.",
     "themeMode": {
       "light": "Claro",
       "dark": "Escuro",
@@ -147,7 +147,7 @@
     },
     "theme": {
       "title": "Tema",
-      "hint": "Escolha uma predefinição de esquema de cores para o Tendril.",
+      "hint": "Escolha uma predefinição de esquema de cores para o Forge.",
       "label": "Tema",
       "vaultOption": "{{name}} (Vault: {{vault}})",
       "vaultFallback": "Equipe",
@@ -232,9 +232,9 @@
   },
   "security": {
     "title": "Segurança e Tunelamento",
-    "hint": "Exija uma senha para acessar o Tendril e exponha esta instância por meio de um túnel público.",
+    "hint": "Exija uma senha para acessar o Forge e exponha esta instância por meio de um túnel público.",
     "cloudflared": {
-      "intro": "Os dois túneis abaixo usam o <code>cloudflared</code> da Cloudflare. Ele ainda não está instalado na máquina em que o Tendril está em execução.",
+      "intro": "Os dois túneis abaixo usam o <code>cloudflared</code> da Cloudflare. Ele ainda não está instalado na máquina em que o Forge está em execução.",
       "configuredPathTitle": "Caminho configurado",
       "installingTitle": "Instalando",
       "downloadingPercent": "Baixando {{asset}} — {{percent, percent}}",
@@ -253,7 +253,7 @@
     },
     "session": {
       "heading": "Proteção de Sessão",
-      "blurb": "Exigir uma senha para acessar a interface do Tendril.",
+      "blurb": "Exigir uma senha para acessar a interface do Forge.",
       "enableLabel": "Ativar Proteção por Senha",
       "currentLabel": "Senha Atual",
       "currentPlaceholder": "Senha atual...",
@@ -268,7 +268,7 @@
     "tunnel": {
       "full": {
         "heading": "Túnel",
-        "blurb": "Exponha sua instância do Tendril à internet por meio de um túnel Cloudflare. Útil para acessar o Tendril de dispositivos móveis ou compartilhar com outras pessoas.",
+        "blurb": "Exponha sua instância do Forge à internet por meio de um túnel Cloudflare. Útil para acessar o Forge de dispositivos móveis ou compartilhar com outras pessoas.",
         "startingTitle": "Iniciando Túnel",
         "activeTitle": "Túnel Ativo",
         "activeBody": "Seu túnel está em execução e acessível pela URL abaixo.",
@@ -280,7 +280,7 @@
       },
       "share": {
         "heading": "Túnel de Compartilhamento",
-        "blurb": "Exponha uma versão do Tendril somente leitura e somente comentários para que membros da equipe revisem planos e rascunhos.",
+        "blurb": "Exponha uma versão do Forge somente leitura e somente comentários para que membros da equipe revisem planos e rascunhos.",
         "startingTitle": "Iniciando Túnel de Compartilhamento",
         "activeTitle": "Túnel de Compartilhamento Ativo",
         "activeBody": "Seu túnel de compartilhamento está em execução e acessível pela URL abaixo.",
@@ -291,7 +291,7 @@
         "stopFailed": "Falha ao parar o túnel de compartilhamento: {{error}}"
       },
       "warningTitle": "Isto publica tudo",
-      "warningBody": "Um túnel de acesso total coloca esta instância inteira do Tendril em uma URL pública. Qualquer pessoa com o endereço e a senha da sessão pode usá-la como se estivesse diante desta máquina, por isso é necessária uma senha antes que um túnel desse tipo seja iniciado. O Túnel de Compartilhamento abaixo é a opção somente leitura.",
+      "warningBody": "Um túnel de acesso total coloca esta instância inteira do Forge em uma URL pública. Qualquer pessoa com o endereço e a senha da sessão pode usá-la como se estivesse diante desta máquina, por isso é necessária uma senha antes que um túnel desse tipo seja iniciado. O Túnel de Compartilhamento abaixo é a opção somente leitura.",
       "deactivatedTitle": "Desativado",
       "copiedTitle": "URL Copiada",
       "copyFailed": "Não foi possível copiar a URL: {{error}}",
@@ -324,7 +324,7 @@
   },
   "modelCatalog": {
     "title": "Catálogo de Modelos",
-    "hint": "O Tendril combina a tabela curada de modelos com um snapshot do models.dev armazenado em cache no disco.",
+    "hint": "O Forge combina a tabela curada de modelos com um snapshot do models.dev armazenado em cache no disco.",
     "refresh": "Atualizar Agora",
     "refreshing": "Atualizando…",
     "refreshed_one": "Atualizado: {{count}} modelo do models.dev",
@@ -364,7 +364,7 @@
   },
   "remoteServer": {
     "title": "Servidor remoto",
-    "hint": "Use o Tendril em outra máquina, como um VPS, em vez desta. O servidor precisa ter uma senha definida (proteção de sessão).",
+    "hint": "Use o Forge em outra máquina, como um VPS, em vez desta. O servidor precisa ter uma senha definida (proteção de sessão).",
     "urlLabel": "Endereço do servidor",
     "urlPlaceholder": "203.0.113.7 ou https://meu-servidor.example.com",
     "urlHint": "Um IP ou nome de host usa a porta 5010. Inclua https:// para um túnel ou proxy reverso.",
@@ -375,11 +375,11 @@
     "disconnect": "Desconectar e usar esta máquina",
     "connectedAs": "Conectado como {{username}}",
     "notAuthenticated": "Sem sessão: {{error}}",
-    "restarting": "Reiniciando o Tendril…"
+    "restarting": "Reiniciando o Forge…"
   },
   "git": {
     "title": "Git e branches",
-    "hint": "Como o Tendril nomeia as branches de planos e missões, e como os agentes fazem commit.",
+    "hint": "Como o Forge nomeia as branches de planos e missões, e como os agentes fazem commit.",
     "prefixLabel": "Prefixo de branch",
     "prefixHint": "O valor de {prefix}. Padrão: tendril/.",
     "templateLabel": "Branch de plano",
@@ -413,7 +413,7 @@
     "save": "Salvar",
     "saved": "Configurações de branch salvas",
     "nativeLabel": "Criar pull requests sem o agente",
-    "nativeHint": "O Tendril envia a branch, cria ou atualiza o PR, aplica suas opções e faz o merge sozinho, em segundos e sem tokens. O agente só entra para resolver conflitos ou recuperar uma branch incomum. Desative para mandar todo PR pelo agente.",
+    "nativeHint": "O Forge envia a branch, cria ou atualiza o PR, aplica suas opções e faz o merge sozinho, em segundos e sem tokens. O agente só entra para resolver conflitos ou recuperar uma branch incomum. Desative para mandar todo PR pelo agente.",
     "skipHooksLabel": "Pular hooks pre-push ao criar PRs",
     "skipHooksHint": "Envia as branches dos planos com --no-verify e HUSKY=0, para que um hook do repositório que roda toda a suíte de testes de novo não bloqueie o PR. As verificações do plano já passaram. Afeta só o push de Criar PR: os commits mantêm seus hooks e seus próprios pushes não mudam."
   }

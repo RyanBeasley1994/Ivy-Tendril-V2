@@ -6,7 +6,7 @@
   },
   "empty": {
     "title": "Aún no hay misiones",
-    "description": "Entrega a Tendril una funcionalidad completa. El orquestador planifica hitos, ejecuta cada uno, lo evalúa según sus criterios de aceptación y valida el resultado.",
+    "description": "Entrega a Forge una funcionalidad completa. El orquestador planifica hitos, ejecuta cada uno, lo evalúa según sus criterios de aceptación y valida el resultado.",
     "steps": {
       "plan": {
         "title": "Planificar",

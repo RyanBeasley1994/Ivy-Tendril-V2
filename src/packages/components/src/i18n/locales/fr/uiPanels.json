@@ -35,7 +35,7 @@
       "label": "Accepter",
       "tooltip": "Démarrer un plan pour cette issue dans le projet {{project}}"
     },
-    "fireOff": "Lancer dans Tendril",
+    "fireOff": "Lancer dans Forge",
     "noDescription": "Aucune description fournie."
   },
   "planRevisionSheet": {
@@ -244,9 +244,9 @@
   "updateTendril": {
     "cancel": "Annuler",
     "retry": "Réessayer",
-    "title": "Mettre à jour Tendril",
+    "title": "Mettre à jour Forge",
     "available": "La <strong>v{{latest}}</strong> est disponible (version actuelle : v{{current}}).",
-    "selfUpdateHint": "Cliquez sur « Mettre à jour » pour télécharger et installer automatiquement la mise à jour. Tendril redémarrera automatiquement une fois terminé.",
+    "selfUpdateHint": "Cliquez sur « Mettre à jour » pour télécharger et installer automatiquement la mise à jour. Forge redémarrera automatiquement une fois terminé.",
     "manualHint": "La mise à jour automatique n’est pas disponible pour ce type d’installation. Exécutez la commande suivante dans votre terminal pour mettre à jour :",
     "failedTitle": "Échec de la mise à jour",
     "updating": "Mise à jour...",

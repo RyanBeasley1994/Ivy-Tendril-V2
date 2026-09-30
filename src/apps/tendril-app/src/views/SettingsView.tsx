@@ -22,7 +22,6 @@ import { readAppearance } from "../state/appearance";
 import { readLanguagePreference } from "../state/language";
 import { describeBridgeError, type ServiceInfo, type TendrilConfig } from "../types/api";
 import { ModelCatalogCard } from "../components/ModelCatalogCard";
-import { NewsletterSignup } from "../components/NewsletterSignup";
 import { ServiceSettingsView } from "../components/service";
 import { VaultSettingsView } from "./VaultSettingsView";
 import { SidebarExpandableRow, SidebarRow, SidebarSubItem } from "./settings/SidebarListRow";
@@ -978,7 +977,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               {/* Row order follows `SettingsApp.Build`: Coding Agent, Plans, Appearance, Projects,
                 Team Vault (beta), Promptwares, Levels, Notifications, Security & Tunneling,
-                Advanced, Newsletter, then the "Open config.yaml" action row. */}
+                Advanced, then the "Open config.yaml" action row. */}
               {showCodingAgent && (
                 <>
                   <CodingAgentSection
@@ -1303,16 +1302,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onRefreshHealth={onRefreshHealth}
                   />
                 </>
-              )}
-
-              {on(SettingsTag.Newsletter) && (
-                <SettingsSection
-                  title={t("newsletterSection.title")}
-                  hint={t("newsletterSection.hint")}
-                  testId="newsletter-card"
-                >
-                  <NewsletterSignup />
-                </SettingsSection>
               )}
             </div>
           </div>

@@ -30,6 +30,14 @@ export interface AgentOption {
   icon?: string;
   models: ModelOption[];
   /**
+   * The model the agent's own config runs on the daemon's machine when that is not the vendor's -
+   * Codex pointed at a local LLM by its `config.toml`. Profiles fall back to it rather than to the
+   * built-in vendor model ids, which such an endpoint cannot serve.
+   */
+  localModel?: string;
+  /** That config's provider, for labels (`Ollama`). */
+  localProvider?: string;
+  /**
    * The model this agent launches with when nobody has chosen one — V1 `ModelInfo.IsDefault`, resolved
    * by `ChatApp.ResolveModel`. A **real id**, always `models[0]`, because V1's sorter pins that row
    * first. There is no synthetic `default` model row: `default` is an effort and a config value for "no

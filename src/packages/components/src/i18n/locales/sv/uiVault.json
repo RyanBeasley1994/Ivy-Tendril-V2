@@ -43,13 +43,13 @@
   },
   "emptyState": {
     "title": "Teamets konfigurationsvalv",
-    "description": "Dela och synkronisera Tendril-projekt, anpassade färdigheter, MCP-servrar och säkerhetsregler i teamet via ett versionshanterat Git-arkiv.",
+    "description": "Dela och synkronisera Forge-projekt, anpassade färdigheter, MCP-servrar och säkerhetsregler i teamet via ett versionshanterat Git-arkiv.",
     "create": "Skapa GitHub-valv",
     "connect": "Anslut befintligt Git-valv"
   },
   "createDialog": {
     "title": "Skapa Team Vault på GitHub",
-    "description": "Skapa ett privat GitHub-arkiv för att dela Tendril-projektkonfigurationer, anpassade färdigheter och MCP-servrar med ditt team.",
+    "description": "Skapa ett privat GitHub-arkiv för att dela Forge-projektkonfigurationer, anpassade färdigheter och MCP-servrar med ditt team.",
     "submit": "Skapa valv",
     "name": {
       "label": "Arkivnamn"
@@ -64,7 +64,7 @@
   },
   "connectDialog": {
     "title": "Anslut befintligt Team Vault",
-    "description": "Anslut ett befintligt Tendril Vault-arkiv för att synkronisera projekt, färdigheter och konfiguration med ditt team.",
+    "description": "Anslut ett befintligt Forge Vault-arkiv för att synkronisera projekt, färdigheter och konfiguration med ditt team.",
     "submit": "Anslut valv",
     "discovering": "🔍 Söker efter befintliga valv i ditt GitHub-konto och dina organisationer…",
     "detected": {

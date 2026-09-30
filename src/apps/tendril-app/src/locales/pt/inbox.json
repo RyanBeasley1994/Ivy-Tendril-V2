@@ -37,8 +37,8 @@
       "tooltip": "Discutir as issues selecionadas com o agente de código"
     },
     "fireOff": {
-      "label": "Iniciar no Tendril",
-      "labelWithCount": "Iniciar no Tendril ({{selected}})"
+      "label": "Iniciar no Forge",
+      "labelWithCount": "Iniciar no Forge ({{selected}})"
     }
   },
   "freshness": {
@@ -56,9 +56,9 @@
     }
   },
   "fireNotice": {
-    "success_one": "{{count}} issue iniciada no Tendril",
-    "success_many": "{{count}} issues iniciadas no Tendril",
-    "success_other": "{{count}} issues iniciadas no Tendril",
+    "success_one": "{{count}} issue iniciada no Forge",
+    "success_many": "{{count}} issues iniciadas no Forge",
+    "success_other": "{{count}} issues iniciadas no Forge",
     "partial": "{{fired}} de {{total}} iniciadas. Falha na #{{number}}: {{error}}",
     "partial_unknownIssue": "{{fired}} de {{total}} iniciadas. Falha em uma issue: {{error}}"
   },
@@ -123,8 +123,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Iniciar no Tendril",
-        "tooltip": "Iniciar esta issue no Tendril"
+        "label": "Iniciar no Forge",
+        "tooltip": "Iniciar esta issue no Forge"
       },
       "viewDetails": {
         "label": "Ver Detalhes",

@@ -43,13 +43,13 @@
   },
   "emptyState": {
     "title": "チーム構成 Vault",
-    "description": "バージョン管理された Git リポジトリを介して、Tendril のプロジェクト、カスタムスキル、MCP サーバー、セキュリティルールをチーム全体で共有・同期します。",
+    "description": "バージョン管理された Git リポジトリを介して、Forge のプロジェクト、カスタムスキル、MCP サーバー、セキュリティルールをチーム全体で共有・同期します。",
     "create": "GitHub Vault を作成",
     "connect": "既存の Git Vault を接続"
   },
   "createDialog": {
     "title": "GitHub にチーム Vault を作成",
-    "description": "非公開の GitHub リポジトリを作成し、Tendril のプロジェクト構成、カスタムスキル、MCP サーバーをチームと共有します。",
+    "description": "非公開の GitHub リポジトリを作成し、Forge のプロジェクト構成、カスタムスキル、MCP サーバーをチームと共有します。",
     "submit": "Vault を作成",
     "name": {
       "label": "リポジトリ名"
@@ -64,7 +64,7 @@
   },
   "connectDialog": {
     "title": "既存のチーム Vault を接続",
-    "description": "既存の Tendril Vault リポジトリを接続して、プロジェクト、スキル、構成をチームと同期します。",
+    "description": "既存の Forge Vault リポジトリを接続して、プロジェクト、スキル、構成をチームと同期します。",
     "submit": "Vault を接続",
     "discovering": "🔍 GitHub アカウントと組織から既存の Vault を検索中…",
     "detected": {

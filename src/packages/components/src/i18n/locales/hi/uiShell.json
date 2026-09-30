@@ -152,15 +152,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "वॉइस इनपुट के लिए सुरक्षित कनेक्शन आवश्यक है। Tendril को HTTPS पर या localhost पर खोलें, और फिर से प्रयास करें।",
-      "mediaDevicesUnavailable": "इस विंडो में वॉइस इनपुट उपलब्ध नहीं है। macOS पर, अपडेट करने के बाद Ivy Tendril को बंद करके फिर से खोलें, फिर पूछे जाने पर माइक्रोफ़ोन एक्सेस की अनुमति दें। आप \"{{command}}\" चलाकर अपने ब्राउज़र में भी वॉइस इनपुट का उपयोग कर सकते हैं।",
+      "insecureContext": "वॉइस इनपुट के लिए सुरक्षित कनेक्शन आवश्यक है। Forge को HTTPS पर या localhost पर खोलें, और फिर से प्रयास करें।",
+      "mediaDevicesUnavailable": "इस विंडो में वॉइस इनपुट उपलब्ध नहीं है। macOS पर, अपडेट करने के बाद Forge को बंद करके फिर से खोलें, फिर पूछे जाने पर माइक्रोफ़ोन एक्सेस की अनुमति दें। आप \"{{command}}\" चलाकर अपने ब्राउज़र में भी वॉइस इनपुट का उपयोग कर सकते हैं।",
       "audioCaptureUnsupported": "यह ब्राउज़र वॉइस इनपुट के लिए ऑडियो कैप्चर नहीं कर सकता।",
       "captureInitFailed": "ऑडियो कैप्चर आरंभ करना विफल रहा: {{error}}",
       "websocket": "ट्रांसक्रिप्शन सर्विस से कनेक्ट करते समय WebSocket त्रुटि हुई।",
       "closedUnexpectedly": "WebSocket कनेक्शन अप्रत्याशित रूप से बंद हो गया (कोड {{code}}: {{reason}})",
       "closedUnexpectedlyNoReason": "WebSocket कनेक्शन अप्रत्याशित रूप से बंद हो गया (कोड {{code}}: कोई कारण नहीं बताया गया)",
       "connectionFailed": "माइक्रोफ़ोन एक्सेस अस्वीकृत हुआ या कनेक्शन विफल रहा: {{error}}",
-      "microphoneDenied": "माइक्रोफ़ोन एक्सेस अस्वीकार कर दिया गया। System Settings > Privacy and Security > Microphone में Ivy Tendril के लिए माइक्रोफ़ोन एक्सेस की अनुमति दें, और फिर से प्रयास करें।",
+      "microphoneDenied": "माइक्रोफ़ोन एक्सेस अस्वीकार कर दिया गया। System Settings > Privacy and Security > Microphone में Forge के लिए माइक्रोफ़ोन एक्सेस की अनुमति दें, और फिर से प्रयास करें।",
       "microphoneNotFound": "कोई माइक्रोफ़ोन नहीं मिला। कोई इनपुट डिवाइस कनेक्ट करें और फिर से प्रयास करें।"
     }
   },
@@ -213,7 +213,7 @@
       "stalled": "रुका हुआ"
     },
     "composer": {
-      "placeholder": "बताइए कि Tendril आगे क्या बनाए…",
+      "placeholder": "बताइए कि Forge आगे क्या बनाए…",
       "submit": "प्लान बनाएँ",
       "ariaLabel": "नए प्लान का विवरण दें"
     },

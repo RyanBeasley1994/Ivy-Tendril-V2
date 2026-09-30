@@ -10,7 +10,7 @@ use tendril_core::git::service::run_git;
 use tendril_core::git::worktree::derive_branch_name;
 use tendril_core::missions::driver::{BoxFuture, MissionDriver, MissionJobs};
 use tendril_core::missions::model::*;
-use tendril_core::missions::service::{self, MilestoneInput, MilestoneScope, MissionPaths, NewMission};
+use tendril_core::missions::service::{self, MilestoneInput, MilestoneScope, MissionPaths, NewMission, TaskInput};
 use tendril_core::missions::store::{read_mission, update_mission};
 use tendril_core::models::{JobArgs, JobItem, JobStatus, PlanStatus};
 use tendril_core::plans::dependencies::check_dependencies_with;
@@ -22,6 +22,7 @@ struct FakeJobs {
     jobs: Mutex<HashMap<String, (JobArgs, JobStatus, f64)>>,
     order: Mutex<Vec<String>>,
     agents: Mutex<HashMap<String, Option<RoleAgent>>>,
+    messages: Mutex<HashMap<String, String>>,
 }
 
 impl FakeJobs {
@@ -32,6 +33,11 @@ impl FakeJobs {
     }
     fn count(&self) -> usize {
         self.order.lock().unwrap().len()
+    }
+    /// Ends a job the way an agent CLI that hit its limit does: failed, with the CLI's message.
+    fn fail_with(&self, id: &str, message: &str) {
+        self.messages.lock().unwrap().insert(id.to_string(), message.to_string());
+        self.finish(id, JobStatus::Failed, 0.0);
     }
     fn finish(&self, id: &str, status: JobStatus, cost: f64) {
         let mut jobs = self.jobs.lock().unwrap();
@@ -59,6 +65,7 @@ impl MissionJobs for FakeJobs {
                 let mut job = JobItem::new(id.to_string(), args.job_type().to_string(), String::new(), "P".into());
                 job.status = *status;
                 job.cost = Some(*cost);
+                job.status_message = self.messages.lock().unwrap().get(id).cloned();
                 job
             }))
         })
@@ -124,18 +131,38 @@ fn milestone(title: &str) -> MilestoneInput {
         objective: format!("Deliver {}", title),
         spec: "## Problem\n\nx\n\n## Solution\n\ny\n\n## Tests\n\nz".into(),
         acceptance: vec![format!("{} works", title)],
+        tasks: vec![
+            TaskInput { title: format!("{} part one", title), done_when: "one is done".into() },
+            TaskInput { title: format!("{} part two", title), done_when: "two is done".into() },
+        ],
+        provides: Vec::new(),
+        consumes: Vec::new(),
     }
 }
 
-/// Simulates ExecutePlan: cuts the milestone branch from the mission branch and commits on it.
+/// The mission's one shared checkout of the test repo, which every milestone works in.
+fn shared_checkout(world: &World, plan_folder: &Path) -> PathBuf {
+    let (plan, _) = read_plan_yaml(plan_folder).unwrap();
+    let link = mission_link(&plan).unwrap();
+    let mission = read_mission(Path::new(&link.folder)).unwrap();
+    let integration = world.paths.plans_dir.join(mission.integration_plan.unwrap());
+    integration.join("Worktrees").join("repo")
+}
+
+/// Simulates ExecutePlan: asks for its worktree the way the promptware does, and commits there.
 fn execute(world: &World, plan_folder: &Path, mission_branch: &str, message: &str) {
-    let branch = derive_branch_name(plan_folder);
-    if run_git(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{}", branch)], &world.repo).unwrap().0 != 0 {
-        git(&world.repo, &["branch", &branch, mission_branch]);
-    }
-    git(&world.repo, &["checkout", "-q", &branch]);
-    git(&world.repo, &["commit", "-q", "--allow-empty", "-m", message]);
-    git(&world.repo, &["checkout", "-q", "main"]);
+    let creation = tendril_core::git::worktree::add_worktree(
+        &world.repo,
+        plan_folder,
+        None,
+        tendril_core::git::worktree::WorktreeMode::ReuseIfValid,
+        None,
+    )
+    .unwrap();
+    assert!(creation.shared, "a milestone plan gets the mission's shared checkout");
+    assert_eq!(creation.path, shared_checkout(world, plan_folder));
+    assert_eq!(creation.branch, mission_branch);
+    git(&creation.path, &["commit", "-q", "--allow-empty", "-m", message]);
 }
 
 fn plan_folder_of(args: &JobArgs) -> PathBuf {
@@ -200,7 +227,7 @@ async fn a_mission_runs_from_goal_to_review() {
     w.jobs.finish(&judge1, JobStatus::Completed, 0.2);
     w.driver.reconcile(&folder).await.unwrap();
     let (retry1, args) = w.jobs.last();
-    assert!(matches!(&args, JobArgs::RetryPlan(a) if a.change_request == "Add unit tests"));
+    assert!(matches!(&args, JobArgs::RetryPlan(a) if a.change_request.ends_with("Add unit tests") && a.change_request.contains("shared worktree")));
     assert_eq!(read_mission(&folder).unwrap().milestone("M1").unwrap().attempts, 2);
 
     // Retry finishes, judge accepts: the mission branch fast-forwards.
@@ -233,6 +260,8 @@ async fn a_mission_runs_from_goal_to_review() {
     let m = read_mission(&folder).unwrap();
     assert_eq!(m.milestone("M2").unwrap().state, MilestoneState::Skipped);
     assert_eq!(m.replans, 1);
+    // The dropped milestone's work is rolled back off the shared branch.
+    assert_eq!(git(&w.repo, &["log", "-1", "--format=%s", &branch]), "m1 tests");
     assert_eq!(read_plan_yaml(&m2_plan).unwrap().0.state, "Skipped");
 
     // M3 runs and is accepted.
@@ -478,4 +507,147 @@ async fn branches_follow_the_configured_templates() {
     w.jobs.finish(&judge, JobStatus::Completed, 0.0);
     w.driver.reconcile(&folder).await.unwrap();
     assert_eq!(git(&w.repo, &["log", "-1", "--format=%s", "rb/mission-add-sso"]), "m1");
+}
+
+#[tokio::test]
+async fn a_rate_limited_execution_waits_then_continues_without_using_an_attempt() {
+    let w = world();
+    let folder = approved_mission(&w, Some(3), None).await;
+    let (exec, args) = w.jobs.last();
+    let plan = plan_folder_of(&args);
+    execute(&w, &plan, &read_mission(&folder).unwrap().branch.unwrap(), "half done");
+    service::set_task_done(&folder, "M1.1", true).unwrap();
+    w.jobs.fail_with(&exec, "Claude AI usage limit reached, try again in 23 minutes");
+    w.driver.reconcile(&folder).await.unwrap();
+
+    let m = read_mission(&folder).unwrap();
+    let wait = m.rate_limit.clone().expect("the mission waits out the limit");
+    assert_eq!(wait.step, MissionStep::Execute);
+    assert_eq!(m.state, MissionState::Running, "a limit does not pause the mission");
+    assert_eq!(m.milestone("M1").unwrap().state, MilestoneState::Executing, "and does not go to the judge");
+    assert_eq!(m.milestone("M1").unwrap().attempts, 0, "waiting is not an attempt");
+    let count = w.jobs.count();
+    assert!(!w.driver.reconcile(&folder).await.unwrap(), "nothing happens until the wait is over");
+    assert_eq!(w.jobs.count(), count);
+
+    // The wait passes: the milestone continues in place, told what is already done.
+    update_mission(&folder, |m| {
+        m.rate_limit.as_mut().unwrap().until = chrono::Utc::now() - chrono::Duration::seconds(1);
+        Ok(())
+    })
+    .unwrap();
+    w.driver.reconcile(&folder).await.unwrap();
+    let (resume, args) = w.jobs.last();
+    assert_ne!(resume, exec);
+    assert!(matches!(&args, JobArgs::RetryPlan(a) if a.change_request.contains("rate or usage limit") && a.change_request.contains("M1.1")));
+    let m = read_mission(&folder).unwrap();
+    assert!(m.rate_limit.is_none());
+    assert_eq!(m.milestone("M1").unwrap().attempts, 1);
+}
+
+#[tokio::test]
+async fn a_rate_limited_judge_is_rerun_after_the_wait() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (exec, _) = w.jobs.last();
+    w.jobs.finish(&exec, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    let (judge, _) = w.jobs.last();
+    w.jobs.fail_with(&judge, "HTTP 429 Too Many Requests");
+    w.driver.reconcile(&folder).await.unwrap();
+    assert_eq!(read_mission(&folder).unwrap().state, MissionState::Running);
+    update_mission(&folder, |m| {
+        m.rate_limit.as_mut().unwrap().until = chrono::Utc::now() - chrono::Duration::seconds(1);
+        Ok(())
+    })
+    .unwrap();
+    w.driver.reconcile(&folder).await.unwrap();
+    let (again, args) = w.jobs.last();
+    assert_ne!(again, judge);
+    assert!(matches!(&args, JobArgs::OrchestrateMission(a) if a.phase == "Judge"));
+}
+
+#[tokio::test]
+async fn a_real_failure_is_not_mistaken_for_a_rate_limit() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (exec, _) = w.jobs.last();
+    w.jobs.fail_with(&exec, "cargo test failed: 3 tests failed");
+    w.driver.reconcile(&folder).await.unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert!(m.rate_limit.is_none());
+    assert_eq!(m.milestone("M1").unwrap().state, MilestoneState::Judging, "a failure still goes to the judge");
+}
+
+#[tokio::test]
+async fn contracts_must_be_provided_before_they_are_consumed() {
+    let w = world();
+    let created = service::create(
+        &w.paths,
+        &w.settings,
+        NewMission { title: "C".into(), goal: "G".into(), project: "P".into(), ..Default::default() },
+    )
+    .unwrap();
+    let folder = PathBuf::from(&created.folder_path);
+    let store = ContractItem {
+        name: "SessionStore".into(),
+        kind: "type".into(),
+        signature: "struct SessionStore".into(),
+        location: String::new(),
+    };
+    let mut producer = milestone("Store");
+    producer.provides = vec![store.clone()];
+    let mut consumer = milestone("Login");
+    consumer.consumes = vec!["SessionStore".into()];
+
+    // Consumed before it is provided: rejected, and nothing is written.
+    let err = service::set_milestones(&folder, &w.paths.plans_dir, vec![consumer.clone(), producer.clone()], MilestoneScope::All)
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("consumes 'SessionStore'"), "{err}");
+    assert!(read_mission(&folder).unwrap().milestones.is_empty());
+
+    // Provided twice: rejected.
+    let err = service::set_milestones(&folder, &w.paths.plans_dir, vec![producer.clone(), producer.clone()], MilestoneScope::All)
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("provided by both"), "{err}");
+
+    // In order: accepted, with task ids assigned.
+    service::set_milestones(&folder, &w.paths.plans_dir, vec![producer, consumer], MilestoneScope::All).unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.milestone("M2").unwrap().consumes, vec!["SessionStore".to_string()]);
+    assert_eq!(m.milestone("M1").unwrap().tasks[1].id, "M1.2");
+    let consumed = service::consumed_items(&m, m.milestone("M2").unwrap());
+    assert_eq!(consumed.len(), 1);
+    assert_eq!(consumed[0].0, "M1");
+}
+
+#[test]
+fn a_milestone_needs_a_real_task_breakdown() {
+    let one_task = r#"
+milestones:
+  - title: Big
+    spec: body
+    acceptance: [works]
+    tasks:
+      - title: do everything
+"#;
+    let err = service::parse_milestones(one_task).unwrap_err().to_string();
+    assert!(err.contains("1 tasks"), "{err}");
+}
+
+#[tokio::test]
+async fn tasks_are_ticked_off_and_shown_in_the_milestone_plan() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (_, args) = w.jobs.last();
+    let plan = plan_folder_of(&args);
+    let body = tendril_core::plans::revisions::get_revision(&plan, None).unwrap();
+    assert!(body.contains("## Tasks") && body.contains("**M1.1**") && body.contains("tendril mission task"), "{body}");
+
+    service::set_task_done(&folder, "M1.2", true).unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert!(m.milestone("M1").unwrap().tasks[1].done);
+    assert!(service::set_task_done(&folder, "M9.1", true).is_err());
 }

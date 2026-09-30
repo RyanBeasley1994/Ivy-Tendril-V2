@@ -152,15 +152,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "Voice input needs a secure connection. Open Tendril over HTTPS or on localhost, then try again.",
-      "mediaDevicesUnavailable": "Voice input is not available in this window. On macOS, quit and reopen Ivy Tendril after updating, then allow microphone access when prompted. You can also run '{{command}}' and use voice input in your browser.",
+      "insecureContext": "Voice input needs a secure connection. Open Forge over HTTPS or on localhost, then try again.",
+      "mediaDevicesUnavailable": "Voice input is not available in this window. On macOS, quit and reopen Forge after updating, then allow microphone access when prompted. You can also run '{{command}}' and use voice input in your browser.",
       "audioCaptureUnsupported": "This browser cannot capture audio for voice input.",
       "captureInitFailed": "Audio capture initialization failed: {{error}}",
       "websocket": "WebSocket error occurred connecting to transcription service.",
       "closedUnexpectedly": "WebSocket connection closed unexpectedly (code {{code}}: {{reason}})",
       "closedUnexpectedlyNoReason": "WebSocket connection closed unexpectedly (code {{code}}: No reason given)",
       "connectionFailed": "Microphone access denied or connection failed: {{error}}",
-      "microphoneDenied": "Microphone access was denied. Allow microphone access for Ivy Tendril in System Settings > Privacy and Security > Microphone, then try again.",
+      "microphoneDenied": "Microphone access was denied. Allow microphone access for Forge in System Settings > Privacy and Security > Microphone, then try again.",
       "microphoneNotFound": "No microphone was found. Connect an input device and try again."
     }
   },
@@ -213,7 +213,7 @@
       "stalled": "Stalled"
     },
     "composer": {
-      "placeholder": "Describe what Tendril should build next…",
+      "placeholder": "Describe what Forge should build next…",
       "submit": "Create plan",
       "ariaLabel": "Describe a new plan"
     },

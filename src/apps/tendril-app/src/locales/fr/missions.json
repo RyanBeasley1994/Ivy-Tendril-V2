@@ -6,7 +6,7 @@
   },
   "empty": {
     "title": "Aucune mission",
-    "description": "Confiez une fonctionnalité entière à Tendril. L'orchestrateur planifie des jalons, exécute chacun, l'évalue selon ses critères d'acceptation et valide le résultat.",
+    "description": "Confiez une fonctionnalité entière à Forge. L'orchestrateur planifie des jalons, exécute chacun, l'évalue selon ses critères d'acceptation et valide le résultat.",
     "steps": {
       "plan": {
         "title": "Planifier",

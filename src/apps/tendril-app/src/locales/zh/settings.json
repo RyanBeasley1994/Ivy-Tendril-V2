@@ -46,11 +46,11 @@
   },
   "vaultSection": {
     "title": "团队保管库",
-    "hint": "通过带版本控制的 Git 仓库，在团队内共享和同步 Tendril 项目、自定义技能、MCP 服务器及安全规则。"
+    "hint": "通过带版本控制的 Git 仓库，在团队内共享和同步 Forge 项目、自定义技能、MCP 服务器及安全规则。"
   },
   "notifications": {
     "title": "通知",
-    "hint": "配置 Tendril 如何就任务完成、失败及其他事件向您发送通知。",
+    "hint": "配置 Forge 如何就任务完成、失败及其他事件向您发送通知。",
     "desktopLabel": "启用桌面通知",
     "saved": "通知设置已保存"
   },
@@ -64,7 +64,7 @@
     "minutesSuffix": "分钟",
     "betaHeading": "Beta 功能",
     "betaLabel": "启用 Beta 功能",
-    "restartNote": "需要重启 Tendril 才能使更改生效。",
+    "restartNote": "需要重启 Forge 才能使更改生效。",
     "saved": "设置已保存并应用"
   },
   "diagnostics": {
@@ -92,7 +92,7 @@
   },
   "newsletterSection": {
     "title": "新闻通讯",
-    "hint": "订阅 Ivy & Tendril 新闻通讯，获取产品动态、功能亮点和发布说明。"
+    "hint": "订阅 Forge 新闻通讯，获取产品动态、功能亮点和发布说明。"
   },
   "promptwares": {
     "title": "工作流智能体",
@@ -129,14 +129,14 @@
   "appearance": {
     "language": {
       "title": "语言",
-      "hint": "选择 Tendril 使用的语言。“系统默认”将跟随您的操作系统。",
+      "hint": "选择 Forge 使用的语言。“系统默认”将跟随您的操作系统。",
       "label": "语言",
       "system": "系统默认",
       "saved": "语言已设置为 {{language}}",
-      "loadFailed": "无法加载 {{language}}。Tendril 将保持当前语言。"
+      "loadFailed": "无法加载 {{language}}。Forge 将保持当前语言。"
     },
     "title": "外观",
-    "hint": "选择 Tendril 的外观。“跟随系统”将与操作系统设置保持一致。",
+    "hint": "选择 Forge 的外观。“跟随系统”将与操作系统设置保持一致。",
     "themeMode": {
       "light": "浅色",
       "dark": "深色",
@@ -147,7 +147,7 @@
     },
     "theme": {
       "title": "主题",
-      "hint": "为 Tendril 选择配色方案预设。",
+      "hint": "为 Forge 选择配色方案预设。",
       "label": "主题",
       "vaultOption": "{{name}}（保管库：{{vault}}）",
       "vaultFallback": "团队",
@@ -230,9 +230,9 @@
   },
   "security": {
     "title": "安全与穿透",
-    "hint": "访问 Tendril 时需要输入密码，并可通过公共隧道公开此实例。",
+    "hint": "访问 Forge 时需要输入密码，并可通过公共隧道公开此实例。",
     "cloudflared": {
-      "intro": "下方两个隧道均运行 Cloudflare 的 <code>cloudflared</code>。运行 Tendril 的计算机上尚未安装它。",
+      "intro": "下方两个隧道均运行 Cloudflare 的 <code>cloudflared</code>。运行 Forge 的计算机上尚未安装它。",
       "configuredPathTitle": "已配置的路径",
       "installingTitle": "正在安装",
       "downloadingPercent": "正在下载 {{asset}}：{{percent, percent}}",
@@ -251,7 +251,7 @@
     },
     "session": {
       "heading": "会话保护",
-      "blurb": "访问 Tendril 界面时需要输入密码。",
+      "blurb": "访问 Forge 界面时需要输入密码。",
       "enableLabel": "启用密码保护",
       "currentLabel": "当前密码",
       "currentPlaceholder": "当前密码…",
@@ -266,7 +266,7 @@
     "tunnel": {
       "full": {
         "heading": "隧道",
-        "blurb": "通过 Cloudflare 隧道将您的 Tendril 实例暴露到互联网，便于从移动设备访问或与他人共享。",
+        "blurb": "通过 Cloudflare 隧道将您的 Forge 实例暴露到互联网，便于从移动设备访问或与他人共享。",
         "startingTitle": "隧道启动中",
         "activeTitle": "隧道已启用",
         "activeBody": "您的隧道正在运行，可通过下方的 URL 访问。",
@@ -278,7 +278,7 @@
       },
       "share": {
         "heading": "共享隧道",
-        "blurb": "公开一个只读、仅可评论的 Tendril 版本，供团队成员审查计划和草稿。",
+        "blurb": "公开一个只读、仅可评论的 Forge 版本，供团队成员审查计划和草稿。",
         "startingTitle": "共享隧道启动中",
         "activeTitle": "共享隧道已启用",
         "activeBody": "您的共享隧道正在运行，可通过下方的 URL 访问。",
@@ -289,7 +289,7 @@
         "stopFailed": "停止共享隧道失败：{{error}}"
       },
       "warningTitle": "这会公开所有内容",
-      "warningBody": "全权限隧道会将整个 Tendril 实例放到公共 URL 上。任何知道该地址和会话密码的人都可以像坐在这台计算机前一样使用它，因此必须先设置密码才能启动。下方的共享隧道是只读选项。",
+      "warningBody": "全权限隧道会将整个 Forge 实例放到公共 URL 上。任何知道该地址和会话密码的人都可以像坐在这台计算机前一样使用它，因此必须先设置密码才能启动。下方的共享隧道是只读选项。",
       "deactivatedTitle": "已停用",
       "copiedTitle": "URL 已复制",
       "copyFailed": "无法复制 URL：{{error}}",
@@ -322,7 +322,7 @@
   },
   "modelCatalog": {
     "title": "模型目录",
-    "hint": "Tendril 会将精选模型表与缓存在磁盘上的 models.dev 快照合并。",
+    "hint": "Forge 会将精选模型表与缓存在磁盘上的 models.dev 快照合并。",
     "refresh": "立即刷新",
     "refreshing": "正在刷新…",
     "refreshed_other": "已刷新：来自 models.dev 的 {{count}} 个模型",
@@ -360,7 +360,7 @@
   },
   "remoteServer": {
     "title": "远程服务器",
-    "hint": "在另一台机器(例如 VPS)上使用 Tendril,而不是本机。服务器需要设置密码(会话保护)。",
+    "hint": "在另一台机器(例如 VPS)上使用 Forge,而不是本机。服务器需要设置密码(会话保护)。",
     "urlLabel": "服务器地址",
     "urlPlaceholder": "203.0.113.7 或 https://my-server.example.com",
     "urlHint": "IP 或主机名默认使用端口 5010。隧道或反向代理请加上 https://。",
@@ -371,11 +371,11 @@
     "disconnect": "断开并使用本机",
     "connectedAs": "已以 {{username}} 身份连接",
     "notAuthenticated": "未登录:{{error}}",
-    "restarting": "正在重启 Tendril…"
+    "restarting": "正在重启 Forge…"
   },
   "git": {
     "title": "Git 与分支",
-    "hint": "Tendril 如何命名计划和使命的分支，以及代理如何提交。",
+    "hint": "Forge 如何命名计划和使命的分支，以及代理如何提交。",
     "prefixLabel": "分支前缀",
     "prefixHint": "{prefix} 的值。默认 tendril/。",
     "templateLabel": "计划分支",
@@ -409,7 +409,7 @@
     "save": "保存",
     "saved": "分支设置已保存",
     "nativeLabel": "不经代理创建拉取请求",
-    "nativeHint": "Tendril 自己推送分支、创建或更新 PR、应用您的选项并合并，只需几秒且不消耗 token。只有解决合并冲突或恢复异常分支时才调用代理。关闭后所有 PR 都经由代理创建。",
+    "nativeHint": "Forge 自己推送分支、创建或更新 PR、应用您的选项并合并，只需几秒且不消耗 token。只有解决合并冲突或恢复异常分支时才调用代理。关闭后所有 PR 都经由代理创建。",
     "skipHooksLabel": "创建 PR 时跳过 pre-push 钩子",
     "skipHooksHint": "使用 --no-verify 和 HUSKY=0 推送计划分支，避免重新运行整套测试的仓库钩子阻塞 PR。计划自身的验证已经通过。只影响“创建 PR”的推送：提交仍保留钩子，您自己的推送不受影响。"
   }

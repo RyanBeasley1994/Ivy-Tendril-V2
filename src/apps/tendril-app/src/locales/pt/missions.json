@@ -6,7 +6,7 @@
   },
   "empty": {
     "title": "Nenhuma missão ainda",
-    "description": "Entregue uma funcionalidade inteira ao Tendril. O orquestrador planeja marcos, executa cada um, avalia pelos critérios de aceitação e valida o resultado.",
+    "description": "Entregue uma funcionalidade inteira ao Forge. O orquestrador planeja marcos, executa cada um, avalia pelos critérios de aceitação e valida o resultado.",
     "steps": {
       "plan": {
         "title": "Planejar",

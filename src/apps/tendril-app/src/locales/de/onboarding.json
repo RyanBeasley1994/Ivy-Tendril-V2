@@ -7,7 +7,7 @@
     "createProject": "Projekt erstellen"
   },
   "wizard": {
-    "title": "Willkommen bei Tendril",
+    "title": "Willkommen bei Forge",
     "stepsLabel": "Einrichtungsschritte",
     "steps": {
       "codingAgent": "Coding-Agent",
@@ -35,12 +35,12 @@
   },
   "codingAgent": {
     "title": "Welchen Coding-Agenten verwenden Sie?",
-    "description": "Tendril ist ein Coding-Orchestrator, der auf Ihrem eigenen Coding-Agenten aufsetzt. Wählen Sie den Agenten aus, den Sie verwenden möchten:"
+    "description": "Forge ist ein Coding-Orchestrator, der auf Ihrem eigenen Coding-Agenten aufsetzt. Wählen Sie den Agenten aus, den Sie verwenden möchten:"
   },
   "prerequisites": {
-    "missing_one": "Tendril benötigt {{names, list}}, es ist aber nicht installiert. Installieren Sie es, und klicken Sie dann auf „Erneut prüfen“.",
-    "missing_other": "Tendril benötigt {{names, list}}, diese sind aber nicht installiert. Installieren Sie sie, und klicken Sie dann auf „Erneut prüfen“.",
-    "description": "Die Tools, die Tendril auf Ihrem Rechner startet.",
+    "missing_one": "Forge benötigt {{names, list}}, es ist aber nicht installiert. Installieren Sie es, und klicken Sie dann auf „Erneut prüfen“.",
+    "missing_other": "Forge benötigt {{names, list}}, diese sind aber nicht installiert. Installieren Sie sie, und klicken Sie dann auf „Erneut prüfen“.",
+    "description": "Die Tools, die Forge auf Ihrem Rechner startet.",
     "recheck": "Erneut prüfen",
     "checking": "Wird geprüft…",
     "empty": "Keine Prüfungen gemeldet.",
@@ -54,9 +54,9 @@
   },
   "dataStorage": {
     "title": "Wo sollen wir Ihre Daten speichern?",
-    "description": "Tendril speichert Ihre Konfiguration und Pläne in diesem Ordner.",
-    "homeLabel": "Tendril Home",
-    "homeHint": "Der laufende Daemon hat diesen Ordner ermittelt. Um ihn zu verschieben, setzen Sie <code>{{envVar}}</code>, bevor Sie Tendril starten.",
+    "description": "Forge speichert Ihre Konfiguration und Pläne in diesem Ordner.",
+    "homeLabel": "Forge Home",
+    "homeHint": "Der laufende Daemon hat diesen Ordner ermittelt. Um ihn zu verschieben, setzen Sie <code>{{envVar}}</code>, bevor Sie Forge starten.",
     "homeMissing": "Geben Sie einen gültigen Pfad an."
   },
   "repoPicker": {
@@ -70,7 +70,7 @@
   },
   "firstProject": {
     "title": "Erstes Projekt einrichten",
-    "description": "Ein Projekt fasst ein oder mehrere Repositories zusammen, damit Tendril Änderungen über alle hinweg planen und verifizieren kann.",
+    "description": "Ein Projekt fasst ein oder mehrere Repositories zusammen, damit Forge Änderungen über alle hinweg planen und verifizieren kann.",
     "browse": "Durchsuchen",
     "browseTitle": "Repository-Ordner auswählen",
     "browseUnavailable": "Ordnerauswahl nicht verfügbar ({{error}}). Geben Sie stattdessen einen Pfad ein.",
@@ -88,7 +88,7 @@
   },
   "agentRun": {
     "title": "Ihr Projekt wird eingerichtet",
-    "wizardHint": "Tendril erkennt Ihren Tech-Stack und konfiguriert Ihr agentisches Harness. Das dauert einige Minuten – gönnen Sie sich in der Zwischenzeit einen ☕.",
+    "wizardHint": "Forge erkennt Ihren Tech-Stack und konfiguriert Ihr agentisches Harness. Das dauert einige Minuten – gönnen Sie sich in der Zwischenzeit einen ☕.",
     "noRun": "Diesem Projekt ist kein Einrichtungslauf zugeordnet. Sobald die Einrichtung abgeschlossen ist, können Sie Verifikationen und Review-Aktionen auf der Seite des Projekts konfigurieren.",
     "timedOut": "Zeitüberschreitung bei der Einrichtung.",
     "failed": "Einrichtung fehlgeschlagen."
@@ -109,7 +109,7 @@
   },
   "complete": {
     "title": "Alles bereit!",
-    "description": "Ihr Projekt ist konfiguriert. Klicken Sie auf „Fertigstellen“, um Tendril zu verwenden.",
+    "description": "Ihr Projekt ist konfiguriert. Klicken Sie auf „Fertigstellen“, um Forge zu verwenden.",
     "newsletter": {
       "title": "Newsletter",
       "description": "Erfahren Sie als Erste, wenn es ein neues Release gibt!"
@@ -117,7 +117,7 @@
   },
   "addProject": {
     "title": "Projekt hinzufügen",
-    "hint": "Benennen Sie das Projekt, und verweisen Sie es auf ein oder mehrere Git-Repositories. Tendril untersucht sie anschließend und konfiguriert das Review-Harness.",
+    "hint": "Benennen Sie das Projekt, und verweisen Sie es auf ein oder mehrere Git-Repositories. Forge untersucht sie anschließend und konfiguriert das Review-Harness.",
     "nameLabel": "Name",
     "namePlaceholder": "Projektname…",
     "creating": "Wird erstellt…",
@@ -127,7 +127,7 @@
     "nameExists": "Ein Projekt namens „{{name}}“ ist bereits vorhanden.",
     "createFailed": "Projekt konnte nicht erstellt werden: {{error}}",
     "setupNotStarted": "Projekt erstellt, aber der Einrichtungs-Agent konnte nicht gestartet werden: {{error}}. Das Projekt ist registriert und kann über seine eigene Zeile konfiguriert werden.",
-    "agentHint": "Tendril erkennt Ihren Tech-Stack und konfiguriert Ihr agentisches Harness. Das dauert einige Minuten.",
+    "agentHint": "Forge erkennt Ihren Tech-Stack und konfiguriert Ihr agentisches Harness. Das dauert einige Minuten.",
     "verificationRequired": "erforderlich",
     "noVerifications": "Es wurden keine Verifikationen konfiguriert. Fügen Sie sie in den Projekteinstellungen hinzu.",
     "noReviewActions": "Es wurden keine Review-Aktionen konfiguriert. Fügen Sie sie in den Projekteinstellungen hinzu.",
@@ -135,7 +135,7 @@
   },
   "folderBrowser": {
     "title": "Repository-Ordner auswählen",
-    "description": "Ordner auf dem Rechner, auf dem Tendril läuft. Repositorys sind markiert; zum Auswählen doppelklicken.",
+    "description": "Ordner auf dem Rechner, auf dem Forge läuft. Repositorys sind markiert; zum Auswählen doppelklicken.",
     "up": "Eine Ebene nach oben",
     "home": "Home-Ordner",
     "pathLabel": "Ordnerpfad",

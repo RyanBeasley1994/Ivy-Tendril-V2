@@ -383,7 +383,11 @@ fn apply_profile(
     if let Some(tier) = map_profile_tier(target_profile) {
         let defaults = default_profiles(agent_id);
         if let Some(d) = defaults.iter().find(|d| d.tier == tier) {
-            if model.is_none() && caps.model_selection {
+            // Codex on a local LLM (its `config.toml` names a non-OpenAI provider) is left on the model
+            // that file sets: the built-in tier ids are OpenAI's, which that endpoint cannot serve.
+            let own_config_model = agent_id == "codex"
+                && super::codex_config::codex_custom_provider().is_some();
+            if model.is_none() && caps.model_selection && !own_config_model {
                 if let Some(m) = d.model.filter(|m| is_set(m)) {
                     model = Some(m.to_string());
                     applied_tier = Some(d.tier);

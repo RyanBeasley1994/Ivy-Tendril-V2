@@ -141,8 +141,8 @@
     "showDetails": "显示详情"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service 已断开连接，将在 {{seconds}} 秒后自动重连…",
-    "unreachable": "无法连接到 Tendril-Service 守护进程。",
+    "reconnecting": "Forge service 已断开连接，将在 {{seconds}} 秒后自动重连…",
+    "unreachable": "无法连接到 Forge service 守护进程。",
     "cachedState": "（正在使用缓存的状态）",
     "reconnect": "立即重连"
   },

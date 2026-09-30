@@ -7,7 +7,7 @@
     "createProject": "Criar Projeto"
   },
   "wizard": {
-    "title": "Bem-vindo ao Tendril",
+    "title": "Bem-vindo ao Forge",
     "stepsLabel": "Etapas da configuração inicial",
     "steps": {
       "codingAgent": "Agente de Código",
@@ -35,13 +35,13 @@
   },
   "codingAgent": {
     "title": "Qual é o seu agente de código?",
-    "description": "O Tendril é um orquestrador de código que roda sobre o seu próprio agente de código. Escolha o agente que você quer usar:"
+    "description": "O Forge é um orquestrador de código que roda sobre o seu próprio agente de código. Escolha o agente que você quer usar:"
   },
   "prerequisites": {
-    "missing_one": "O Tendril precisa de {{names, list}}, mas ele não está instalado. Instale-o e clique em Verificar Novamente.",
-    "missing_many": "O Tendril precisa de {{names, list}}, mas eles não estão instalados. Instale-os e clique em Verificar Novamente.",
-    "missing_other": "O Tendril precisa de {{names, list}}, mas eles não estão instalados. Instale-os e clique em Verificar Novamente.",
-    "description": "As ferramentas que o Tendril executa na sua máquina.",
+    "missing_one": "O Forge precisa de {{names, list}}, mas ele não está instalado. Instale-o e clique em Verificar Novamente.",
+    "missing_many": "O Forge precisa de {{names, list}}, mas eles não estão instalados. Instale-os e clique em Verificar Novamente.",
+    "missing_other": "O Forge precisa de {{names, list}}, mas eles não estão instalados. Instale-os e clique em Verificar Novamente.",
+    "description": "As ferramentas que o Forge executa na sua máquina.",
     "recheck": "Verificar Novamente",
     "checking": "Verificando…",
     "empty": "Nenhuma verificação informada.",
@@ -55,9 +55,9 @@
   },
   "dataStorage": {
     "title": "Onde devemos armazenar seus dados?",
-    "description": "O Tendril guarda sua configuração e seus planos nesta pasta.",
-    "homeLabel": "Diretório Home do Tendril",
-    "homeHint": "O daemon em execução determinou esta pasta. Defina <code>{{envVar}}</code> antes de iniciar o Tendril para movê-la.",
+    "description": "O Forge guarda sua configuração e seus planos nesta pasta.",
+    "homeLabel": "Diretório Home do Forge",
+    "homeHint": "O daemon em execução determinou esta pasta. Defina <code>{{envVar}}</code> antes de iniciar o Forge para movê-la.",
     "homeMissing": "Informe um caminho válido."
   },
   "repoPicker": {
@@ -71,7 +71,7 @@
   },
   "firstProject": {
     "title": "Configure seu primeiro projeto",
-    "description": "Um projeto agrupa um ou mais repositórios para que o Tendril possa planejar e verificar alterações em todos eles.",
+    "description": "Um projeto agrupa um ou mais repositórios para que o Forge possa planejar e verificar alterações em todos eles.",
     "browse": "Procurar",
     "browseTitle": "Selecionar pasta do repositório",
     "browseUnavailable": "Seletor de pastas indisponível ({{error}}). Digite um caminho.",
@@ -89,7 +89,7 @@
   },
   "agentRun": {
     "title": "Configurando seu projeto",
-    "wizardHint": "O Tendril está detectando sua stack tecnológica e configurando a estrutura de validação dos agentes. Isso levará alguns minutos, então aproveite para tomar um ☕ enquanto espera.",
+    "wizardHint": "O Forge está detectando sua stack tecnológica e configurando a estrutura de validação dos agentes. Isso levará alguns minutos, então aproveite para tomar um ☕ enquanto espera.",
     "noRun": "Nenhuma execução de configuração está associada a este projeto. Você pode configurar as verificações e as ações de revisão na própria tela do projeto quando a configuração inicial terminar.",
     "timedOut": "O tempo da configuração inicial se esgotou.",
     "failed": "A configuração inicial falhou."
@@ -110,7 +110,7 @@
   },
   "complete": {
     "title": "Tudo Pronto!",
-    "description": "Seu projeto está configurado. Clique em Concluir para começar a usar o Tendril.",
+    "description": "Seu projeto está configurado. Clique em Concluir para começar a usar o Forge.",
     "newsletter": {
       "title": "Newsletter",
       "description": "Seja o primeiro a saber quando lançarmos uma nova versão!"
@@ -118,7 +118,7 @@
   },
   "addProject": {
     "title": "Adicionar Projeto",
-    "hint": "Dê um nome ao projeto e aponte-o para um ou mais repositórios Git. Em seguida, o Tendril os inspeciona e configura a estrutura de revisão.",
+    "hint": "Dê um nome ao projeto e aponte-o para um ou mais repositórios Git. Em seguida, o Forge os inspeciona e configura a estrutura de revisão.",
     "nameLabel": "Nome",
     "namePlaceholder": "Nome do projeto...",
     "creating": "Criando...",
@@ -128,7 +128,7 @@
     "nameExists": "Já existe um projeto chamado \"{{name}}\".",
     "createFailed": "Falha ao criar o projeto: {{error}}",
     "setupNotStarted": "Projeto criado, mas não foi possível iniciar o agente de configuração: {{error}}. O projeto está registrado e pode ser configurado na linha dele.",
-    "agentHint": "O Tendril está detectando sua stack tecnológica e configurando a estrutura de validação dos agentes. Isso leva alguns minutos.",
+    "agentHint": "O Forge está detectando sua stack tecnológica e configurando a estrutura de validação dos agentes. Isso leva alguns minutos.",
     "verificationRequired": "obrigatória",
     "noVerifications": "Nenhuma verificação foi configurada. Adicione-as nas configurações do projeto.",
     "noReviewActions": "Nenhuma ação de revisão foi configurada. Adicione-as nas configurações do projeto.",
@@ -136,7 +136,7 @@
   },
   "folderBrowser": {
     "title": "Escolher uma pasta de repositório",
-    "description": "Pastas na máquina que executa o Tendril. Repositórios estão marcados; clique duas vezes para escolher um.",
+    "description": "Pastas na máquina que executa o Forge. Repositórios estão marcados; clique duas vezes para escolher um.",
     "up": "Subir um nível",
     "home": "Pasta pessoal",
     "pathLabel": "Caminho da pasta",

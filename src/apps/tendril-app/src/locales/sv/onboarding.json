@@ -7,7 +7,7 @@
     "createProject": "Skapa projekt"
   },
   "wizard": {
-    "title": "Välkommen till Tendril",
+    "title": "Välkommen till Forge",
     "stepsLabel": "Installationssteg",
     "steps": {
       "codingAgent": "Kodningsagent",
@@ -35,12 +35,12 @@
   },
   "codingAgent": {
     "title": "Vilken kodningsagent använder du?",
-    "description": "Tendril är en kodningsorkestrerare som körs ovanpå din egen kodningsagent. Välj den agent du vill använda:"
+    "description": "Forge är en kodningsorkestrerare som körs ovanpå din egen kodningsagent. Välj den agent du vill använda:"
   },
   "prerequisites": {
-    "missing_one": "Tendril behöver {{names, list}}, men det är inte installerat. Installera det och tryck sedan på Kontrollera igen.",
-    "missing_other": "Tendril behöver {{names, list}}, men de är inte installerade. Installera dem och tryck sedan på Kontrollera igen.",
-    "description": "Verktygen som Tendril startar på din dator.",
+    "missing_one": "Forge behöver {{names, list}}, men det är inte installerat. Installera det och tryck sedan på Kontrollera igen.",
+    "missing_other": "Forge behöver {{names, list}}, men de är inte installerade. Installera dem och tryck sedan på Kontrollera igen.",
+    "description": "Verktygen som Forge startar på din dator.",
     "recheck": "Kontrollera igen",
     "checking": "Kontrollerar…",
     "empty": "Inga kontroller rapporterades.",
@@ -54,9 +54,9 @@
   },
   "dataStorage": {
     "title": "Var ska vi lagra dina data?",
-    "description": "Tendril sparar din konfiguration och dina planer i den här mappen.",
-    "homeLabel": "Tendril home",
-    "homeHint": "Den körande daemonen har valt den här mappen. Ange <code>{{envVar}}</code> innan du startar Tendril om du vill flytta den.",
+    "description": "Forge sparar din konfiguration och dina planer i den här mappen.",
+    "homeLabel": "Forge home",
+    "homeHint": "Den körande daemonen har valt den här mappen. Ange <code>{{envVar}}</code> innan du startar Forge om du vill flytta den.",
     "homeMissing": "Ange en giltig sökväg."
   },
   "repoPicker": {
@@ -70,7 +70,7 @@
   },
   "firstProject": {
     "title": "Konfigurera ditt första projekt",
-    "description": "Ett projekt samlar ett eller flera arkiv så att Tendril kan planera och verifiera ändringar i dem.",
+    "description": "Ett projekt samlar ett eller flera arkiv så att Forge kan planera och verifiera ändringar i dem.",
     "browse": "Bläddra",
     "browseTitle": "Välj arkivmapp",
     "browseUnavailable": "Mappväljaren är inte tillgänglig ({{error}}). Skriv en sökväg i stället.",
@@ -88,7 +88,7 @@
   },
   "agentRun": {
     "title": "Konfigurerar ditt projekt",
-    "wizardHint": "Tendril identifierar din teknikstack och konfigurerar agentens valideringsuppsättning. Det tar några minuter, så unna dig en ☕ medan du väntar.",
+    "wizardHint": "Forge identifierar din teknikstack och konfigurerar agentens valideringsuppsättning. Det tar några minuter, så unna dig en ☕ medan du väntar.",
     "noRun": "Ingen konfigurationskörning är kopplad till det här projektet. Du kan konfigurera dess verifieringar och granskningsåtgärder från projektets egen vy när installationen är klar.",
     "timedOut": "Tidsgränsen för installationen överskreds.",
     "failed": "Installationen misslyckades."
@@ -109,7 +109,7 @@
   },
   "complete": {
     "title": "Allt är klart!",
-    "description": "Ditt projekt är konfigurerat. Klicka på Slutför för att börja använda Tendril.",
+    "description": "Ditt projekt är konfigurerat. Klicka på Slutför för att börja använda Forge.",
     "newsletter": {
       "title": "Nyhetsbrev",
       "description": "Bli först med att få veta när vi släpper en ny version!"
@@ -117,7 +117,7 @@
   },
   "addProject": {
     "title": "Lägg till ett projekt",
-    "hint": "Namnge projektet och peka ut ett eller flera Git-arkiv. Tendril undersöker dem sedan och konfigurerar granskningsuppsättningen.",
+    "hint": "Namnge projektet och peka ut ett eller flera Git-arkiv. Forge undersöker dem sedan och konfigurerar granskningsuppsättningen.",
     "nameLabel": "Namn",
     "namePlaceholder": "Projektnamn…",
     "creating": "Skapar…",
@@ -127,7 +127,7 @@
     "nameExists": "Det finns redan ett projekt med namnet ”{{name}}”.",
     "createFailed": "Det gick inte att skapa projektet: {{error}}",
     "setupNotStarted": "Projektet skapades, men konfigurationsagenten kunde inte starta: {{error}}. Projektet är registrerat och kan konfigureras från sin egen rad.",
-    "agentHint": "Tendril identifierar din teknikstack och konfigurerar agentens valideringsuppsättning. Det tar några minuter.",
+    "agentHint": "Forge identifierar din teknikstack och konfigurerar agentens valideringsuppsättning. Det tar några minuter.",
     "verificationRequired": "obligatorisk",
     "noVerifications": "Inga verifieringar konfigurerades. Lägg till dem i projektets inställningar.",
     "noReviewActions": "Inga granskningsåtgärder konfigurerades. Lägg till dem i projektets inställningar.",
@@ -135,7 +135,7 @@
   },
   "folderBrowser": {
     "title": "Välj en repository-mapp",
-    "description": "Mappar på datorn som kör Tendril. Repositoryn är markerade; dubbelklicka för att välja ett.",
+    "description": "Mappar på datorn som kör Forge. Repositoryn är markerade; dubbelklicka för att välja ett.",
     "up": "Upp en nivå",
     "home": "Hemmapp",
     "pathLabel": "Mappsökväg",

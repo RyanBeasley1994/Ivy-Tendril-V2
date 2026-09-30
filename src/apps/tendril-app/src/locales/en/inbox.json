@@ -37,8 +37,8 @@
       "tooltip": "Discuss the selected issues with the coding agent"
     },
     "fireOff": {
-      "label": "Fire off in Tendril",
-      "labelWithCount": "Fire off in Tendril ({{selected}})"
+      "label": "Fire off in Forge",
+      "labelWithCount": "Fire off in Forge ({{selected}})"
     }
   },
   "freshness": {
@@ -56,8 +56,8 @@
     }
   },
   "fireNotice": {
-    "success_one": "Fired off {{count}} issue in Tendril",
-    "success_other": "Fired off {{count}} issues in Tendril",
+    "success_one": "Fired off {{count}} issue in Forge",
+    "success_other": "Fired off {{count}} issues in Forge",
     "partial": "Fired off {{fired}} of {{total}}. Failed on #{{number}}: {{error}}",
     "partial_unknownIssue": "Fired off {{fired}} of {{total}}. Failed on an issue: {{error}}"
   },
@@ -118,8 +118,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Fire off in Tendril",
-        "tooltip": "Fire off this issue in Tendril"
+        "label": "Fire off in Forge",
+        "tooltip": "Fire off this issue in Forge"
       },
       "viewDetails": {
         "label": "View Details",

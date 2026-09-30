@@ -1,4 +1,4 @@
-import type { DashboardActivity, Job, PlanSummary, RecentMergedPr } from "../types/api";
+import type { DashboardActivity, Job, Mission, PlanSummary, RecentMergedPr } from "../types/api";
 import { ACTIVE_JOB_STATUSES } from "./processStatus";
 import { stalledMinutes } from "./commandCenter";
 import { toIsoDate, todayDayNumber } from "./rollingAverage";
@@ -147,17 +147,25 @@ export const formatDuration = (seconds: number): string => {
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
 };
 
-export type DecisionKind = "review" | "failed" | "stalled" | "draft";
+export type DecisionKind =
+  | "missionApproval"
+  | "missionReview"
+  | "review"
+  | "failed"
+  | "stalled"
+  | "draft";
 
 export interface Decision {
   kind: DecisionKind;
-  /** `plan:<id>` or `job:<id>`, what a click opens. */
+  /** `plan:<id>`, `job:<id>` or `mission:<id>`, what a click opens. */
   target: string;
   planId?: string;
   title: string;
   /** Milliseconds since the item started waiting, when known. */
   waitingMs: number | null;
   checks?: { passed: number; total: number };
+  /** A second destination beside the main action: a mission's integration plan (`plan:<id>`). */
+  planTarget?: string;
   stalledFor?: number;
   level?: string;
   project?: string;
@@ -166,14 +174,16 @@ export interface Decision {
 export const DECISIONS_LIMIT = 5;
 
 /**
- * What waits on the operator, in the order they would clear it: plans ready for review, failed plans,
- * stalled jobs, then drafts that have not been executed. A plan an unfinished job still holds is not
+ * What waits on the operator, in the order they would clear it: missions blocked on an approval or a
+ * final review (nothing moves until they are answered), plans ready for review, failed plans, stalled
+ * jobs, then drafts that have not been executed. A plan an unfinished job still holds is not
  * offered, since its state is about to change under the operator's hand.
  */
 export function buildDecisions(
   plans: readonly PlanSummary[],
   jobs: readonly Job[],
   now: number = Date.now(),
+  missions: readonly Mission[] = [],
 ): { items: Decision[]; total: number } {
   const held = new Set(
     jobs
@@ -222,7 +232,29 @@ export function buildDecisions(
   });
   const drafts = inState("Draft").map((p) => fromPlan(p, "draft")).sort(oldestFirst);
 
-  const all = [...review, ...failed, ...stalled, ...drafts];
+  const fromMission = (mission: Mission, kind: DecisionKind): Decision => {
+    const at = parse(mission.updated ?? mission.created);
+    // The plan folder is `<id>-<slug>`; the id is its five-digit prefix, as the Missions page reads it.
+    const planId = mission.integrationPlan?.slice(0, 5);
+    return {
+      kind,
+      target: `mission:${mission.id}`,
+      planId,
+      planTarget: planId ? `plan:${planId}` : undefined,
+      title: mission.title || mission.goal,
+      waitingMs: at == null ? null : now - at,
+      project: mission.project,
+    };
+  };
+  const missionsIn = (state: Mission["state"], kind: DecisionKind) =>
+    missions
+      .filter((m) => m.state === state)
+      .map((m) => fromMission(m, kind))
+      .sort(oldestFirst);
+  const approvals = missionsIn("AwaitingApproval", "missionApproval");
+  const missionReviews = missionsIn("Review", "missionReview");
+
+  const all = [...approvals, ...missionReviews, ...review, ...failed, ...stalled, ...drafts];
   return { items: all.slice(0, DECISIONS_LIMIT), total: all.length };
 }
 

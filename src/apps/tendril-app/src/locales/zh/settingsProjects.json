@@ -318,7 +318,7 @@
     "defaultPort": {
       "label": "默认端口",
       "invalid": "默认端口必须介于 1 到 65535 之间。",
-      "hint": "首选端口。如果它已被占用，Tendril 会改为分配一个空闲端口。"
+      "hint": "首选端口。如果它已被占用，Forge 会改为分配一个空闲端口。"
     },
     "description": {
       "label": "描述",

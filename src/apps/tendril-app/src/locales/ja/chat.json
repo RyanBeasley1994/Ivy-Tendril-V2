@@ -30,7 +30,7 @@
     "override_terminal": "新しいターミナルチャット"
   },
   "planChat": {
-    "headline": "Tendril に何でも変更を依頼できます"
+    "headline": "Forge に何でも変更を依頼できます"
   },
   "systemEvent": {
     "linked": {
@@ -117,7 +117,7 @@
   "composer": {
     "attach": "ファイルを添付",
     "promptLabel": "チャットのプロンプト",
-    "placeholder": "Tendril に何でも質問…",
+    "placeholder": "Forge に何でも質問…",
     "voice": "音声入力",
     "voiceErrorDismiss": "音声入力のエラーを閉じる",
     "nothingTranscribed": "文字起こしされた内容がありません。もう一度お試しください。",
@@ -173,7 +173,7 @@
       },
       "addProject": {
         "label": "新しいプロジェクトを追加",
-        "prompt": "Tendril に新しいプロジェクトを追加してください"
+        "prompt": "Forge に新しいプロジェクトを追加してください"
       },
       "editVerifications": {
         "label": "検証を編集",

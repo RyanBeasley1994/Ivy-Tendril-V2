@@ -1,4 +1,5 @@
 pub mod catalog;
+pub mod codex_config;
 // Deliberately not re-exported below: `eventwire::text_event` and `eventwire::event_wire_text` are
 // too generically named to live in `agents::*` alongside everything else. Use
 // `agents::eventwire::EventWireNormalizer`.

@@ -37,8 +37,8 @@
       "tooltip": "Discuter des issues sélectionnées avec l'agent de codage"
     },
     "fireOff": {
-      "label": "Lancer dans Tendril",
-      "labelWithCount": "Lancer dans Tendril ({{selected}})"
+      "label": "Lancer dans Forge",
+      "labelWithCount": "Lancer dans Forge ({{selected}})"
     }
   },
   "freshness": {
@@ -56,9 +56,9 @@
     }
   },
   "fireNotice": {
-    "success_one": "{{count}} issue lancée dans Tendril",
-    "success_many": "{{count}} issues lancées dans Tendril",
-    "success_other": "{{count}} issues lancées dans Tendril",
+    "success_one": "{{count}} issue lancée dans Forge",
+    "success_many": "{{count}} issues lancées dans Forge",
+    "success_other": "{{count}} issues lancées dans Forge",
     "partial": "Lancées : {{fired}} sur {{total}}. Échec pour l'issue #{{number}} : {{error}}",
     "partial_unknownIssue": "Lancées : {{fired}} sur {{total}}. Échec pour une issue : {{error}}"
   },
@@ -123,8 +123,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Lancer dans Tendril",
-        "tooltip": "Lancer cette issue dans Tendril"
+        "label": "Lancer dans Forge",
+        "tooltip": "Lancer cette issue dans Forge"
       },
       "viewDetails": {
         "label": "Voir les détails",

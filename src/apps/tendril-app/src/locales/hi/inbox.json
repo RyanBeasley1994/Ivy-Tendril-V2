@@ -37,8 +37,8 @@
       "tooltip": "चयनित इश्यू पर कोडिंग एजेंट से चर्चा करें"
     },
     "fireOff": {
-      "label": "Tendril में शुरू करें",
-      "labelWithCount": "Tendril में शुरू करें ({{selected}})"
+      "label": "Forge में शुरू करें",
+      "labelWithCount": "Forge में शुरू करें ({{selected}})"
     }
   },
   "freshness": {
@@ -56,8 +56,8 @@
     }
   },
   "fireNotice": {
-    "success_one": "Tendril में {{count}} इश्यू शुरू किया गया",
-    "success_other": "Tendril में {{count}} इश्यू शुरू किए गए",
+    "success_one": "Forge में {{count}} इश्यू शुरू किया गया",
+    "success_other": "Forge में {{count}} इश्यू शुरू किए गए",
     "partial": "{{total}} में से {{fired}} शुरू किए गए। #{{number}} पर विफल: {{error}}",
     "partial_unknownIssue": "{{total}} में से {{fired}} शुरू किए गए। एक इश्यू पर विफल: {{error}}"
   },
@@ -118,8 +118,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Tendril में शुरू करें",
-        "tooltip": "इस इश्यू को Tendril में शुरू करें"
+        "label": "Forge में शुरू करें",
+        "tooltip": "इस इश्यू को Forge में शुरू करें"
       },
       "viewDetails": {
         "label": "विवरण देखें",

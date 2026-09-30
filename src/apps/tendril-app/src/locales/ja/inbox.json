@@ -37,8 +37,8 @@
       "tooltip": "選択した Issue についてコーディングエージェントと相談"
     },
     "fireOff": {
-      "label": "Tendril で開始",
-      "labelWithCount": "Tendril で開始 ({{selected}})"
+      "label": "Forge で開始",
+      "labelWithCount": "Forge で開始 ({{selected}})"
     }
   },
   "freshness": {
@@ -56,7 +56,7 @@
     }
   },
   "fireNotice": {
-    "success_other": "{{count}} 件の Issue を Tendril で開始しました",
+    "success_other": "{{count}} 件の Issue を Forge で開始しました",
     "partial": "{{total}} 件中 {{fired}} 件を開始しました。#{{number}} で失敗しました：{{error}}",
     "partial_unknownIssue": "{{total}} 件中 {{fired}} 件を開始しました。ある Issue で失敗しました：{{error}}"
   },
@@ -113,8 +113,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Tendril で開始",
-        "tooltip": "この Issue を Tendril で開始"
+        "label": "Forge で開始",
+        "tooltip": "この Issue を Forge で開始"
       },
       "viewDetails": {
         "label": "詳細を表示",

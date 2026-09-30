@@ -141,8 +141,8 @@
     "showDetails": "विवरण दिखाएं"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service डिस्कनेक्ट हो गया। {{seconds}} सेकंड में अपने-आप फिर से कनेक्ट हो रहा है…",
-    "unreachable": "Tendril-Service डेमॉन तक नहीं पहुंचा जा सकता।",
+    "reconnecting": "Forge service डिस्कनेक्ट हो गया। {{seconds}} सेकंड में अपने-आप फिर से कनेक्ट हो रहा है…",
+    "unreachable": "Forge service डेमॉन तक नहीं पहुंचा जा सकता।",
     "cachedState": "(कैश की गई स्थिति का उपयोग किया जा रहा है)",
     "reconnect": "अभी फिर से कनेक्ट करें"
   },

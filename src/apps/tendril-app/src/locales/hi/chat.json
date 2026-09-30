@@ -30,7 +30,7 @@
     "override_terminal": "नई टर्मिनल चैट"
   },
   "planChat": {
-    "headline": "Tendril से कुछ भी बदलने को कहें"
+    "headline": "Forge से कुछ भी बदलने को कहें"
   },
   "systemEvent": {
     "linked": {
@@ -124,7 +124,7 @@
   "composer": {
     "attach": "फ़ाइल अटैच करें",
     "promptLabel": "चैट प्रॉम्प्ट",
-    "placeholder": "Tendril से कुछ भी पूछें…",
+    "placeholder": "Forge से कुछ भी पूछें…",
     "voice": "वॉइस इनपुट",
     "voiceErrorDismiss": "वॉइस इनपुट त्रुटि खारिज करें",
     "nothingTranscribed": "कुछ भी ट्रांसक्राइब नहीं हुआ। कृपया फिर से प्रयास करें।",
@@ -184,7 +184,7 @@
       },
       "addProject": {
         "label": "नया प्रोजेक्ट जोड़ें",
-        "prompt": "मेरे Tendril में एक नया प्रोजेक्ट जोड़ें"
+        "prompt": "मेरे Forge में एक नया प्रोजेक्ट जोड़ें"
       },
       "editVerifications": {
         "label": "सत्यापन संपादित करें",

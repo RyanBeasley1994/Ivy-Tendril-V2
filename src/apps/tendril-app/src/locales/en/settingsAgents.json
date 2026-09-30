@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "Coding Agent",
-    "hint": "Tendril connects to your configured AI coding agent or bundled open source engines like OpenCode.",
+    "hint": "Forge connects to your configured AI coding agent or bundled open source engines like OpenCode.",
     "unknownAgent": "Unknown coding agent '{{value}}'. Valid agents: {{agents}}"
   },
   "byo": {
@@ -69,7 +69,7 @@
     "apiKey": "2. API key",
     "or": "or",
     "then": "Then, at the prompt: <code>{{command}}</code>",
-    "binary": "Tendril looks for <code>{{binary}}</code> on your PATH."
+    "binary": "Forge looks for <code>{{binary}}</code> on your PATH."
   },
   "actions": {
     "test": "Test Agent",

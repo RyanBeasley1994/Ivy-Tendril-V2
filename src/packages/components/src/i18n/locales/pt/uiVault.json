@@ -43,13 +43,13 @@
   },
   "emptyState": {
     "title": "Vault de Configuração da Equipe",
-    "description": "Compartilhe e sincronize projetos do Tendril, habilidades personalizadas, servidores MCP e regras de segurança com sua equipe por meio de um repositório Git versionado.",
+    "description": "Compartilhe e sincronize projetos do Forge, habilidades personalizadas, servidores MCP e regras de segurança com sua equipe por meio de um repositório Git versionado.",
     "create": "Criar Vault no GitHub",
     "connect": "Conectar Vault Git Existente"
   },
   "createDialog": {
     "title": "Criar Team Vault no GitHub",
-    "description": "Crie um repositório privado no GitHub para compartilhar configurações de projetos do Tendril, habilidades personalizadas e servidores MCP com sua equipe.",
+    "description": "Crie um repositório privado no GitHub para compartilhar configurações de projetos do Forge, habilidades personalizadas e servidores MCP com sua equipe.",
     "submit": "Criar Vault",
     "name": {
       "label": "Nome do Repositório"
@@ -64,7 +64,7 @@
   },
   "connectDialog": {
     "title": "Conectar Team Vault Existente",
-    "description": "Conecte um repositório Tendril Vault existente para sincronizar projetos, habilidades e configuração com sua equipe.",
+    "description": "Conecte um repositório Forge Vault existente para sincronizar projetos, habilidades e configuração com sua equipe.",
     "submit": "Conectar Vault",
     "discovering": "🔍 Buscando vaults existentes na sua conta e nas suas organizações do GitHub...",
     "detected": {

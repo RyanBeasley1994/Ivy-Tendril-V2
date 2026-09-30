@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { AgentPicker } from "@ivy-interactive/components/dialogs";
+import { PlanMarkdown } from "@ivy-interactive/components/tendril";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -892,6 +893,20 @@ const MissionDetail: React.FC<{
           {t("banner.approve")}
         </Banner>
       )}
+      {mission.rateLimit && (
+        <Banner tone="info" testId="mission-rate-limited">
+          {t("banner.rateLimited", {
+            reason: mission.rateLimit.reason,
+            step: mission.rateLimit.milestone
+              ? `${mission.rateLimit.step} ${mission.rateLimit.milestone}`
+              : mission.rateLimit.step,
+            time: new Date(mission.rateLimit.until).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          })}
+        </Banner>
+      )}
       {mission.state === "Paused" && mission.pauseReason && (
         <Banner tone="warn" testId="mission-paused">
           {t("banner.paused", { reason: mission.pauseReason })}
@@ -1022,6 +1037,8 @@ const MissionDetail: React.FC<{
                 <MilestoneRow
                   key={m.id}
                   milestone={m}
+                  all={mission.milestones}
+                  reviewing={mission.state === "AwaitingApproval"}
                   maxAttempts={mission.budget.maxAttempts}
                   activeAgent={
                     current?.milestone === m.id ? current.agent : undefined
@@ -1395,17 +1412,26 @@ const withCode = (text: string): React.ReactNode =>
 
 const MilestoneRow: React.FC<{
   milestone: Milestone;
+  /** Every milestone, for naming which one provides what this one consumes. */
+  all: Milestone[];
+  /** The plan is up for approval: every row opens, so the whole plan can be read before approving. */
+  reviewing?: boolean;
   maxAttempts: number;
   activeAgent?: string;
   onWatch?: () => void;
   t: TFunction<"missions">;
   onSelectPlan: (planId: string) => void;
-}> = ({ milestone: m, maxAttempts, activeAgent, onWatch, t, onSelectPlan }) => {
+}> = ({ milestone: m, all, reviewing = false, maxAttempts, activeAgent, onWatch, t, onSelectPlan }) => {
   const active = m.state === "Executing" || m.state === "Judging";
-  // Settled milestones fold to one line; the one in motion, or one the judge sent back, stays open.
+  // Settled milestones fold to one line; the one in motion, one the judge sent back, and every one
+  // while the plan waits for approval stay open.
   const [open, setOpen] = useState(
-    active || (!!m.feedback && m.state !== "Passed"),
+    reviewing || active || (!!m.feedback && m.state !== "Passed"),
   );
+  const tasks = m.tasks ?? [];
+  const tasksDone = tasks.filter((task) => task.done).length;
+  const provider = (name: string) =>
+    all.find((other) => other.provides?.some((p) => p.name.toLowerCase() === name.toLowerCase()))?.id;
   return (
     <li
       data-testid={`milestone-${m.id}`}
@@ -1442,6 +1468,11 @@ const MilestoneRow: React.FC<{
             </span>
           )}
         </span>
+        {tasks.length > 0 && (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {t("milestones.taskProgress", { done: tasksDone, total: tasks.length })}
+          </span>
+        )}
         {m.attempts > 0 && (
           <AttemptDots
             attempts={m.attempts}
@@ -1517,6 +1548,90 @@ const MilestoneRow: React.FC<{
                 ))}
               </ul>
             </div>
+          )}
+          {tasks.length > 0 && (
+            <div className="flex flex-col gap-1.5" data-testid={`milestone-${m.id}-tasks`}>
+              <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                {t("milestones.tasks")}
+              </span>
+              <ol className="m-0 flex list-none flex-col gap-1 p-0">
+                {tasks.map((task) => (
+                  <li key={task.id} className="flex items-start gap-2 text-[12.5px] leading-snug">
+                    <span className={cn("mt-[3px] shrink-0", task.done ? "text-success" : "text-muted-foreground")}>
+                      {task.done ? (
+                        <Check size={12} strokeWidth={3} aria-hidden="true" />
+                      ) : (
+                        <CircleDashed size={12} aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="font-mono text-[11px] text-muted-foreground">{task.id}</span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className={cn("text-foreground/90", task.done && "text-muted-foreground line-through")}>
+                        {withCode(task.title)}
+                      </span>
+                      {task.doneWhen && (
+                        <span className="text-[11.5px] text-muted-foreground">
+                          {t("milestones.doneWhen", { doneWhen: task.doneWhen })}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          {((m.consumes?.length ?? 0) > 0 || (m.provides?.length ?? 0) > 0) && (
+            <div className="flex flex-col gap-2" data-testid={`milestone-${m.id}-contract`}>
+              <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                {t("milestones.contract")}
+              </span>
+              {(m.consumes?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+                  <span className="text-muted-foreground">{t("milestones.consumes")}</span>
+                  {m.consumes!.map((name) => (
+                    <span key={name} className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]">
+                      {name}
+                      {provider(name) && (
+                        <span className="ml-1 text-muted-foreground">{t("milestones.from", { id: provider(name) })}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(m.provides?.length ?? 0) > 0 && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-[12px] text-muted-foreground">{t("milestones.provides")}</span>
+                  <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    {m.provides!.map((item) => (
+                      <li key={item.name} className="rounded-md border border-primary/20 bg-primary/[0.04] px-2 py-1.5">
+                        <div className="flex flex-wrap items-baseline gap-x-2">
+                          <span className="font-mono text-[12px] font-medium text-foreground">{item.name}</span>
+                          {item.kind && <span className="text-[11px] text-muted-foreground">{item.kind}</span>}
+                          {item.location && (
+                            <span className="font-mono text-[11px] text-muted-foreground">{item.location}</span>
+                          )}
+                        </div>
+                        {item.signature && (
+                          <code className="mt-0.5 block whitespace-pre-wrap break-words font-mono text-[11px] text-foreground/80">
+                            {item.signature}
+                          </code>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          {m.spec && (
+            <details className="group rounded-lg border border-border/70" open={reviewing && all.length <= 3}>
+              <summary className="cursor-pointer select-none px-3 py-2 text-[12px] font-medium text-muted-foreground hover:text-foreground">
+                {t("milestones.spec")}
+              </summary>
+              <div className="border-t border-border/70 px-3 py-2 text-[12.5px]">
+                <PlanMarkdown id={`milestone-spec-${m.id}`} content={m.spec} article flow />
+              </div>
+            </details>
           )}
           {m.feedback && m.state !== "Passed" && (
             <p className="m-0 rounded-lg border border-warning/20 bg-warning/[0.07] px-3 py-2 text-[12px] leading-snug text-warning">

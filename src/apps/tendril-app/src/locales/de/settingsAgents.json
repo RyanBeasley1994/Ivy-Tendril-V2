@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "Coding-Agent",
-    "hint": "Tendril verbindet sich mit Ihrem konfigurierten KI-Coding-Agenten oder mit mitgelieferten Open-Source-Engines wie OpenCode.",
+    "hint": "Forge verbindet sich mit Ihrem konfigurierten KI-Coding-Agenten oder mit mitgelieferten Open-Source-Engines wie OpenCode.",
     "unknownAgent": "Unbekannter Coding-Agent „{{value}}“. Gültige Agenten: {{agents}}"
   },
   "byo": {
@@ -69,7 +69,7 @@
     "apiKey": "2. API-Schlüssel",
     "or": "oder",
     "then": "Geben Sie anschließend in der Eingabeaufforderung ein: <code>{{command}}</code>",
-    "binary": "Tendril sucht <code>{{binary}}</code> in Ihrem PATH."
+    "binary": "Forge sucht <code>{{binary}}</code> in Ihrem PATH."
   },
   "actions": {
     "test": "Agent testen",

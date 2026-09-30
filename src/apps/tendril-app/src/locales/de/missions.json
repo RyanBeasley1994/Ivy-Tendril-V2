@@ -6,7 +6,7 @@
   },
   "empty": {
     "title": "Noch keine Missionen",
-    "description": "Übergib Tendril ein ganzes Feature. Der Orchestrator plant Meilensteine, führt jeden aus, bewertet ihn anhand seiner Akzeptanzkriterien und validiert das Ergebnis.",
+    "description": "Übergib Forge ein ganzes Feature. Der Orchestrator plant Meilensteine, führt jeden aus, bewertet ihn anhand seiner Akzeptanzkriterien und validiert das Ergebnis.",
     "steps": {
       "plan": {
         "title": "Planen",

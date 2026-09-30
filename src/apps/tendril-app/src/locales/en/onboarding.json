@@ -7,7 +7,7 @@
     "createProject": "Create Project"
   },
   "wizard": {
-    "title": "Welcome to Tendril",
+    "title": "Welcome to Forge",
     "stepsLabel": "Setup steps",
     "steps": {
       "codingAgent": "Coding Agent",
@@ -35,12 +35,12 @@
   },
   "codingAgent": {
     "title": "What is your coding agent?",
-    "description": "Tendril is a coding orchestrator that runs on top of your own coding agent. Pick the agent you'd like to use:"
+    "description": "Forge is a coding orchestrator that runs on top of your own coding agent. Pick the agent you'd like to use:"
   },
   "prerequisites": {
-    "missing_one": "Tendril needs {{names, list}} but it isn't installed. Install it, then press Re-check.",
-    "missing_other": "Tendril needs {{names, list}} but they aren't installed. Install them, then press Re-check.",
-    "description": "The tools Tendril launches on your machine.",
+    "missing_one": "Forge needs {{names, list}} but it isn't installed. Install it, then press Re-check.",
+    "missing_other": "Forge needs {{names, list}} but they aren't installed. Install them, then press Re-check.",
+    "description": "The tools Forge launches on your machine.",
     "recheck": "Re-check",
     "checking": "Checking…",
     "empty": "No checks reported.",
@@ -54,9 +54,9 @@
   },
   "dataStorage": {
     "title": "Where should we store your data?",
-    "description": "Tendril keeps your config and plans in this folder.",
-    "homeLabel": "Tendril Home",
-    "homeHint": "The running daemon resolved this folder. Set <code>{{envVar}}</code> before starting Tendril to move it.",
+    "description": "Forge keeps your config and plans in this folder.",
+    "homeLabel": "Forge Home",
+    "homeHint": "The running daemon resolved this folder. Set <code>{{envVar}}</code> before starting Forge to move it.",
     "homeMissing": "Please provide a valid path."
   },
   "repoPicker": {
@@ -78,7 +78,7 @@
   },
   "firstProject": {
     "title": "Setup your first project",
-    "description": "A project groups one or more repositories together so Tendril can plan and verify changes across them.",
+    "description": "A project groups one or more repositories together so Forge can plan and verify changes across them.",
     "browse": "Browse",
     "browseTitle": "Select repository folder",
     "browseUnavailable": "Folder picker unavailable ({{error}}). Type a path instead.",
@@ -96,7 +96,7 @@
   },
   "agentRun": {
     "title": "Setting up your project",
-    "wizardHint": "Tendril is detecting your tech stack and configuring your agentic harness. This will take a few minutes, so treat yourself to a ☕ while you wait.",
+    "wizardHint": "Forge is detecting your tech stack and configuring your agentic harness. This will take a few minutes, so treat yourself to a ☕ while you wait.",
     "noRun": "No setup run is attached to this project. You can configure its verifications and review actions from the project's own screen once setup is finished.",
     "timedOut": "Setup timed out.",
     "failed": "Setup failed."
@@ -117,7 +117,7 @@
   },
   "complete": {
     "title": "Ready to Go!",
-    "description": "Your project is configured. Click Finish to start using Tendril.",
+    "description": "Your project is configured. Click Finish to start using Forge.",
     "newsletter": {
       "title": "Newsletter",
       "description": "Be the first to know when we have a new release!"
@@ -125,7 +125,7 @@
   },
   "addProject": {
     "title": "Add a Project",
-    "hint": "Name the project and point it at one or more Git repositories. Tendril then inspects them and configures the review harness.",
+    "hint": "Name the project and point it at one or more Git repositories. Forge then inspects them and configures the review harness.",
     "nameLabel": "Name",
     "namePlaceholder": "Project name...",
     "creating": "Creating...",
@@ -135,7 +135,7 @@
     "nameExists": "A project named '{{name}}' already exists.",
     "createFailed": "Failed to create project: {{error}}",
     "setupNotStarted": "Project created, but the setup agent could not start: {{error}}. The project is registered and can be configured from its own row.",
-    "agentHint": "Tendril is detecting your tech stack and configuring your agentic harness. This takes a few minutes.",
+    "agentHint": "Forge is detecting your tech stack and configuring your agentic harness. This takes a few minutes.",
     "verificationRequired": "required",
     "noVerifications": "No verifications were configured. Add them from the project's settings.",
     "noReviewActions": "No review actions were configured. Add them from the project's settings.",
@@ -143,7 +143,7 @@
   },
   "folderBrowser": {
     "title": "Choose a repository folder",
-    "description": "Folders on the machine running Tendril. Repositories are marked; double-click one to pick it.",
+    "description": "Folders on the machine running Forge. Repositories are marked; double-click one to pick it.",
     "up": "Up one level",
     "home": "Home folder",
     "pathLabel": "Folder path",

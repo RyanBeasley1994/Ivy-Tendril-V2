@@ -6,7 +6,7 @@
   },
   "empty": {
     "title": "Inga uppdrag än",
-    "description": "Ge Tendril en hel funktion. Orkestreraren planerar milstolpar, kör varje, bedömer den mot sina acceptanskriterier och validerar resultatet.",
+    "description": "Ge Forge en hel funktion. Orkestreraren planerar milstolpar, kör varje, bedömer den mot sina acceptanskriterier och validerar resultatet.",
     "steps": {
       "plan": {
         "title": "Planera",

@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "कोडिंग एजेंट",
-    "hint": "Tendril आपके कॉन्फ़िगर किए गए AI कोडिंग एजेंट या OpenCode जैसे बंडल किए गए ओपन सोर्स इंजनों से जुड़ता है।",
+    "hint": "Forge आपके कॉन्फ़िगर किए गए AI कोडिंग एजेंट या OpenCode जैसे बंडल किए गए ओपन सोर्स इंजनों से जुड़ता है।",
     "unknownAgent": "अज्ञात कोडिंग एजेंट \"{{value}}\"। मान्य एजेंट: {{agents}}"
   },
   "byo": {
@@ -69,7 +69,7 @@
     "apiKey": "2. API कुंजी",
     "or": "या",
     "then": "फिर, प्रॉम्प्ट पर: <code>{{command}}</code>",
-    "binary": "Tendril आपके PATH पर <code>{{binary}}</code> खोजता है।"
+    "binary": "Forge आपके PATH पर <code>{{binary}}</code> खोजता है।"
   },
   "actions": {
     "test": "एजेंट का परीक्षण करें",

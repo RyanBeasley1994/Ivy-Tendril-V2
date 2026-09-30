@@ -37,8 +37,8 @@
       "tooltip": "Diskutera de markerade ärendena med kodningsagenten"
     },
     "fireOff": {
-      "label": "Starta i Tendril",
-      "labelWithCount": "Starta i Tendril ({{selected}})"
+      "label": "Starta i Forge",
+      "labelWithCount": "Starta i Forge ({{selected}})"
     }
   },
   "freshness": {
@@ -56,8 +56,8 @@
     }
   },
   "fireNotice": {
-    "success_one": "Startade {{count}} ärende i Tendril",
-    "success_other": "Startade {{count}} ärenden i Tendril",
+    "success_one": "Startade {{count}} ärende i Forge",
+    "success_other": "Startade {{count}} ärenden i Forge",
     "partial": "Startade {{fired}} av {{total}}. Misslyckades med #{{number}}: {{error}}",
     "partial_unknownIssue": "Startade {{fired}} av {{total}}. Misslyckades med ett ärende: {{error}}"
   },
@@ -118,8 +118,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Starta i Tendril",
-        "tooltip": "Starta det här ärendet i Tendril"
+        "label": "Starta i Forge",
+        "tooltip": "Starta det här ärendet i Forge"
       },
       "viewDetails": {
         "label": "Visa detaljer",

@@ -154,15 +154,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "La entrada de voz necesita una conexión segura. Abre Tendril por HTTPS o en localhost y vuelve a intentarlo.",
-      "mediaDevicesUnavailable": "La entrada de voz no está disponible en esta ventana. En macOS, cierra y vuelve a abrir Ivy Tendril después de actualizar y permite el acceso al micrófono cuando se te pida. También puedes ejecutar \"{{command}}\" y usar la entrada de voz en tu navegador.",
+      "insecureContext": "La entrada de voz necesita una conexión segura. Abre Forge por HTTPS o en localhost y vuelve a intentarlo.",
+      "mediaDevicesUnavailable": "La entrada de voz no está disponible en esta ventana. En macOS, cierra y vuelve a abrir Forge después de actualizar y permite el acceso al micrófono cuando se te pida. También puedes ejecutar \"{{command}}\" y usar la entrada de voz en tu navegador.",
       "audioCaptureUnsupported": "Este navegador no puede capturar audio para la entrada de voz.",
       "captureInitFailed": "No se pudo inicializar la captura de audio: {{error}}",
       "websocket": "Se produjo un error de WebSocket al conectar con el servicio de transcripción.",
       "closedUnexpectedly": "La conexión WebSocket se cerró inesperadamente (código {{code}}: {{reason}})",
       "closedUnexpectedlyNoReason": "La conexión WebSocket se cerró inesperadamente (código {{code}}: sin motivo indicado)",
       "connectionFailed": "Se denegó el acceso al micrófono o falló la conexión: {{error}}",
-      "microphoneDenied": "Se denegó el acceso al micrófono. Permite el acceso al micrófono para Ivy Tendril en Ajustes del Sistema > Privacidad y seguridad > Micrófono y vuelve a intentarlo.",
+      "microphoneDenied": "Se denegó el acceso al micrófono. Permite el acceso al micrófono para Forge en Ajustes del Sistema > Privacidad y seguridad > Micrófono y vuelve a intentarlo.",
       "microphoneNotFound": "No se encontró ningún micrófono. Conecta un dispositivo de entrada y vuelve a intentarlo."
     }
   },
@@ -216,7 +216,7 @@
       "stalled": "Detenido"
     },
     "composer": {
-      "placeholder": "Describe lo próximo que Tendril debe construir…",
+      "placeholder": "Describe lo próximo que Forge debe construir…",
       "submit": "Crear plan",
       "ariaLabel": "Describe un plan nuevo"
     },

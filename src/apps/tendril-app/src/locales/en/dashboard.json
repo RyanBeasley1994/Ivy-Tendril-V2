@@ -121,7 +121,7 @@
     "summaryStalled_other": "· {{count}} stalled",
     "refresh": "Refresh",
     "composer": {
-      "placeholder": "Describe what Tendril should build next, or paste an issue link…",
+      "placeholder": "Describe what Forge should build next, or paste an issue link…",
       "label": "Describe a plan",
       "project": "Project",
       "anyProject": "Any project",
@@ -167,14 +167,19 @@
       "title": "Decisions",
       "viewAll": "Open review",
       "empty": "Nothing is waiting on you",
+      "viewPlan": "View plan",
       "checks": "{{passed}}/{{total}} checks",
       "kind": {
+        "missionApproval": "Mission awaiting approval",
+        "missionReview": "Mission ready for review",
         "review": "Ready for review",
         "failed": "Plan failed",
         "stalled": "Job stalled",
         "draft": "Draft ready to execute"
       },
       "action": {
+        "missionApproval": "Approve",
+        "missionReview": "Review",
         "review": "Review",
         "failed": "Open",
         "stalled": "Inspect",

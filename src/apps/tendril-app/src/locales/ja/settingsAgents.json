@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "コーディングエージェント",
-    "hint": "Tendril は、構成済みの AI コーディングエージェント、または OpenCode などの同梱のオープンソースエンジンに接続します。",
+    "hint": "Forge は、構成済みの AI コーディングエージェント、または OpenCode などの同梱のオープンソースエンジンに接続します。",
     "unknownAgent": "不明なコーディングエージェント「{{value}}」です。有効なエージェント：{{agents}}"
   },
   "byo": {
@@ -68,7 +68,7 @@
     "apiKey": "2. API キー",
     "or": "または",
     "then": "次に、プロンプトで <code>{{command}}</code> を実行します。",
-    "binary": "Tendril は PATH 上で <code>{{binary}}</code> を探します。"
+    "binary": "Forge は PATH 上で <code>{{binary}}</code> を探します。"
   },
   "actions": {
     "test": "エージェントのテスト",

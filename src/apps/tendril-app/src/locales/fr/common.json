@@ -141,8 +141,8 @@
     "showDetails": "Afficher les détails"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service déconnecté. Reconnexion automatique dans {{seconds}} s…",
-    "unreachable": "Le démon Tendril-Service est injoignable.",
+    "reconnecting": "Forge service déconnecté. Reconnexion automatique dans {{seconds}} s…",
+    "unreachable": "Le démon Forge service est injoignable.",
     "cachedState": "(Utilisation de l'état en cache)",
     "reconnect": "Reconnecter maintenant"
   },

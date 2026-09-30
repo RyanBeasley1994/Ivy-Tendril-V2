@@ -1,10 +1,9 @@
 import React from "react";
-import { openUrl } from "../utils/opener";
+import { ForgeLogo } from "../components/ForgeLogo";
+import { PRODUCT_NAME } from "../branding";
 import {
-  BrandIcon,
   TendrilShell,
   ShellSidebarHeader,
-  TendrilLogo,
   ShellNav,
   ShellSidebarSection,
   ShellTabs,
@@ -23,16 +22,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@ivy-interactive/components/ui";
-import {
-  Bug,
-  CircleArrowUp,
-  CircleHelp,
-  Construction,
-  ExternalLink,
-  GitPullRequest,
-  Snowflake,
-} from "lucide-react";
-import type { ServiceInfo, VersionInfo } from "../types/api";
+import { Construction, GitPullRequest, Snowflake, Info } from "lucide-react";
+import type { ServiceInfo } from "../types/api";
 import { OfflineBanner } from "../components/OfflineBanner";
 // Lazy for the same budget, behind a placeholder of its own height so the page never shifts when
 // it arrives.
@@ -45,8 +36,6 @@ const SidebarStatus = React.lazy(() =>
   import("./shell/SidebarStatus").then((m) => ({ default: m.SidebarStatus })),
 );
 import { ServiceStatusBanner } from "../components/service";
-import { UpdateNotice } from "../components/UpdateNotice";
-import { getUpdateCommand } from "../utils/updateCommand";
 import { firstStringArg } from "../utils/eventArgs";
 import {
   pageTabTitle,
@@ -62,14 +51,6 @@ import { i18n, useTranslation, type TFunction } from "../i18n";
  * a test, say - hands them none. The shell passes its own, so a language change re-renders the rows.
  */
 const commonT = i18n.getFixedT(null, "common");
-
-/**
- * V1 `AppShell/Dialogs/UpdateTendrilDialog.cs`, opened from the update banner. Lazy, because the
- * shell is in the eager graph and the dialogs entry is not (see `dialogs.ts` in the components).
- */
-const UpdateTendrilDialog = React.lazy(() =>
-  import("@ivy-interactive/components/dialogs").then((m) => ({ default: m.UpdateTendrilDialog })),
-);
 
 /**
  * V1 `TendrilAppShell.PageTabId`. Identifies the strip's leading tab, which reveals the page behind
@@ -99,15 +80,6 @@ export const CONTENT_PADDED_CLASS = "flex-1 overflow-y-auto px-5 pb-6 pt-4";
 export const CONTENT_FULL_BLEED_CLASS = "flex min-h-0 flex-1 flex-col overflow-hidden";
 
 /**
- * V1 `AppBrand`, which is where the Help menu's three destinations come from
- * (`Constants.DocsUrl` / `DiscordUrl` / `IssuesUrl`). The issue tracker is V2's own repository:
- * the decision is "Report Issue files against the app you are running", not the literal V1 URL.
- */
-const DOCS_URL = "https://tendril.ivy.app";
-const DISCORD_URL = "https://discord.gg/FHgxkDga3y";
-const ISSUES_URL = "https://github.com/Ivy-Interactive/Ivy-Tendril-V2/issues/new";
-
-/**
  * The `[App]` icon of the app a nav id names, which is the glyph V1's `$page` tab carries
  * (`BrandedAppDisplay`). Titles come from the router's descriptor table instead of being repeated
  * here, so the strip and the browser title cannot drift from what routing thinks an app is called.
@@ -135,6 +107,8 @@ const pageIcon = (navId: string): string | undefined => {
       return "GitPullRequest";
     case "icebox":
       return "Snowflake";
+    case "about":
+      return "Info";
     case "settings":
       return "Settings";
     default:
@@ -229,18 +203,14 @@ export interface ShellMenuItemDto {
 }
 
 /**
- * V1 `TendrilAppShell.settingsMenuItems`, row for row and in order, with the Help submenu from
- * `BuildHelpMenuItems`. Two deliberate omissions, both because V2 has nothing to point them at:
- * V1's `#if DEBUG` "Debug > Onboarding" row (V2 has no onboarding route) and the `isBeta` "About"
- * row (V2 has no About view). V1 has no "Keyboard Shortcuts" row and neither does this.
+ * The sidebar's settings menu. This fork drops upstream's update check and Help submenu (docs,
+ * Discord, issue tracker all pointed at Ivy's project) and ends with About, which credits it.
  */
 export const buildSettingsMenuItems = ({
   onSelectNav,
-  onCheckForUpdates,
   t = commonT,
 }: {
   onSelectNav: (navId: string) => void;
-  onCheckForUpdates?: () => void;
   t?: TFunction<"common">;
 }): ShellMenuItemDto[] => {
   const items: ShellMenuItemDto[] = [
@@ -264,41 +234,11 @@ export const buildSettingsMenuItems = ({
     },
   ];
 
-  // V1 always has an update check; V2's host supplies one only where it can perform it.
-  if (onCheckForUpdates) {
-    items.push({
-      id: "check-for-updates",
-      label: t("sidebar.settingsMenu.checkForUpdates"),
-      icon: <CircleArrowUp aria-hidden="true" />,
-      onSelect: onCheckForUpdates,
-    });
-  }
-
   items.push({
-    id: "help",
-    label: t("sidebar.settingsMenu.help"),
-    icon: <CircleHelp aria-hidden="true" />,
-    children: [
-      {
-        id: "documentation",
-        label: t("sidebar.settingsMenu.documentation"),
-        icon: <ExternalLink aria-hidden="true" />,
-        onSelect: () => void openUrl(DOCS_URL),
-      },
-      {
-        // A brand name, so the one row that is not translated.
-        id: "discord",
-        label: "Discord",
-        icon: <BrandIcon name="Discord" />,
-        onSelect: () => void openUrl(DISCORD_URL),
-      },
-      {
-        id: "report-issue",
-        label: t("sidebar.settingsMenu.reportIssue"),
-        icon: <Bug aria-hidden="true" />,
-        onSelect: () => void openUrl(ISSUES_URL),
-      },
-    ],
+    id: "about",
+    label: t("sidebar.settingsMenu.about"),
+    icon: <Info aria-hidden="true" />,
+    onSelect: () => onSelectNav("about"),
   });
 
   return items;
@@ -365,10 +305,6 @@ interface ShellLayoutProps {
   onRestartService?: () => void;
   onRepairService?: () => void;
   onViewDiagnostics?: () => void;
-  versionInfo?: VersionInfo | null;
-  dismissedUpdateVersion?: string | null;
-  onDismissUpdate?: (version: string) => void;
-  onCopyUpdateCommand?: () => void;
   draftCount?: number;
   reviewCount?: number;
   recommendationsCount?: number;
@@ -376,7 +312,6 @@ interface ShellLayoutProps {
   /** Jobs in the Running state, for the top bar's live chip. */
   runningJobCount?: number;
   chatCount?: number;
-  onCheckForUpdates?: () => void;
   /**
    * The contextual list the active app published into the sidebar (V1's `ShellSidebarListSignal`).
    * Absent, or belonging to an app the user has navigated away from, leaves the section holding the
@@ -435,17 +370,12 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   onRestartService,
   onRepairService,
   onViewDiagnostics,
-  versionInfo = null,
-  dismissedUpdateVersion = null,
-  onDismissUpdate = () => {},
-  onCopyUpdateCommand = () => {},
   draftCount,
   reviewCount,
   recommendationsCount,
   jobCount,
   runningJobCount,
   chatCount,
-  onCheckForUpdates,
   sidebarList = null,
   onSelectSidebarItem,
   onPlanSearch,
@@ -548,7 +478,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
     t,
   );
 
-  const settingsMenuItems = buildSettingsMenuItems({ onSelectNav, onCheckForUpdates, t });
+  const settingsMenuItems = buildSettingsMenuItems({ onSelectNav, t });
 
   /* V1 `BuildStripTabs`: the strip is one non-closable `$page` tab, which reveals the page behind
      the session panes, followed by the session tabs. Nothing else is ever in it - a page is not a
@@ -608,36 +538,8 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 
   const noop = () => {};
 
-  /**
-   * The update dialog. V2 cannot update itself yet: `tauri.conf.json` declares the updater plugin
-   * but the app installs neither `tauri-plugin-updater` nor `@tauri-apps/plugin-updater`, so this
-   * is V1's `CanSelfUpdate == false` branch - the terminal command for this platform, and OK.
-   */
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = React.useState(false);
-
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground">
-      {/* Update Available Notice */}
-      <UpdateNotice
-        info={versionInfo}
-        dismissedVersion={dismissedUpdateVersion}
-        onDismiss={onDismissUpdate}
-        onCopyCommand={onCopyUpdateCommand}
-        onShowDetails={() => setIsUpdateDialogOpen(true)}
-      />
-      {isUpdateDialogOpen && versionInfo?.latestVersion && (
-        <React.Suspense fallback={null}>
-          <UpdateTendrilDialog
-            isOpen
-            onClose={() => setIsUpdateDialogOpen(false)}
-            currentVersion={versionInfo.currentVersion}
-            latestVersion={versionInfo.latestVersion}
-            canSelfUpdate={false}
-            updateCommand={getUpdateCommand()}
-          />
-        </React.Suspense>
-      )}
-
       {/* Top Offline / Reconnection Banner */}
       <OfflineBanner
         status={connectionStatus}
@@ -675,8 +577,8 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
             SidebarHeader: (
               <ShellSidebarHeader
                 id="shell-sidebar-header"
-                title="Tendril"
-                logo={<TendrilLogo />}
+                title={PRODUCT_NAME}
+                logo={<ForgeLogo />}
                 version={
                   serviceInfo?.apiVersion
                     ? t("sidebar.version", { version: serviceInfo.apiVersion })
@@ -793,7 +695,9 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
             Content: (
               <>
                 <React.Suspense
-                  fallback={<div className="h-12 shrink-0 border-b border-border/80" aria-hidden="true" />}
+                  fallback={
+                    <div className="h-12 shrink-0 border-b border-border/80" aria-hidden="true" />
+                  }
                 >
                   <ShellTopBar
                     section={pageNavItem?.group}

@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "编程智能体",
-    "hint": "Tendril 可连接到您配置的 AI 编程智能体，或 OpenCode 等内置的开源引擎。",
+    "hint": "Forge 可连接到您配置的 AI 编程智能体，或 OpenCode 等内置的开源引擎。",
     "unknownAgent": "未知的编程智能体“{{value}}”。有效的智能体：{{agents}}"
   },
   "byo": {
@@ -68,7 +68,7 @@
     "apiKey": "2. API 密钥",
     "or": "或",
     "then": "然后在提示符处输入：<code>{{command}}</code>",
-    "binary": "Tendril 会在您的 PATH 中查找 <code>{{binary}}</code>。"
+    "binary": "Forge 会在您的 PATH 中查找 <code>{{binary}}</code>。"
   },
   "actions": {
     "test": "测试智能体",

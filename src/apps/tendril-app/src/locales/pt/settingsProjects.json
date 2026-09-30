@@ -318,7 +318,7 @@
     "defaultPort": {
       "label": "Porta Padrão",
       "invalid": "A Porta Padrão deve estar entre 1 e 65535.",
-      "hint": "Porta preferida. Se ela já estiver ocupada, o Tendril aloca uma porta livre no lugar."
+      "hint": "Porta preferida. Se ela já estiver ocupada, o Forge aloca uma porta livre no lugar."
     },
     "description": {
       "label": "Descrição",

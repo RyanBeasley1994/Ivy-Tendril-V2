@@ -30,7 +30,7 @@
     "override_terminal": "Nouveau chat dans le terminal"
   },
   "planChat": {
-    "headline": "Demandez à Tendril de modifier ce que vous voulez"
+    "headline": "Demandez à Forge de modifier ce que vous voulez"
   },
   "systemEvent": {
     "linked": {
@@ -131,7 +131,7 @@
   "composer": {
     "attach": "Joindre un fichier",
     "promptLabel": "Prompt du chat",
-    "placeholder": "Demandez n'importe quoi à Tendril…",
+    "placeholder": "Demandez n'importe quoi à Forge…",
     "voice": "Saisie vocale",
     "voiceErrorDismiss": "Fermer l'erreur de saisie vocale",
     "nothingTranscribed": "Rien n'a été transcrit. Veuillez réessayer.",
@@ -195,7 +195,7 @@
       },
       "addProject": {
         "label": "Ajouter un nouveau projet",
-        "prompt": "Ajoutez un nouveau projet à mon Tendril"
+        "prompt": "Ajoutez un nouveau projet à mon Forge"
       },
       "editVerifications": {
         "label": "Modifier les vérifications",

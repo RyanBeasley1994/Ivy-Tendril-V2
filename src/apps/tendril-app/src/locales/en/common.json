@@ -53,6 +53,7 @@
     }
   },
   "appTitles": {
+    "about": "About",
     "dashboard": "Dashboard",
     "plans": "Plans",
     "review": "Review",
@@ -98,10 +99,7 @@
       "configuration": "Configuration",
       "pullRequests": "Pull Requests",
       "icebox": "Icebox",
-      "checkForUpdates": "Check for Updates",
-      "help": "Help",
-      "documentation": "Documentation",
-      "reportIssue": "Report Issue"
+      "about": "About"
     },
     "status": {
       "online": "Service online",
@@ -141,8 +139,8 @@
     "showDetails": "Show Details"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service disconnected. Auto-reconnecting in {{seconds}}s...",
-    "unreachable": "Tendril-Service daemon is unreachable.",
+    "reconnecting": "Forge service disconnected. Auto-reconnecting in {{seconds}}s...",
+    "unreachable": "Forge service daemon is unreachable.",
     "cachedState": "(Falling back to cached state)",
     "reconnect": "Reconnect Now"
   },

@@ -150,15 +150,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "音声入力には安全な接続が必要です。HTTPS または localhost で Tendril を開いてから、もう一度お試しください。",
-      "mediaDevicesUnavailable": "このウィンドウでは音声入力を利用できません。macOS では、アップデート後に Ivy Tendril を終了して再度開き、求められたらマイクへのアクセスを許可してください。また、「{{command}}」を実行して、ブラウザーで音声入力を使用することもできます。",
+      "insecureContext": "音声入力には安全な接続が必要です。HTTPS または localhost で Forge を開いてから、もう一度お試しください。",
+      "mediaDevicesUnavailable": "このウィンドウでは音声入力を利用できません。macOS では、アップデート後に Forge を終了して再度開き、求められたらマイクへのアクセスを許可してください。また、「{{command}}」を実行して、ブラウザーで音声入力を使用することもできます。",
       "audioCaptureUnsupported": "このブラウザーでは音声入力用の音声をキャプチャできません。",
       "captureInitFailed": "音声キャプチャの初期化に失敗しました：{{error}}",
       "websocket": "文字起こしサービスへの接続中に WebSocket エラーが発生しました。",
       "closedUnexpectedly": "WebSocket 接続が予期せず切断されました（コード {{code}}：{{reason}}）",
       "closedUnexpectedlyNoReason": "WebSocket 接続が予期せず切断されました（コード {{code}}：理由不明）",
       "connectionFailed": "マイクへのアクセスが拒否されたか、接続に失敗しました：{{error}}",
-      "microphoneDenied": "マイクへのアクセスが拒否されました。「システム設定 > プライバシーとセキュリティ > マイク」で Ivy Tendril のマイクへのアクセスを許可してから、もう一度お試しください。",
+      "microphoneDenied": "マイクへのアクセスが拒否されました。「システム設定 > プライバシーとセキュリティ > マイク」で Forge のマイクへのアクセスを許可してから、もう一度お試しください。",
       "microphoneNotFound": "マイクが見つかりません。入力デバイスを接続して、もう一度お試しください。"
     }
   },
@@ -210,7 +210,7 @@
       "stalled": "停止中"
     },
     "composer": {
-      "placeholder": "Tendril に次に作ってほしいものを説明…",
+      "placeholder": "Forge に次に作ってほしいものを説明…",
       "submit": "プランを作成",
       "ariaLabel": "新しいプランを説明"
     },

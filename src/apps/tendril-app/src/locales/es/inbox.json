@@ -37,8 +37,8 @@
       "tooltip": "Debatir los issues seleccionados con el agente de código"
     },
     "fireOff": {
-      "label": "Lanzar en Tendril",
-      "labelWithCount": "Lanzar en Tendril ({{selected}})"
+      "label": "Lanzar en Forge",
+      "labelWithCount": "Lanzar en Forge ({{selected}})"
     }
   },
   "freshness": {
@@ -56,9 +56,9 @@
     }
   },
   "fireNotice": {
-    "success_one": "Se lanzó {{count}} issue en Tendril",
-    "success_many": "Se lanzaron {{count}} issues en Tendril",
-    "success_other": "Se lanzaron {{count}} issues en Tendril",
+    "success_one": "Se lanzó {{count}} issue en Forge",
+    "success_many": "Se lanzaron {{count}} issues en Forge",
+    "success_other": "Se lanzaron {{count}} issues en Forge",
     "partial": "Se lanzaron {{fired}} de {{total}}. Falló en el #{{number}}: {{error}}",
     "partial_unknownIssue": "Se lanzaron {{fired}} de {{total}}. Falló en un issue: {{error}}"
   },
@@ -123,8 +123,8 @@
     },
     "actions": {
       "fireOff": {
-        "label": "Lanzar en Tendril",
-        "tooltip": "Lanzar este issue en Tendril"
+        "label": "Lanzar en Forge",
+        "tooltip": "Lanzar este issue en Forge"
       },
       "viewDetails": {
         "label": "Ver detalles",

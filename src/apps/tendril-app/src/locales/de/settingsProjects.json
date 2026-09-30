@@ -318,7 +318,7 @@
     "defaultPort": {
       "label": "Standardport",
       "invalid": "Der Standardport muss zwischen 1 und 65535 liegen.",
-      "hint": "Bevorzugter Port. Ist er bereits belegt, weist Tendril stattdessen einen freien zu."
+      "hint": "Bevorzugter Port. Ist er bereits belegt, weist Forge stattdessen einen freien zu."
     },
     "description": {
       "label": "Beschreibung",

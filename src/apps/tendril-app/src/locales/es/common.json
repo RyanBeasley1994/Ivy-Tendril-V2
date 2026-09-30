@@ -141,8 +141,8 @@
     "showDetails": "Mostrar detalles"
   },
   "offlineBanner": {
-    "reconnecting": "Tendril-Service se ha desconectado. Reconectando automáticamente en {{seconds}} s...",
-    "unreachable": "No se puede conectar con el daemon Tendril-Service.",
+    "reconnecting": "Forge service se ha desconectado. Reconectando automáticamente en {{seconds}} s...",
+    "unreachable": "No se puede conectar con el daemon Forge service.",
     "cachedState": "(Usando el estado en caché)",
     "reconnect": "Reconectar ahora"
   },

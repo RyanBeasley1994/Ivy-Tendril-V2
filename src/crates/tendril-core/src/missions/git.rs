@@ -8,7 +8,8 @@ use crate::error::{Result, TendrilError};
 use crate::git::service::run_git;
 use std::path::Path;
 
-fn branch_tip(repo: &Path, branch: &str) -> Option<String> {
+/// The commit `branch` points at, if it exists.
+pub fn branch_tip(repo: &Path, branch: &str) -> Option<String> {
     let reference = format!("refs/heads/{}", branch);
     match run_git(&["rev-parse", "--verify", "--quiet", &reference], repo) {
         Ok((0, out, _)) if !out.trim().is_empty() => Some(out.trim().to_string()),
@@ -254,4 +255,24 @@ mod tests {
         fast_forward(&repo, "tendril/m", "tendril/m1", Some(&wt)).unwrap();
         assert_eq!(git(&wt, &["rev-parse", "HEAD"]), c1);
     }
+}
+
+/// Throws away everything in the checkout at `worktree` after `commit`: resets the branch there to it
+/// and removes untracked files. Used when a re-plan drops a milestone that ran on the shared mission
+/// branch, so its work does not linger under the next one.
+pub fn reset_worktree(worktree: &Path, commit: &str) -> Result<()> {
+    match run_git(&["reset", "--hard", commit], worktree) {
+        Ok((0, _, _)) => {}
+        Ok((_, _, err)) => {
+            return Err(TendrilError::Git(format!(
+                "Could not reset {} to {}: {}",
+                worktree.display(),
+                commit,
+                err.trim()
+            )))
+        }
+        Err(e) => return Err(e),
+    }
+    let _ = run_git(&["clean", "-fd"], worktree);
+    Ok(())
 }

@@ -40,7 +40,7 @@
     "override_terminal": "New terminal chat"
   },
   "planChat": {
-    "headline": "Ask Tendril to Change Anything"
+    "headline": "Ask Forge to Change Anything"
   },
   "systemEvent": {
     "linked": {
@@ -134,7 +134,7 @@
   "composer": {
     "attach": "Attach file",
     "promptLabel": "Chat prompt",
-    "placeholder": "Ask Tendril anything...",
+    "placeholder": "Ask Forge anything...",
     "voice": "Voice input",
     "voiceErrorDismiss": "Dismiss voice input error",
     "nothingTranscribed": "Nothing was transcribed. Please try again.",

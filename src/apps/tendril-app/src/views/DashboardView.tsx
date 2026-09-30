@@ -2,7 +2,8 @@ import React from "react";
 import { RefreshCw } from "lucide-react";
 import { useTranslation, type TFunction } from "../i18n";
 import { useEnumLabels } from "../i18n/enumLabels";
-import type { Job, PlanSummary, ProjectSummary } from "../types/api";
+import type { Job, Mission, PlanSummary, ProjectSummary } from "../types/api";
+import { bridge } from "../api/bridge";
 import { useDashboardAnalytics } from "../hooks/useDashboardAnalytics";
 import { toIsoDate, todayDayNumber } from "../utils/rollingAverage";
 import { buildActivity, buildDecisions, buildFleet, buildFleetStats } from "../utils/fleet";
@@ -22,6 +23,8 @@ interface DashboardViewProps {
   projects?: ProjectSummary[];
   onSelectJob?: (jobId: string) => void;
   onSelectPlan?: (planId: string) => void;
+  /** Opens a mission, for the Decisions card's approval and review rows. */
+  onSelectMission?: (missionId: string) => void;
   /** Nav id from ShellLayout's nav items: "plans" | "review" | "jobs". */
   onNavigate?: (navId: string) => void;
   /** Opens the New Plan dialog, prefilled with what was typed into the composer. */
@@ -48,6 +51,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   projects = [],
   onSelectJob,
   onSelectPlan,
+  onSelectMission,
   onNavigate,
   onNewPlan,
   onStopAll,
@@ -66,10 +70,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return () => window.clearInterval(timer);
   }, []);
 
+  // Missions are not in the plan/job stores, so the Decisions card reads them itself, on the same
+  // 30s beat. A failed read keeps the last list rather than dropping the rows.
+  const [missions, setMissions] = React.useState<Mission[]>([]);
+  React.useEffect(() => {
+    let live = true;
+    const load = () =>
+      bridge
+        .listMissions()
+        .then((list) => live && setMissions(list))
+        .catch(() => {});
+    void load();
+    const timer = window.setInterval(load, 30_000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const now = Date.now();
   const lanes = buildFleet(jobs, now);
   const stats = buildFleetStats(jobs, now);
-  const decisions = buildDecisions(plans, jobs, now);
+  const decisions = buildDecisions(plans, jobs, now, missions);
   const events = buildActivity(jobs, analytics.mergedPrs);
   const stalled = lanes.filter((l) => l.state === "stalled").length;
 
@@ -80,6 +102,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const open = (target: string) => {
     if (target.startsWith("plan:")) onSelectPlan?.(target.slice(5));
     else if (target.startsWith("job:")) onSelectJob?.(target.slice(4));
+    else if (target.startsWith("mission:")) onSelectMission?.(target.slice(8));
   };
 
   const jobLabel = (j: Job) => j.planTitle || j.prompt || (j.type && enumLabels.jobType(j.type)) || j.project;

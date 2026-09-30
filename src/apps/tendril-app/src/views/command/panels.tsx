@@ -3,6 +3,8 @@ import {
   Check,
   ChevronDown,
   CircleX,
+  Rocket,
+  ShieldCheck,
   Clock,
   Eye,
   FileText,
@@ -286,6 +288,8 @@ const DECISION_STYLE: Record<
   Decision["kind"],
   { icon: React.ComponentType<{ className?: string }>; tile: string }
 > = {
+  missionApproval: { icon: ShieldCheck, tile: "bg-warning/13 text-warning" },
+  missionReview: { icon: Rocket, tile: "bg-info/14 text-info" },
   review: { icon: Eye, tile: "bg-info/14 text-info" },
   failed: { icon: CircleX, tile: "bg-destructive/14 text-destructive" },
   stalled: { icon: Clock, tile: "bg-warning/13 text-warning" },
@@ -376,13 +380,25 @@ export const DecisionsCard: React.FC<{
                       <PrimaryButton size="sm" onClick={() => onOpen(d.target)}>
                         {action}
                       </PrimaryButton>
+                      {d.planTarget && (
+                        <GhostButton size="sm" onClick={() => onOpen(d.planTarget!)}>
+                          {t("command.decisions.viewPlan")}
+                        </GhostButton>
+                      )}
                     </div>
                   )}
                 </div>
                 {!isSel && (
-                  <GhostButton size="sm" onClick={() => onOpen(d.target)}>
-                    {action}
-                  </GhostButton>
+                  <div className="flex shrink-0 gap-1.5">
+                    {d.planTarget && (
+                      <GhostButton size="sm" onClick={() => onOpen(d.planTarget!)}>
+                        {t("command.decisions.viewPlan")}
+                      </GhostButton>
+                    )}
+                    <GhostButton size="sm" onClick={() => onOpen(d.target)}>
+                      {action}
+                    </GhostButton>
+                  </div>
                 )}
               </div>
             );

@@ -320,7 +320,26 @@ pub struct MilestoneInput {
     pub spec: String,
     #[serde(default)]
     pub acceptance: Vec<String>,
+    /// The ordered steps; ids (`M2.1`, …) are assigned on save.
+    #[serde(default)]
+    pub tasks: Vec<TaskInput>,
+    #[serde(default)]
+    pub provides: Vec<ContractItem>,
+    #[serde(default)]
+    pub consumes: Vec<String>,
 }
+
+/// A task as the orchestrator writes it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TaskInput {
+    pub title: String,
+    #[serde(rename = "doneWhen", alias = "done_when", default)]
+    pub done_when: String,
+}
+
+/// The fewest tasks a milestone may be broken into: one task is the milestone again, not a breakdown.
+pub const MIN_TASKS: usize = 2;
+pub const MAX_TASKS: usize = 10;
 
 /// Which milestones a `set-milestones` call replaces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -370,6 +389,21 @@ pub fn parse_milestones(raw: &str) -> Result<Vec<MilestoneInput>> {
         if m.acceptance.iter().all(|a| a.trim().is_empty()) {
             return Err(TendrilError::Validation(format!("Milestone '{}' has no acceptance criteria", m.title)));
         }
+        let tasks = m.tasks.iter().filter(|t| !t.title.trim().is_empty()).count();
+        if !(MIN_TASKS..=MAX_TASKS).contains(&tasks) {
+            return Err(TendrilError::Validation(format!(
+                "Milestone '{}' has {} tasks; break it into {}–{} ordered tasks (or split the milestone)",
+                m.title, tasks, MIN_TASKS, MAX_TASKS
+            )));
+        }
+        for item in &m.provides {
+            if item.name.trim().is_empty() || item.signature.trim().is_empty() {
+                return Err(TendrilError::Validation(format!(
+                    "Milestone '{}' provides an item without a name and signature; every contract item needs both",
+                    m.title
+                )));
+            }
+        }
     }
     Ok(list)
 }
@@ -418,9 +452,38 @@ pub fn set_milestones(
                 .map(|a| a.trim().to_string())
                 .filter(|a| !a.is_empty())
                 .collect();
+            ms.tasks = input
+                .tasks
+                .iter()
+                .filter(|t| !t.title.trim().is_empty())
+                .enumerate()
+                .map(|(i, t)| MilestoneTask {
+                    id: format!("{}.{}", id, i + 1),
+                    title: t.title.trim().to_string(),
+                    done_when: t.done_when.trim().to_string(),
+                    done: false,
+                })
+                .collect();
+            ms.provides = input
+                .provides
+                .iter()
+                .map(|c| ContractItem {
+                    name: c.name.trim().to_string(),
+                    kind: c.kind.trim().to_string(),
+                    signature: c.signature.trim().to_string(),
+                    location: c.location.trim().to_string(),
+                })
+                .collect();
+            ms.consumes = input
+                .consumes
+                .iter()
+                .map(|c| c.trim().to_string())
+                .filter(|c| !c.is_empty())
+                .collect();
             m.milestones.push(ms);
             ids.push(id);
         }
+        check_contracts(&m.milestones)?;
         m.log(None, format!("Milestones set ({:?}): {}", scope, ids.join(", ")));
         Ok(ids)
     })?;
@@ -433,6 +496,72 @@ pub fn set_milestones(
         }
     }
     Ok(ids)
+}
+
+/// Every name a milestone consumes must be provided by a milestone before it (one that has not been
+/// dropped), and no name may be provided twice. Milestones run in order on one branch, so "before"
+/// is the only direction a dependency can point.
+pub fn check_contracts(milestones: &[Milestone]) -> Result<()> {
+    let mut provided: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for ms in milestones.iter().filter(|ms| ms.state != MilestoneState::Skipped) {
+        for name in &ms.consumes {
+            if !provided.contains_key(&name.to_lowercase()) {
+                return Err(TendrilError::Validation(format!(
+                    "{} consumes '{}', but no earlier milestone provides it. Add it to an earlier milestone's provides, or reorder.",
+                    ms.id, name
+                )));
+            }
+        }
+        for item in &ms.provides {
+            if let Some(owner) = provided.insert(item.name.to_lowercase(), ms.id.clone()) {
+                return Err(TendrilError::Validation(format!(
+                    "'{}' is provided by both {} and {}; give each contract item one owner",
+                    item.name, owner, ms.id
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// What a milestone may rely on: every earlier, un-dropped milestone's contract item it consumes.
+pub fn consumed_items(mission: &MissionYaml, milestone: &Milestone) -> Vec<(String, ContractItem)> {
+    let wanted: Vec<String> = milestone.consumes.iter().map(|c| c.to_lowercase()).collect();
+    mission
+        .milestones
+        .iter()
+        .take_while(|ms| ms.id != milestone.id)
+        .filter(|ms| ms.state != MilestoneState::Skipped)
+        .flat_map(|ms| ms.provides.iter().map(move |p| (ms.id.clone(), p.clone())))
+        .filter(|(_, p)| wanted.contains(&p.name.to_lowercase()))
+        .collect()
+}
+
+/// Ticks a task off (or back on). The worker calls this as it finishes each task, which is what the
+/// UI's live checklist and a resumed run after a rate limit both read.
+pub fn set_task_done(folder: &Path, task_id: &str, done: bool) -> Result<()> {
+    update_mission(folder, |m| {
+        let task_id = task_id.trim();
+        let milestone_id = task_id.split('.').next().unwrap_or_default().to_string();
+        let ms = m
+            .milestone_mut(&milestone_id)
+            .ok_or_else(|| TendrilError::Mission(format!("No milestone {} (task ids look like M2.3)", milestone_id)))?;
+        let task = ms
+            .tasks
+            .iter_mut()
+            .find(|t| t.id.eq_ignore_ascii_case(task_id))
+            .ok_or_else(|| TendrilError::Mission(format!("{} has no task {}", milestone_id, task_id)))?;
+        if task.done == done {
+            return Ok(());
+        }
+        task.done = done;
+        let title = task.title.clone();
+        m.log(
+            Some(&milestone_id),
+            format!("Task {} {}: {}", task_id, if done { "done" } else { "reopened" }, title),
+        );
+        Ok(())
+    })
 }
 
 /// Records the orchestrator's decision for the step it is running.

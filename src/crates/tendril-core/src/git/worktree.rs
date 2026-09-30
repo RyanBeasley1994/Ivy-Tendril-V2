@@ -24,6 +24,9 @@ pub struct WorktreeCreation {
     pub branch: String,
     pub repo: PathBuf,
     pub reused: bool,
+    /// The mission's shared checkout rather than one of the plan's own: it belongs to (and is
+    /// registered on) the integration plan, so callers must not register it on this plan.
+    pub shared: bool,
 }
 
 pub fn derive_branch_name(plan_folder: &Path) -> String {
@@ -67,6 +70,11 @@ pub fn add_worktree(
     let worktree_path = plan_folder
         .join("Worktrees")
         .join(derive_worktree_relative_path(repo_path));
+
+    // A mission milestone never gets a checkout of its own: it works in the mission's shared one.
+    if let Some(shared) = crate::missions::shared_worktree::for_milestone_plan(repo_path, plan_folder)? {
+        return Ok(shared);
+    }
 
     let result = add_worktree_inner(repo_path, plan_folder, base_branch, mode, log);
 
@@ -115,6 +123,7 @@ fn add_worktree_inner(
             );
         }
         return Ok(WorktreeCreation {
+            shared: false,
             path: worktree_path,
             branch: branch_name,
             repo: repo_path.to_path_buf(),
@@ -207,6 +216,7 @@ fn add_worktree_inner(
     }
 
     Ok(WorktreeCreation {
+        shared: false,
         path: worktree_path,
         branch: branch_name,
         repo: repo_path.to_path_buf(),
@@ -342,7 +352,17 @@ pub fn enumerate_worktree_directories(worktrees_dir: &Path) -> Vec<PathBuf> {
 /// Removes one worktree directory, escalating from `git worktree remove --force` to a
 /// direct delete. Shared by [`remove_worktree`] and [`cleanup_worktrees`] so both use the
 /// same ladder; branch deletion is the caller's business.
+/// A symlink, not a directory: a mission milestone's link to the shared checkout.
+pub fn is_link(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink())
+}
+
 pub fn remove_worktree_directory(worktree_path: &Path) -> Result<RemoveOutcome> {
+    // Only ever the link: `git worktree remove` would resolve it and delete the shared checkout.
+    if is_link(worktree_path) {
+        std::fs::remove_file(worktree_path)?;
+        return Ok(RemoveOutcome::Removed(worktree_path.to_path_buf()));
+    }
     if !worktree_path.exists() {
         return Ok(RemoveOutcome::NotFound(worktree_path.to_path_buf()));
     }

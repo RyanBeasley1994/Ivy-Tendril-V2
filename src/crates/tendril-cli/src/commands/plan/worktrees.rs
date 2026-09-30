@@ -83,7 +83,9 @@ pub(super) fn add(
 
     // The checkout is what matters; a registry write failure is not worth failing the
     // command for, because the reaper also finds worktrees by directory scan.
-    if let Err(e) = register_worktree(
+    if creation.shared {
+        // The mission's shared checkout, already registered on its integration plan.
+    } else if let Err(e) = register_worktree(
         &folder,
         PlanWorktreeEntry {
             repo: creation.repo.to_string_lossy().to_string(),

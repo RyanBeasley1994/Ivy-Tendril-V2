@@ -536,7 +536,7 @@ export class ChatStore {
 
   /** What each profile tier gives `agentId`: see {@link resolveChatProfiles}. */
   public profilesFor(agentId: string): ResolvedProfiles {
-    return resolveChatProfiles(this.profileConfig, agentId);
+    return resolveChatProfiles(this.profileConfig, agentId, this.agentById(agentId));
   }
 
   /** The profile an agent runs on: the one picked for it, else Balanced. */

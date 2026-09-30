@@ -318,7 +318,7 @@
     "defaultPort": {
       "label": "Default Port",
       "invalid": "Default Port must be between 1 and 65535.",
-      "hint": "Preferred port. If it is already taken, Tendril allocates a free one instead."
+      "hint": "Preferred port. If it is already taken, Forge allocates a free one instead."
     },
     "description": {
       "label": "Description",

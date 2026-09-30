@@ -35,7 +35,7 @@
       "label": "承認",
       "tooltip": "{{project}} でこの Issue の計画を開始"
     },
-    "fireOff": "Tendril で開始",
+    "fireOff": "Forge で開始",
     "noDescription": "説明はありません。"
   },
   "planRevisionSheet": {
@@ -208,9 +208,9 @@
   "updateTendril": {
     "cancel": "キャンセル",
     "retry": "再試行",
-    "title": "Tendril をアップデート",
+    "title": "Forge をアップデート",
     "available": "<strong>v{{latest}}</strong> を利用できます（現在は v{{current}}）。",
-    "selfUpdateHint": "「今すぐアップデート」をクリックすると、アップデートが自動的にダウンロードされてインストールされます。完了すると Tendril は自動的に再起動します。",
+    "selfUpdateHint": "「今すぐアップデート」をクリックすると、アップデートが自動的にダウンロードされてインストールされます。完了すると Forge は自動的に再起動します。",
     "manualHint": "このインストール方法では自動アップデートを利用できません。アップデートするには、ターミナルで次のコマンドを実行してください：",
     "failedTitle": "アップデートに失敗しました",
     "updating": "アップデート中...",

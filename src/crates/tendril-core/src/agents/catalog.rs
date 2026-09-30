@@ -118,6 +118,14 @@ pub struct AgentOption {
     /// The ladder for a model that carries none of its own, and for `default`. V1's
     /// `IAgentDescriptor.SupportedEfforts`.
     pub efforts: Vec<EffortOption>,
+    /// The model the agent's own config runs on this machine when that is not the vendor's (Codex
+    /// on a local LLM, see [`super::codex_config`]). Set, it is also `default_model`, and profile
+    /// tiers fall back to it instead of the built-in vendor ids.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_model: Option<String>,
+    /// That config's provider, for labels: `Ollama`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_provider: Option<String>,
 }
 
 /// The id an **effort** list starts with, and the value `config.yaml` uses for a profile field nobody
@@ -723,7 +731,34 @@ fn build_agent(def: &AgentDef) -> AgentOption {
         default_model,
         supports_effort: def.supports_effort(),
         efforts: agent_efforts,
+        local_model: None,
+        local_provider: None,
     }
+}
+
+/// Folds what Codex's own `config.toml` runs into its row, when that is a non-OpenAI provider: the
+/// configured model becomes the first row and the default, so the chat picker shows it and launches
+/// with it rather than an OpenAI id the local endpoint cannot serve.
+pub fn apply_codex_local_config(agents: &mut [AgentOption]) {
+    let Some(local) = super::codex_config::codex_custom_provider() else {
+        return;
+    };
+    let Some(codex) = agents.iter_mut().find(|agent| agent.id == "codex") else {
+        return;
+    };
+    codex.local_provider = Some(local.provider_name.clone());
+    let Some(model) = local.model else { return };
+    codex.models.retain(|row| row.id != model);
+    codex.models.insert(
+        0,
+        ModelOption {
+            id: model.clone(),
+            display_name: format!("{model} ({})", local.provider_name),
+            efforts: codex.efforts.clone(),
+        },
+    );
+    codex.default_model = model.clone();
+    codex.local_model = Some(model);
 }
 
 /// The model an agent launches with when nobody has chosen one — V1 `ChatApp.ResolveModel`'s

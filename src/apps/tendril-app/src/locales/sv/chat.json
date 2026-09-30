@@ -30,7 +30,7 @@
     "override_terminal": "Ny terminalchatt"
   },
   "planChat": {
-    "headline": "Be Tendril att ändra vad som helst"
+    "headline": "Be Forge att ändra vad som helst"
   },
   "systemEvent": {
     "linked": {
@@ -124,7 +124,7 @@
   "composer": {
     "attach": "Bifoga fil",
     "promptLabel": "Chattprompt",
-    "placeholder": "Fråga Tendril vad som helst…",
+    "placeholder": "Fråga Forge vad som helst…",
     "voice": "Röstinmatning",
     "voiceErrorDismiss": "Stäng felet för röstinmatning",
     "nothingTranscribed": "Inget transkriberades. Försök igen.",
@@ -184,7 +184,7 @@
       },
       "addProject": {
         "label": "Lägg till ett nytt projekt",
-        "prompt": "Lägg till ett nytt projekt i min Tendril"
+        "prompt": "Lägg till ett nytt projekt i min Forge"
       },
       "editVerifications": {
         "label": "Redigera verifieringar",

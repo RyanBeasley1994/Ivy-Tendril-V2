@@ -168,6 +168,19 @@ fn reap_one(
     let label = format!("{}/{}", folder_name(plan_folder), folder_name(&target.path));
     let git_file_exists = target.path.join(".git").is_file();
 
+    // A mission milestone's `Worktrees/<repo>` is a link to the mission's shared checkout. Removing
+    // the link is the whole job: following it would take the shared checkout and its branch with it.
+    if crate::git::worktree::is_link(&target.path) {
+        match std::fs::remove_file(&target.path) {
+            Ok(()) => {
+                let _ = unregister_worktree(plan_folder, &target.path);
+                report.reclaimed.push(label);
+            }
+            Err(e) => report.skipped.push((label, format!("remove failed: {}", e))),
+        }
+        return;
+    }
+
     if let Some(log) = &cfg.log {
         log.reap_attempt(plan_id, &target.path, "reaper", git_file_exists);
     }

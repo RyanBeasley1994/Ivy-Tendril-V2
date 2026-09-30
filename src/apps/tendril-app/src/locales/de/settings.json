@@ -46,11 +46,11 @@
   },
   "vaultSection": {
     "title": "Team Vault",
-    "hint": "Teilen und synchronisieren Sie Tendril-Projekte, benutzerdefinierte Skills, MCP-Server und Sicherheitsregeln über ein versioniertes Git-Repository mit Ihrem Team."
+    "hint": "Teilen und synchronisieren Sie Forge-Projekte, benutzerdefinierte Skills, MCP-Server und Sicherheitsregeln über ein versioniertes Git-Repository mit Ihrem Team."
   },
   "notifications": {
     "title": "Benachrichtigungen",
-    "hint": "Legen Sie fest, wie Tendril Sie über abgeschlossene und fehlgeschlagene Jobs sowie andere Ereignisse benachrichtigt.",
+    "hint": "Legen Sie fest, wie Forge Sie über abgeschlossene und fehlgeschlagene Jobs sowie andere Ereignisse benachrichtigt.",
     "desktopLabel": "Desktop-Benachrichtigungen aktivieren",
     "saved": "Benachrichtigungseinstellungen gespeichert"
   },
@@ -64,7 +64,7 @@
     "minutesSuffix": "min",
     "betaHeading": "Beta-Funktionen",
     "betaLabel": "Beta-Funktionen aktivieren",
-    "restartNote": "Damit die Änderungen wirksam werden, muss Tendril neu gestartet werden.",
+    "restartNote": "Damit die Änderungen wirksam werden, muss Forge neu gestartet werden.",
     "saved": "Einstellungen gespeichert und angewendet"
   },
   "diagnostics": {
@@ -92,7 +92,7 @@
   },
   "newsletterSection": {
     "title": "Newsletter",
-    "hint": "Abonnieren Sie den Newsletter von Ivy & Tendril, um Updates, Funktions-Highlights und Release-Hinweise zu erhalten."
+    "hint": "Abonnieren Sie den Newsletter von Forge, um Updates, Funktions-Highlights und Release-Hinweise zu erhalten."
   },
   "promptwares": {
     "title": "Workflow-Agenten",
@@ -129,14 +129,14 @@
   "appearance": {
     "language": {
       "title": "Sprache",
-      "hint": "Wählen Sie die Sprache von Tendril. „Systemstandard“ folgt Ihrem Betriebssystem.",
+      "hint": "Wählen Sie die Sprache von Forge. „Systemstandard“ folgt Ihrem Betriebssystem.",
       "label": "Sprache",
       "system": "Systemstandard",
       "saved": "Sprache auf {{language}} gesetzt",
-      "loadFailed": "{{language}} konnte nicht geladen werden. Tendril bleibt in der bisherigen Sprache."
+      "loadFailed": "{{language}} konnte nicht geladen werden. Forge bleibt in der bisherigen Sprache."
     },
     "title": "Erscheinungsbild",
-    "hint": "Wählen Sie das Erscheinungsbild von Tendril. „System“ folgt der Einstellung Ihres Betriebssystems.",
+    "hint": "Wählen Sie das Erscheinungsbild von Forge. „System“ folgt der Einstellung Ihres Betriebssystems.",
     "themeMode": {
       "light": "Hell",
       "dark": "Dunkel",
@@ -147,7 +147,7 @@
     },
     "theme": {
       "title": "Design",
-      "hint": "Wählen Sie eine Farbschema-Vorlage für Tendril.",
+      "hint": "Wählen Sie eine Farbschema-Vorlage für Forge.",
       "label": "Design",
       "vaultOption": "{{name}} (Vault: {{vault}})",
       "vaultFallback": "Team",
@@ -231,9 +231,9 @@
   },
   "security": {
     "title": "Sicherheit & Tunneling",
-    "hint": "Verlangen Sie ein Passwort für den Zugriff auf Tendril, und geben Sie diese Instanz über einen öffentlichen Tunnel frei.",
+    "hint": "Verlangen Sie ein Passwort für den Zugriff auf Forge, und geben Sie diese Instanz über einen öffentlichen Tunnel frei.",
     "cloudflared": {
-      "intro": "Beide Tunnel unten verwenden <code>cloudflared</code> von Cloudflare. Es ist auf dem Rechner, auf dem Tendril läuft, noch nicht installiert.",
+      "intro": "Beide Tunnel unten verwenden <code>cloudflared</code> von Cloudflare. Es ist auf dem Rechner, auf dem Forge läuft, noch nicht installiert.",
       "configuredPathTitle": "Konfigurierter Pfad",
       "installingTitle": "Wird installiert",
       "downloadingPercent": "{{asset}} wird heruntergeladen – {{percent, percent}}",
@@ -252,7 +252,7 @@
     },
     "session": {
       "heading": "Sitzungsschutz",
-      "blurb": "Für den Zugriff auf die Tendril-Oberfläche ein Passwort verlangen.",
+      "blurb": "Für den Zugriff auf die Forge-Oberfläche ein Passwort verlangen.",
       "enableLabel": "Passwortschutz aktivieren",
       "currentLabel": "Aktuelles Passwort",
       "currentPlaceholder": "Aktuelles Passwort…",
@@ -267,7 +267,7 @@
     "tunnel": {
       "full": {
         "heading": "Tunnel",
-        "blurb": "Geben Sie Ihre Tendril-Instanz über einen Cloudflare-Tunnel im Internet frei. Nützlich, um von Mobilgeräten auf Tendril zuzugreifen oder es mit anderen zu teilen.",
+        "blurb": "Geben Sie Ihre Forge-Instanz über einen Cloudflare-Tunnel im Internet frei. Nützlich, um von Mobilgeräten auf Forge zuzugreifen oder es mit anderen zu teilen.",
         "startingTitle": "Tunnel wird gestartet",
         "activeTitle": "Tunnel aktiv",
         "activeBody": "Ihr Tunnel läuft und ist unter der folgenden URL erreichbar.",
@@ -279,7 +279,7 @@
       },
       "share": {
         "heading": "Freigabe-Tunnel",
-        "blurb": "Geben Sie eine Version von Tendril frei, die nur Lesen und Kommentieren erlaubt, damit Teammitglieder Pläne und Entwürfe prüfen können.",
+        "blurb": "Geben Sie eine Version von Forge frei, die nur Lesen und Kommentieren erlaubt, damit Teammitglieder Pläne und Entwürfe prüfen können.",
         "startingTitle": "Freigabe-Tunnel wird gestartet",
         "activeTitle": "Freigabe-Tunnel aktiv",
         "activeBody": "Ihr Freigabe-Tunnel läuft und ist unter der folgenden URL erreichbar.",
@@ -290,7 +290,7 @@
         "stopFailed": "Freigabe-Tunnel konnte nicht gestoppt werden: {{error}}"
       },
       "warningTitle": "Damit wird alles veröffentlicht",
-      "warningBody": "Ein Tunnel mit Vollzugriff stellt diese gesamte Tendril-Instanz unter einer öffentlichen URL bereit. Wer die Adresse und das Sitzungspasswort kennt, kann sie so nutzen, als säße er an diesem Rechner. Deshalb ist ein Passwort erforderlich, bevor ein solcher Tunnel startet. Der Freigabe-Tunnel unten ist die schreibgeschützte Option.",
+      "warningBody": "Ein Tunnel mit Vollzugriff stellt diese gesamte Forge-Instanz unter einer öffentlichen URL bereit. Wer die Adresse und das Sitzungspasswort kennt, kann sie so nutzen, als säße er an diesem Rechner. Deshalb ist ein Passwort erforderlich, bevor ein solcher Tunnel startet. Der Freigabe-Tunnel unten ist die schreibgeschützte Option.",
       "deactivatedTitle": "Deaktiviert",
       "copiedTitle": "URL kopiert",
       "copyFailed": "URL konnte nicht kopiert werden: {{error}}",
@@ -323,7 +323,7 @@
   },
   "modelCatalog": {
     "title": "Modellkatalog",
-    "hint": "Tendril führt die kuratierte Modelltabelle mit einem auf der Festplatte zwischengespeicherten Snapshot von models.dev zusammen.",
+    "hint": "Forge führt die kuratierte Modelltabelle mit einem auf der Festplatte zwischengespeicherten Snapshot von models.dev zusammen.",
     "refresh": "Jetzt aktualisieren",
     "refreshing": "Wird aktualisiert…",
     "refreshed_one": "Aktualisiert: {{count}} Modell von models.dev",
@@ -362,7 +362,7 @@
   },
   "remoteServer": {
     "title": "Remote-Server",
-    "hint": "Tendril auf einem anderen Rechner, etwa einem VPS, statt auf diesem verwenden. Auf dem Server muss ein Passwort gesetzt sein (Sitzungsschutz).",
+    "hint": "Forge auf einem anderen Rechner, etwa einem VPS, statt auf diesem verwenden. Auf dem Server muss ein Passwort gesetzt sein (Sitzungsschutz).",
     "urlLabel": "Serveradresse",
     "urlPlaceholder": "203.0.113.7 oder https://mein-server.example.com",
     "urlHint": "Eine IP oder ein Hostname verwendet Port 5010. Für einen Tunnel oder Reverse-Proxy https:// angeben.",
@@ -373,11 +373,11 @@
     "disconnect": "Trennen und diesen Rechner verwenden",
     "connectedAs": "Verbunden als {{username}}",
     "notAuthenticated": "Nicht angemeldet: {{error}}",
-    "restarting": "Tendril wird neu gestartet…"
+    "restarting": "Forge wird neu gestartet…"
   },
   "git": {
     "title": "Git & Branches",
-    "hint": "Wie Tendril die Branches von Plänen und Missionen benennt und wie Agenten committen.",
+    "hint": "Wie Forge die Branches von Plänen und Missionen benennt und wie Agenten committen.",
     "prefixLabel": "Branch-Präfix",
     "prefixHint": "Wofür {prefix} steht. Standard: tendril/.",
     "templateLabel": "Plan-Branch",
@@ -411,7 +411,7 @@
     "save": "Speichern",
     "saved": "Branch-Einstellungen gespeichert",
     "nativeLabel": "Pull Requests ohne Agent erstellen",
-    "nativeHint": "Tendril pusht den Branch, erstellt oder aktualisiert den PR, wendet deine Optionen an und merged selbst – in Sekunden und ohne Tokens. Der Agent wird nur für Merge-Konflikte oder ungewöhnliche Branches gerufen. Ausschalten, um jeden PR über den Agenten zu erstellen.",
+    "nativeHint": "Forge pusht den Branch, erstellt oder aktualisiert den PR, wendet deine Optionen an und merged selbst – in Sekunden und ohne Tokens. Der Agent wird nur für Merge-Konflikte oder ungewöhnliche Branches gerufen. Ausschalten, um jeden PR über den Agenten zu erstellen.",
     "skipHooksLabel": "Pre-Push-Hooks beim Erstellen von PRs überspringen",
     "skipHooksHint": "Pusht Plan-Branches mit --no-verify und HUSKY=0, damit ein Repo-Hook, der die ganze Testsuite erneut ausführt, den PR nicht blockiert. Die Prüfungen des Plans sind bereits bestanden. Betrifft nur den Push von „PR erstellen“: Commits behalten ihre Hooks, deine eigenen Pushes bleiben unverändert."
   }

@@ -6,6 +6,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 pub const MISSION_SCHEMA_VERSION: i32 = 1;
 
@@ -156,6 +157,68 @@ pub struct Milestone {
     /// Cost of every job run for it, in USD.
     #[serde(default)]
     pub cost: f64,
+    /// The small, ordered steps the milestone is carried out in. The worker ticks each off with
+    /// `tendril mission task` as it finishes it; the milestone is still one commit.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tasks: Vec<MilestoneTask>,
+    /// What this milestone makes available to later ones: its half of the contract.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub provides: Vec<ContractItem>,
+    /// Names of items earlier milestones provide that this one builds on.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub consumes: Vec<String>,
+    /// Where the shared mission branch stood in each repo when the milestone first started, keyed by
+    /// repo path. Its work is the diff from here, and a re-plan that drops it resets back to here.
+    #[serde(rename = "baseCommits", default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub base_commits: BTreeMap<String, String>,
+}
+
+/// One step of a milestone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MilestoneTask {
+    /// `M2.3`: the milestone's id and the task's position.
+    pub id: String,
+    pub title: String,
+    /// How the worker (and the judge) know it is finished.
+    #[serde(rename = "doneWhen", default)]
+    pub done_when: String,
+    #[serde(default)]
+    pub done: bool,
+}
+
+/// One thing a milestone promises later milestones: an API, a type, an endpoint, a schema, a file.
+/// Later milestones name it in `consumes`, the worker must deliver it as written, and the judge
+/// holds the milestone to it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContractItem {
+    /// A unique handle, e.g. `SessionStore` or `POST /api/sessions`.
+    pub name: String,
+    /// `function`, `type`, `endpoint`, `schema`, `module`, `file`, `event`, `config`…
+    #[serde(default)]
+    pub kind: String,
+    /// The exact shape: a signature, a route with its request/response, a table's columns.
+    #[serde(default)]
+    pub signature: String,
+    /// Where it lives, when that is part of the promise (`src/auth/session.rs`).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub location: String,
+}
+
+impl ContractItem {
+    /// One line for plans, prompts and the CLI: `SessionStore (type) at src/auth.rs: struct …`.
+    pub fn describe(&self) -> String {
+        let mut out = self.name.clone();
+        if !self.kind.is_empty() {
+            out.push_str(&format!(" ({})", self.kind));
+        }
+        if !self.location.is_empty() {
+            out.push_str(&format!(" at {}", self.location));
+        }
+        if !self.signature.is_empty() {
+            out.push_str(&format!(": {}", self.signature));
+        }
+        out
+    }
 }
 
 impl Milestone {
@@ -173,6 +236,10 @@ impl Milestone {
             summary: None,
             commits: Vec::new(),
             cost: 0.0,
+            tasks: Vec::new(),
+            provides: Vec::new(),
+            consumes: Vec::new(),
+            base_commits: BTreeMap::new(),
         }
     }
 }
@@ -434,6 +501,29 @@ pub struct MissionYaml {
     pub summary: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub log: Vec<MissionLogEntry>,
+    /// Set while the mission is waiting out a coding agent's rate or usage limit. The driver re-runs
+    /// the interrupted step once `until` passes; waiting never uses up an attempt.
+    #[serde(rename = "rateLimit", default, skip_serializing_if = "Option::is_none")]
+    pub rate_limit: Option<RateLimitWait>,
+    /// Consecutive rate-limited jobs, for the back-off. Reset when a job gets through.
+    #[serde(rename = "rateLimitStreak", default, skip_serializing_if = "is_zero")]
+    pub rate_limit_streak: u32,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
+/// A step the mission will re-run once a rate limit has passed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RateLimitWait {
+    pub until: DateTime<Utc>,
+    pub step: MissionStep,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub milestone: Option<String>,
+    /// What the agent reported, for the UI.
+    #[serde(default)]
+    pub reason: String,
 }
 
 impl MissionYaml {
@@ -462,6 +552,8 @@ impl MissionYaml {
             cost: 0.0,
             summary: None,
             log: Vec::new(),
+            rate_limit: None,
+            rate_limit_streak: 0,
         }
     }
 

@@ -1,7 +1,7 @@
 {
   "section": {
     "title": "Agent de codage",
-    "hint": "Tendril se connecte à l'agent de codage IA que vous avez configuré ou à des moteurs open source fournis, comme OpenCode.",
+    "hint": "Forge se connecte à l'agent de codage IA que vous avez configuré ou à des moteurs open source fournis, comme OpenCode.",
     "unknownAgent": "Agent de codage inconnu : « {{value}} ». Agents valides : {{agents}}"
   },
   "byo": {
@@ -70,7 +70,7 @@
     "apiKey": "2. Clé API",
     "or": "ou",
     "then": "Ensuite, à l'invite : <code>{{command}}</code>",
-    "binary": "Tendril recherche <code>{{binary}}</code> dans votre PATH."
+    "binary": "Forge recherche <code>{{binary}}</code> dans votre PATH."
   },
   "actions": {
     "test": "Tester l'agent",

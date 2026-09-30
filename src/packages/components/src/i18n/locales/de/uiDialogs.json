@@ -25,7 +25,7 @@
     "title": "Einstellungen für automatisches Annehmen",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
-    "intro": "Importiert neu zugewiesene GitHub-Issues in regelmäßigen Abständen automatisch als Tendril-Pläne.",
+    "intro": "Importiert neu zugewiesene GitHub-Issues in regelmäßigen Abständen automatisch als Forge-Pläne.",
     "autoAcceptLabel": "Zugewiesene Issues automatisch annehmen",
     "intervalLabel": "Prüfintervall",
     "intervalOption_one": "{{count}} Minute",
@@ -125,10 +125,10 @@
     "intro": "Dadurch werden das Projekt <name>{{name}}</name> und alles, was ihm auf der Festplatte gehört, dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
     "plans": "Alle Pläne dieses Projekts mit ihren Revisionen und Verifikationsberichten.",
     "folder": "<code>{{root}}</code><code>{{name}}</code> – die geklonten Repositories, Skills, MCP-Definitionen und Erinnerungen des Projekts, einschließlich aller Commits, die nie gepusht wurden.",
-    "database": "Seine Pläne, Jobs und Empfehlungen in der Datenbank von Tendril.",
+    "database": "Seine Pläne, Jobs und Empfehlungen in der Datenbank von Forge.",
     "config": "Sein Eintrag in config.yaml.",
     "logsKept": "Job-Logs bleiben erhalten: Sie werden nach Job-ID statt nach Projekt gespeichert.",
-    "removeInstead": "Um das Projekt aus Tendril zu entfernen, ohne etwas auf der Festplatte anzutasten, brechen Sie ab und verwenden Sie stattdessen „Projekt entfernen“.",
+    "removeInstead": "Um das Projekt aus Forge zu entfernen, ohne etwas auf der Festplatte anzutasten, brechen Sie ab und verwenden Sie stattdessen „Projekt entfernen“.",
     "typeToConfirm": "Geben Sie zur Bestätigung <name>{{name}}</name> ein",
     "typeToConfirmAriaLabel": "Geben Sie zur Bestätigung {{name}} ein"
   },
@@ -191,7 +191,7 @@
   },
   "noProjects": {
     "title": "Keine Projekte",
-    "description": "Jeder Plan gehört zu einem Projekt, und in diesem Tendril Home gibt es noch keines.",
+    "description": "Jeder Plan gehört zu einem Projekt, und in diesem Forge Home gibt es noch keines.",
     "openSettings": "Zu Projekten",
     "body": "Fügen Sie unter <location>Einstellungen → Projekte</location> ein Projekt hinzu – einen Namen, seine Repositories und die Verifikationen, die seine Pläne ausführen – und erstellen Sie den Plan dann erneut."
   },
@@ -252,7 +252,7 @@
     "title": "Projekt entfernen",
     "confirm": "Projekt entfernen",
     "question": "Möchten Sie das Projekt <name>{{name}}</name> wirklich entfernen?",
-    "consequence": "Dadurch wird das Projekt aus config.yaml entfernt. Seine geklonten Repositories, Planordner und sein Verlauf bleiben auf der Festplatte, es wird also nichts von Ihrem Rechner gelöscht – aber Tendril listet das Projekt nicht mehr auf, und seine bestehenden Pläne und Jobs verweisen auf ein Projekt, das Tendril nicht mehr kennt."
+    "consequence": "Dadurch wird das Projekt aus config.yaml entfernt. Seine geklonten Repositories, Planordner und sein Verlauf bleiben auf der Festplatte, es wird also nichts von Ihrem Rechner gelöscht – aber Forge listet das Projekt nicht mehr auf, und seine bestehenden Pläne und Jobs verweisen auf ein Projekt, das Forge nicht mehr kennt."
   },
   "shareTunnel": {
     "title": "Arbeit teilen",
@@ -352,7 +352,7 @@
       "validator": "Validierer"
     },
     "machineLabel": "Erstellen auf",
-    "machineUnavailable": "Dort läuft kein Tendril-Dienst"
+    "machineUnavailable": "Dort läuft kein Forge-Dienst"
   },
   "recommendationNote": {
     "submit": "Absenden",

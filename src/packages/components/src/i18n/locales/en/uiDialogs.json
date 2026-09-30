@@ -25,7 +25,7 @@
     "title": "Auto-Accept Settings",
     "save": "Save",
     "saving": "Saving…",
-    "intro": "Automatically import newly assigned GitHub issues into Tendril plans at regular intervals.",
+    "intro": "Automatically import newly assigned GitHub issues into Forge plans at regular intervals.",
     "autoAcceptLabel": "Auto-Accept Assigned Issues",
     "intervalLabel": "Check Interval",
     "intervalOption_one": "{{count}} minute",
@@ -125,10 +125,10 @@
     "intro": "This permanently deletes project <name>{{name}}</name> and everything it owns on disk. It cannot be undone.",
     "plans": "Every plan of this project, with its revisions and verification reports.",
     "folder": "<code>{{root}}</code><code>{{name}}</code> — its cloned repositories, skills, MCP definitions and memories, including any commit that was never pushed.",
-    "database": "Its plans, jobs and recommendations in Tendril's database.",
+    "database": "Its plans, jobs and recommendations in Forge's database.",
     "config": "Its entry in config.yaml.",
     "logsKept": "Job logs are kept: they are stored by job id rather than by project.",
-    "removeInstead": "To remove the project from Tendril without touching anything on disk, cancel and use Remove Project instead.",
+    "removeInstead": "To remove the project from Forge without touching anything on disk, cancel and use Remove Project instead.",
     "typeToConfirm": "Type <name>{{name}}</name> to confirm",
     "typeToConfirmAriaLabel": "Type {{name}} to confirm"
   },
@@ -191,7 +191,7 @@
   },
   "noProjects": {
     "title": "No Projects",
-    "description": "Every plan belongs to a project, and this Tendril home has none yet.",
+    "description": "Every plan belongs to a project, and this Forge home has none yet.",
     "openSettings": "Go to Projects",
     "body": "Add a project under <location>Settings → Projects</location> — a name, its repositories and the verifications its plans run — then create the plan again."
   },
@@ -252,7 +252,7 @@
     "title": "Remove Project",
     "confirm": "Remove Project",
     "question": "Are you sure you want to remove project <name>{{name}}</name>?",
-    "consequence": "This removes the project from config.yaml. Its cloned repositories, plan folders and history stay on disk, so nothing is deleted from your machine - but Tendril will stop listing the project, and its existing plans and jobs will name a project it no longer knows."
+    "consequence": "This removes the project from config.yaml. Its cloned repositories, plan folders and history stay on disk, so nothing is deleted from your machine - but Forge will stop listing the project, and its existing plans and jobs will name a project it no longer knows."
   },
   "shareTunnel": {
     "title": "Share Work",
@@ -352,7 +352,7 @@
       "validator": "Validator"
     },
     "machineLabel": "Create on",
-    "machineUnavailable": "No Tendril daemon is running there",
+    "machineUnavailable": "No Forge daemon is running there",
     "agents": "Agents",
     "defaultShort": "Default",
     "mixedAgents_one": "{{count}} agent",

@@ -7,7 +7,7 @@
     "createProject": "创建项目"
   },
   "wizard": {
-    "title": "欢迎使用 Tendril",
+    "title": "欢迎使用 Forge",
     "stepsLabel": "设置步骤",
     "steps": {
       "codingAgent": "编程智能体",
@@ -35,11 +35,11 @@
   },
   "codingAgent": {
     "title": "您使用哪个编程智能体？",
-    "description": "Tendril 是一个编程编排器，运行在您自己的编程智能体之上。请选择您要使用的智能体："
+    "description": "Forge 是一个编程编排器，运行在您自己的编程智能体之上。请选择您要使用的智能体："
   },
   "prerequisites": {
-    "missing_other": "Tendril 需要 {{names, list}}，但尚未安装。请先安装，然后点击“重新检查”。",
-    "description": "Tendril 会在您的计算机上启动的工具。",
+    "missing_other": "Forge 需要 {{names, list}}，但尚未安装。请先安装，然后点击“重新检查”。",
+    "description": "Forge 会在您的计算机上启动的工具。",
     "recheck": "重新检查",
     "checking": "正在检查…",
     "empty": "未报告任何检查项。",
@@ -53,9 +53,9 @@
   },
   "dataStorage": {
     "title": "我们应将您的数据存储在哪里？",
-    "description": "Tendril 将您的配置和计划保存在此文件夹中。",
-    "homeLabel": "Tendril 主目录",
-    "homeHint": "此文件夹由正在运行的守护进程确定。如需更改位置，请在启动 Tendril 前设置 <code>{{envVar}}</code>。",
+    "description": "Forge 将您的配置和计划保存在此文件夹中。",
+    "homeLabel": "Forge 主目录",
+    "homeHint": "此文件夹由正在运行的守护进程确定。如需更改位置，请在启动 Forge 前设置 <code>{{envVar}}</code>。",
     "homeMissing": "请提供有效的路径。"
   },
   "repoPicker": {
@@ -69,7 +69,7 @@
   },
   "firstProject": {
     "title": "设置您的第一个项目",
-    "description": "项目将一个或多个仓库组织在一起，以便 Tendril 跨仓库规划和验证更改。",
+    "description": "项目将一个或多个仓库组织在一起，以便 Forge 跨仓库规划和验证更改。",
     "browse": "浏览",
     "browseTitle": "选择仓库文件夹",
     "browseUnavailable": "文件夹选择器不可用（{{error}}）。请直接输入路径。",
@@ -87,7 +87,7 @@
   },
   "agentRun": {
     "title": "正在设置您的项目",
-    "wizardHint": "Tendril 正在检测您的技术栈并配置智能体验证框架。这需要几分钟，不妨趁等待时来杯 ☕。",
+    "wizardHint": "Forge 正在检测您的技术栈并配置智能体验证框架。这需要几分钟，不妨趁等待时来杯 ☕。",
     "noRun": "此项目没有关联的设置运行。设置完成后，您可以在项目自己的页面中配置其验证和审查操作。",
     "timedOut": "设置超时。",
     "failed": "设置失败。"
@@ -108,7 +108,7 @@
   },
   "complete": {
     "title": "准备就绪！",
-    "description": "您的项目已配置完成。点击“完成”开始使用 Tendril。",
+    "description": "您的项目已配置完成。点击“完成”开始使用 Forge。",
     "newsletter": {
       "title": "新闻通讯",
       "description": "第一时间获知我们的新版本发布！"
@@ -116,7 +116,7 @@
   },
   "addProject": {
     "title": "添加项目",
-    "hint": "为项目命名，并将其指向一个或多个 Git 仓库。随后 Tendril 会检查这些仓库并配置审查框架。",
+    "hint": "为项目命名，并将其指向一个或多个 Git 仓库。随后 Forge 会检查这些仓库并配置审查框架。",
     "nameLabel": "名称",
     "namePlaceholder": "项目名称…",
     "creating": "正在创建…",
@@ -126,7 +126,7 @@
     "nameExists": "已存在名为“{{name}}”的项目。",
     "createFailed": "创建项目失败：{{error}}",
     "setupNotStarted": "项目已创建，但项目配置智能体无法启动：{{error}}。项目已注册，可从其所在行进行配置。",
-    "agentHint": "Tendril 正在检测您的技术栈并配置智能体验证框架，这需要几分钟。",
+    "agentHint": "Forge 正在检测您的技术栈并配置智能体验证框架，这需要几分钟。",
     "verificationRequired": "必需",
     "noVerifications": "未配置任何验证。请在项目设置中添加。",
     "noReviewActions": "未配置任何审查操作。请在项目设置中添加。",
@@ -134,7 +134,7 @@
   },
   "folderBrowser": {
     "title": "选择仓库文件夹",
-    "description": "运行 Tendril 的机器上的文件夹。仓库已标记；双击即可选择。",
+    "description": "运行 Forge 的机器上的文件夹。仓库已标记；双击即可选择。",
     "up": "上一级",
     "home": "主文件夹",
     "pathLabel": "文件夹路径",

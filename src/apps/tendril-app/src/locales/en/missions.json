@@ -7,7 +7,7 @@
   },
   "empty": {
     "title": "No missions yet",
-    "description": "Hand Tendril a whole feature. The orchestrator plans milestones, runs each one, judges it against its acceptance criteria, and validates the result.",
+    "description": "Hand Forge a whole feature. The orchestrator plans milestones, runs each one, judges it against its acceptance criteria, and validates the result.",
     "steps": {
       "plan": {
         "title": "Plan",
@@ -55,7 +55,8 @@
   },
   "banner": {
     "paused": "Paused: {{reason}}",
-    "approve": "Review the milestones below. Once you approve, the mission runs on its own until it is ready for review.",
+    "approve": "Review the whole plan below: each milestone's tasks, contract and full spec. Once you approve, the mission runs on its own until it is ready for review.",
+    "rateLimited": "Rate limited ({{reason}}). Resuming {{step}} at {{time}}. Nothing is lost and no attempt is used.",
     "planning": "The planner is researching the goal and writing milestones…",
     "review": "Validated. The integration plan is in Review; create its pull request from there."
   },
@@ -68,7 +69,15 @@
     "commits_other": "{{count}} commits",
     "criteria": "Acceptance criteria",
     "result": "Result",
-    "openPlan": "Plan #{{id}}"
+    "openPlan": "Plan #{{id}}",
+    "tasks": "Tasks",
+    "taskProgress": "{{done}}/{{total}} tasks",
+    "doneWhen": "Done when: {{doneWhen}}",
+    "contract": "Contract",
+    "consumes": "Consumes",
+    "provides": "Provides",
+    "from": "from {{id}}",
+    "spec": "Full plan for this milestone"
   },
   "agents": {
     "title": "Agents",

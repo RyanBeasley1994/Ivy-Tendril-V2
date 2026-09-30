@@ -30,7 +30,7 @@
     "override_terminal": "Neuer Terminal-Chat"
   },
   "planChat": {
-    "headline": "Bitten Sie Tendril um beliebige Änderungen"
+    "headline": "Bitten Sie Forge um beliebige Änderungen"
   },
   "systemEvent": {
     "linked": {
@@ -124,7 +124,7 @@
   "composer": {
     "attach": "Datei anhängen",
     "promptLabel": "Chat-Prompt",
-    "placeholder": "Fragen Sie Tendril etwas…",
+    "placeholder": "Fragen Sie Forge etwas…",
     "voice": "Spracheingabe",
     "voiceErrorDismiss": "Spracheingabefehler ausblenden",
     "nothingTranscribed": "Es wurde nichts transkribiert. Bitte versuchen Sie es erneut.",
@@ -184,7 +184,7 @@
       },
       "addProject": {
         "label": "Neues Projekt hinzufügen",
-        "prompt": "Fügen Sie meinem Tendril ein neues Projekt hinzu"
+        "prompt": "Fügen Sie meinem Forge ein neues Projekt hinzu"
       },
       "editVerifications": {
         "label": "Verifikationen bearbeiten",

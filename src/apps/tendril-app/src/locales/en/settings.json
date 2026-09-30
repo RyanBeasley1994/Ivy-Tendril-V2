@@ -46,11 +46,11 @@
   },
   "vaultSection": {
     "title": "Team Vault",
-    "hint": "Share and synchronize Tendril projects, custom skills, MCP servers, and security rules across your team via a versioned Git repository."
+    "hint": "Share and synchronize Forge projects, custom skills, MCP servers, and security rules across your team via a versioned Git repository."
   },
   "notifications": {
     "title": "Notifications",
-    "hint": "Configure how Tendril notifies you about job completions, failures, and other events.",
+    "hint": "Configure how Forge notifies you about job completions, failures, and other events.",
     "desktopLabel": "Enable Desktop Notifications",
     "saved": "Notification settings saved"
   },
@@ -64,7 +64,7 @@
     "minutesSuffix": "min",
     "betaHeading": "Beta Features",
     "betaLabel": "Opt-in to beta features",
-    "restartNote": "A Tendril restart is required for changes to take effect.",
+    "restartNote": "A Forge restart is required for changes to take effect.",
     "saved": "Settings saved and applied"
   },
   "diagnostics": {
@@ -92,7 +92,7 @@
   },
   "newsletterSection": {
     "title": "Newsletter",
-    "hint": "Subscribe to the Ivy & Tendril newsletter to receive updates, feature highlights, and release notes."
+    "hint": "Subscribe to the Forge newsletter to receive updates, feature highlights, and release notes."
   },
   "promptwares": {
     "title": "Workflow Agents",
@@ -129,14 +129,14 @@
   "appearance": {
     "language": {
       "title": "Language",
-      "hint": "Choose the language Tendril uses. System default follows your operating system.",
+      "hint": "Choose the language Forge uses. System default follows your operating system.",
       "label": "Language",
       "system": "System default",
       "saved": "Language set to {{language}}",
-      "loadFailed": "Could not load {{language}}. Tendril stays in the language it was in."
+      "loadFailed": "Could not load {{language}}. Forge stays in the language it was in."
     },
     "title": "Appearance",
-    "hint": "Choose how Tendril appears. System matches your OS setting.",
+    "hint": "Choose how Forge appears. System matches your OS setting.",
     "themeMode": {
       "light": "Light",
       "dark": "Dark",
@@ -147,7 +147,7 @@
     },
     "theme": {
       "title": "Theme",
-      "hint": "Choose a color scheme preset for Tendril.",
+      "hint": "Choose a color scheme preset for Forge.",
       "label": "Theme",
       "vaultOption": "{{name}} (Vault: {{vault}})",
       "vaultFallback": "Team",
@@ -231,9 +231,9 @@
   },
   "security": {
     "title": "Security & Tunneling",
-    "hint": "Require a password to access Tendril, and expose this instance over a public tunnel.",
+    "hint": "Require a password to access Forge, and expose this instance over a public tunnel.",
     "cloudflared": {
-      "intro": "Both tunnels below run Cloudflare's <code>cloudflared</code>. It is not installed on the machine running Tendril yet.",
+      "intro": "Both tunnels below run Cloudflare's <code>cloudflared</code>. It is not installed on the machine running Forge yet.",
       "configuredPathTitle": "Configured path",
       "installingTitle": "Installing",
       "downloadingPercent": "Downloading {{asset}} — {{percent, percent}}",
@@ -252,7 +252,7 @@
     },
     "session": {
       "heading": "Session Protection",
-      "blurb": "Require a password to access the Tendril interface.",
+      "blurb": "Require a password to access the Forge interface.",
       "enableLabel": "Enable Password Protection",
       "currentLabel": "Current Password",
       "currentPlaceholder": "Current password...",
@@ -267,7 +267,7 @@
     "tunnel": {
       "full": {
         "heading": "Tunnel",
-        "blurb": "Expose your Tendril instance to the internet via a Cloudflare tunnel. Useful for accessing Tendril from mobile devices or sharing with others.",
+        "blurb": "Expose your Forge instance to the internet via a Cloudflare tunnel. Useful for accessing Forge from mobile devices or sharing with others.",
         "startingTitle": "Tunnel Starting",
         "activeTitle": "Tunnel Active",
         "activeBody": "Your tunnel is running and accessible at the URL below.",
@@ -279,7 +279,7 @@
       },
       "share": {
         "heading": "Share Tunnel",
-        "blurb": "Expose a read-only, comment-only version of Tendril for team members to review plans and drafts.",
+        "blurb": "Expose a read-only, comment-only version of Forge for team members to review plans and drafts.",
         "startingTitle": "Share Tunnel Starting",
         "activeTitle": "Share Tunnel Active",
         "activeBody": "Your share tunnel is running and accessible at the URL below.",
@@ -290,7 +290,7 @@
         "stopFailed": "Failed to stop share tunnel: {{error}}"
       },
       "warningTitle": "This publishes everything",
-      "warningBody": "A full-access tunnel puts this entire Tendril instance on a public URL. Anyone with the address and the session password can use it as if they were sitting at this machine, so a password is required before one will start. The Share Tunnel below is the read-only option.",
+      "warningBody": "A full-access tunnel puts this entire Forge instance on a public URL. Anyone with the address and the session password can use it as if they were sitting at this machine, so a password is required before one will start. The Share Tunnel below is the read-only option.",
       "deactivatedTitle": "Deactivated",
       "copiedTitle": "URL Copied",
       "copyFailed": "Could not copy the URL: {{error}}",
@@ -323,7 +323,7 @@
   },
   "modelCatalog": {
     "title": "Model Catalog",
-    "hint": "Tendril merges the curated model table with a models.dev snapshot cached on disk.",
+    "hint": "Forge merges the curated model table with a models.dev snapshot cached on disk.",
     "refresh": "Refresh Now",
     "refreshing": "Refreshing…",
     "refreshed_one": "Refreshed: {{count}} models from models.dev",
@@ -362,7 +362,7 @@
   },
   "remoteServer": {
     "title": "Remote Server",
-    "hint": "Use Tendril on another machine, such as a VPS, instead of this one. The server needs a password set (session protection).",
+    "hint": "Use Forge on another machine, such as a VPS, instead of this one. The server needs a password set (session protection).",
     "urlLabel": "Server address",
     "urlPlaceholder": "203.0.113.7 or https://my-server.example.com",
     "urlHint": "An IP or host name uses port 5010. Include https:// for a tunnel or reverse proxy.",
@@ -373,11 +373,11 @@
     "disconnect": "Disconnect and use this machine",
     "connectedAs": "Connected as {{username}}",
     "notAuthenticated": "Not logged in: {{error}}",
-    "restarting": "Restarting Tendril…"
+    "restarting": "Restarting Forge…"
   },
   "git": {
     "title": "Git & Branches",
-    "hint": "How Tendril names the branches plans and missions are built on, and how agents commit.",
+    "hint": "How Forge names the branches plans and missions are built on, and how agents commit.",
     "prefixLabel": "Branch prefix",
     "prefixHint": "What {prefix} expands to. Default tendril/.",
     "templateLabel": "Plan branch",
@@ -411,7 +411,7 @@
     "save": "Save",
     "saved": "Branch settings saved",
     "nativeLabel": "Create pull requests without the agent",
-    "nativeHint": "Tendril pushes the branch, opens or updates the PR, applies your options and merges by itself, in seconds and without tokens. The agent is only called to resolve merge conflicts or recover an unusual branch. Turn off to send every Create PR through the agent.",
+    "nativeHint": "Forge pushes the branch, opens or updates the PR, applies your options and merges by itself, in seconds and without tokens. The agent is only called to resolve merge conflicts or recover an unusual branch. Turn off to send every Create PR through the agent.",
     "skipHooksLabel": "Skip pre-push hooks when creating PRs",
     "skipHooksHint": "Pushes plan branches with --no-verify and HUSKY=0, so a repo hook that re-runs the whole test suite cannot block the PR. The plan's own verifications have already passed. Only Create PR's push is affected: commits keep their hooks, and your own pushes are unchanged."
   }

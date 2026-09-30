@@ -35,7 +35,7 @@
       "label": "Acceptera",
       "tooltip": "Starta en plan för det här ärendet i {{project}}"
     },
-    "fireOff": "Starta i Tendril",
+    "fireOff": "Starta i Forge",
     "noDescription": "Ingen beskrivning angavs."
   },
   "planRevisionSheet": {
@@ -226,9 +226,9 @@
   "updateTendril": {
     "cancel": "Avbryt",
     "retry": "Försök igen",
-    "title": "Uppdatera Tendril",
+    "title": "Uppdatera Forge",
     "available": "<strong>v{{latest}}</strong> är tillgänglig (du har v{{current}}).",
-    "selfUpdateHint": "Klicka på ”Uppdatera nu” för att ladda ned och installera uppdateringen automatiskt. Tendril startar om automatiskt när den är klar.",
+    "selfUpdateHint": "Klicka på ”Uppdatera nu” för att ladda ned och installera uppdateringen automatiskt. Forge startar om automatiskt när den är klar.",
     "manualHint": "Automatisk uppdatering är inte tillgänglig för den här installationstypen. Kör följande kommando i terminalen för att uppdatera:",
     "failedTitle": "Uppdateringen misslyckades",
     "updating": "Uppdaterar...",

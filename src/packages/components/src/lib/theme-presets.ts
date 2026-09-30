@@ -71,7 +71,7 @@ export const THEME_PRESETS: ThemePreset[] = [
   {
     id: DEFAULT_THEME_PRESET_ID,
     name: "Default",
-    description: "Tendril's command-center theme: blue-black surfaces with the Ivy green accent",
+    description: "The command-center theme: blue-black surfaces with a green accent",
     isDark: true,
     previewColors: ["#00cc92", "#161d26", "#0d1117", "#07090c"],
     /**
@@ -89,7 +89,7 @@ export const THEME_PRESETS: ThemePreset[] = [
   {
     id: "ivy",
     name: "Ivy",
-    description: "Tendril's own branding, with the Ivy green as the primary colour",
+    description: "Green-accented branding, with green as the primary colour",
     isDark: false,
     previewColors: ["#00cc92", "#dfe7e3", "#f8f8f8", "#ffffff"],
     /**

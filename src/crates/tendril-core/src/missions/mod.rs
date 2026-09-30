@@ -11,7 +11,9 @@
 pub mod driver;
 pub mod git;
 pub mod model;
+pub mod rate_limit;
 pub mod service;
+pub mod shared_worktree;
 pub mod store;
 
 use crate::missions::model::{mission_link, MissionRole};

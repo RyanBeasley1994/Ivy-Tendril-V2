@@ -35,7 +35,7 @@
       "label": "接受",
       "tooltip": "在 {{project}} 中为此 Issue 启动计划"
     },
-    "fireOff": "在 Tendril 中启动",
+    "fireOff": "在 Forge 中启动",
     "noDescription": "未提供描述。"
   },
   "planRevisionSheet": {
@@ -208,9 +208,9 @@
   "updateTendril": {
     "cancel": "取消",
     "retry": "重试",
-    "title": "更新 Tendril",
+    "title": "更新 Forge",
     "available": "<strong>v{{latest}}</strong> 现已可用（当前版本为 v{{current}}）。",
-    "selfUpdateHint": "点击“立即更新”即可自动下载并安装更新。完成后 Tendril 将自动重启。",
+    "selfUpdateHint": "点击“立即更新”即可自动下载并安装更新。完成后 Forge 将自动重启。",
     "manualHint": "此安装方式不支持自动更新。请在终端中运行以下命令进行更新：",
     "failedTitle": "更新失败",
     "updating": "正在更新...",

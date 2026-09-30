@@ -25,7 +25,7 @@
     "title": "Inställningar för automatisk acceptans",
     "save": "Spara",
     "saving": "Sparar…",
-    "intro": "Importera nyligen tilldelade GitHub-ärenden till Tendril-planer automatiskt med jämna mellanrum.",
+    "intro": "Importera nyligen tilldelade GitHub-ärenden till Forge-planer automatiskt med jämna mellanrum.",
     "autoAcceptLabel": "Acceptera tilldelade ärenden automatiskt",
     "intervalLabel": "Kontrollintervall",
     "intervalOption_one": "{{count}} minut",
@@ -128,7 +128,7 @@
     "database": "Projektets planer, jobb och rekommendationer i Tendrils databas.",
     "config": "Projektets post i config.yaml.",
     "logsKept": "Jobbloggar behålls: de lagras per jobb-ID och inte per projekt.",
-    "removeInstead": "Om du vill ta bort projektet från Tendril utan att röra något på disken avbryter du och använder Avregistrera projekt i stället.",
+    "removeInstead": "Om du vill ta bort projektet från Forge utan att röra något på disken avbryter du och använder Avregistrera projekt i stället.",
     "typeToConfirm": "Skriv <name>{{name}}</name> för att bekräfta",
     "typeToConfirmAriaLabel": "Skriv {{name}} för att bekräfta"
   },
@@ -191,7 +191,7 @@
   },
   "noProjects": {
     "title": "Inga projekt",
-    "description": "Varje plan hör till ett projekt, och det finns inga projekt i det här Tendril home ännu.",
+    "description": "Varje plan hör till ett projekt, och det finns inga projekt i det här Forge home ännu.",
     "openSettings": "Gå till Projekt",
     "body": "Lägg till ett projekt under <location>Inställningar → Projekt</location> — ett namn, dess arkiv och de verifieringar som dess planer kör — och skapa sedan planen igen."
   },
@@ -252,7 +252,7 @@
     "title": "Avregistrera projekt",
     "confirm": "Avregistrera projekt",
     "question": "Vill du avregistrera projektet <name>{{name}}</name>?",
-    "consequence": "Det här tar bort projektet från config.yaml. Dess klonade arkiv, planmappar och historik finns kvar på disken, så ingenting raderas från din dator – men Tendril slutar lista projektet, och dess befintliga planer och jobb kommer att hänvisa till ett projekt som Tendril inte längre känner till."
+    "consequence": "Det här tar bort projektet från config.yaml. Dess klonade arkiv, planmappar och historik finns kvar på disken, så ingenting raderas från din dator – men Forge slutar lista projektet, och dess befintliga planer och jobb kommer att hänvisa till ett projekt som Forge inte längre känner till."
   },
   "shareTunnel": {
     "title": "Dela arbete",
@@ -352,7 +352,7 @@
       "validator": "Validerare"
     },
     "machineLabel": "Skapa på",
-    "machineUnavailable": "Ingen Tendril-tjänst körs där"
+    "machineUnavailable": "Ingen Forge-tjänst körs där"
   },
   "recommendationNote": {
     "submit": "Skicka",

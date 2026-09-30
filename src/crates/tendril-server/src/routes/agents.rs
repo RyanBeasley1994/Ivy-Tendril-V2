@@ -4,7 +4,9 @@ use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use tendril_core::agents::catalog::{all_agents_for_proxy_base_url, OPENAI_PROXY_AGENT_ID};
+use tendril_core::agents::catalog::{
+    all_agents_for_proxy_base_url, apply_codex_local_config, OPENAI_PROXY_AGENT_ID,
+};
 use tendril_core::agents::probe::{
     all_sign_in_hints, check_auth, check_install, validate_model, AgentAuthResult,
     AgentInstallStatus, ProbeCredentials,
@@ -22,7 +24,9 @@ use crate::state::AppState;
 pub async fn get_agents_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let snapshot = state.settings_snapshot();
     let proxy_base_url = openai_proxy_base_url(&snapshot.settings);
-    Json(all_agents_for_proxy_base_url(proxy_base_url.as_deref()))
+    let mut agents = all_agents_for_proxy_base_url(proxy_base_url.as_deref());
+    apply_codex_local_config(&mut agents);
+    Json(agents)
 }
 
 /// `GET /api/agents/hints` — how to install and sign in to every card the Coding Agent pane offers.

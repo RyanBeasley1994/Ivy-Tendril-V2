@@ -25,7 +25,7 @@
     "title": "自动接受设置",
     "save": "保存",
     "saving": "正在保存…",
-    "intro": "定期将新分配给您的 GitHub Issue 自动导入为 Tendril 计划。",
+    "intro": "定期将新分配给您的 GitHub Issue 自动导入为 Forge 计划。",
     "autoAcceptLabel": "自动接受分配的 Issue",
     "intervalLabel": "检查间隔",
     "intervalOption_other": "{{count}} 分钟",
@@ -124,10 +124,10 @@
     "intro": "此操作将永久删除项目 <name>{{name}}</name> 及其在磁盘上拥有的全部内容，且无法撤销。",
     "plans": "此项目的所有计划，包括其修订版本和验证报告。",
     "folder": "<code>{{root}}</code><code>{{name}}</code>：其克隆的仓库、技能、MCP 定义和记忆，包括任何从未推送的提交。",
-    "database": "Tendril 数据库中该项目的计划、任务和建议。",
+    "database": "Forge 数据库中该项目的计划、任务和建议。",
     "config": "该项目在 config.yaml 中的条目。",
     "logsKept": "任务日志将被保留：它们按任务 ID 而非按项目存储。",
-    "removeInstead": "如需仅从 Tendril 中移除项目而不改动磁盘上的任何内容，请取消并改用“移除项目”。",
+    "removeInstead": "如需仅从 Forge 中移除项目而不改动磁盘上的任何内容，请取消并改用“移除项目”。",
     "typeToConfirm": "输入 <name>{{name}}</name> 以确认",
     "typeToConfirmAriaLabel": "输入 {{name}} 以确认"
   },
@@ -186,7 +186,7 @@
   },
   "noProjects": {
     "title": "没有项目",
-    "description": "每个计划都属于一个项目，而此 Tendril 主目录中还没有任何项目。",
+    "description": "每个计划都属于一个项目，而此 Forge 主目录中还没有任何项目。",
     "openSettings": "前往项目",
     "body": "请在<location>设置 → 项目</location>中添加一个项目（包括名称、仓库及其计划要运行的验证），然后重新创建计划。"
   },
@@ -242,7 +242,7 @@
     "title": "移除项目",
     "confirm": "移除项目",
     "question": "确定要移除项目 <name>{{name}}</name> 吗？",
-    "consequence": "此操作会将项目从 config.yaml 中移除。其克隆的仓库、计划文件夹和历史记录仍保留在磁盘上，因此不会从您的计算机中删除任何内容。但 Tendril 将不再列出该项目，其现有的计划和任务将指向一个 Tendril 不再识别的项目。"
+    "consequence": "此操作会将项目从 config.yaml 中移除。其克隆的仓库、计划文件夹和历史记录仍保留在磁盘上，因此不会从您的计算机中删除任何内容。但 Forge 将不再列出该项目，其现有的计划和任务将指向一个 Forge 不再识别的项目。"
   },
   "shareTunnel": {
     "title": "共享工作",
@@ -336,7 +336,7 @@
       "validator": "验证者"
     },
     "machineLabel": "创建位置",
-    "machineUnavailable": "该处没有运行 Tendril 服务"
+    "machineUnavailable": "该处没有运行 Forge 服务"
   },
   "recommendationNote": {
     "submit": "提交",

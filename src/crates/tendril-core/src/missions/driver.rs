@@ -15,7 +15,10 @@ use crate::error::{Result, TendrilError};
 use crate::git::worktree::{cleanup_worktrees, derive_branch_name, derive_worktree_relative_path, register_worktree};
 use crate::jobs::firmware_values::find_project;
 use crate::jobs::manager::{apply_plan_state, sync_plan_state_to_db, JobManager, StartOptions};
-use crate::missions::git::{commits_between, create_mission_branch, ensure_branch_worktree, fast_forward, FastForward};
+use crate::missions::git::{branch_tip, commits_between, create_mission_branch, ensure_branch_worktree, reset_worktree};
+use crate::missions::rate_limit;
+use crate::missions::service::consumed_items;
+use crate::missions::shared_worktree::shared_path;
 use crate::missions::model::*;
 use crate::missions::service::{folder_name, integration_folder, mission_repos, MissionPaths};
 use crate::missions::store::{list_missions, read_mission, update_mission};
@@ -184,6 +187,14 @@ impl MissionDriver {
 
     async fn step(&self, folder: &Path) -> Result<bool> {
         let mission = read_mission(folder)?;
+        if let Some(wait) = mission.rate_limit.clone() {
+            if matches!(mission.state, MissionState::Running | MissionState::Planning | MissionState::Validating) {
+                if Utc::now() < wait.until {
+                    return Ok(false);
+                }
+                return self.resume_after_rate_limit(folder, &mission, &wait).await;
+            }
+        }
         match mission.state {
             MissionState::AwaitingApproval
             | MissionState::Paused
@@ -255,8 +266,12 @@ impl MissionDriver {
     /// Clears the settled job, adds its cost, and applies the budget. Returns the mission as written.
     fn settle(folder: &Path, job: &JobItem) -> Result<MissionYaml> {
         let cost = job.cost.unwrap_or(0.0);
+        let limited = Self::rate_limited(job).is_some();
         update_mission(folder, |m| {
             let milestone = m.current_job.take().and_then(|j| j.milestone);
+            if !limited {
+                m.rate_limit_streak = 0;
+            }
             m.cost += cost;
             if let Some(ms) = milestone.and_then(|id| m.milestone_mut(&id)) {
                 ms.cost += cost;
@@ -277,6 +292,103 @@ impl MissionDriver {
             .unwrap_or_else(|| format!("job {} ended {}", job.id, job.status))
     }
 
+    /// What every retry of a milestone is told first: where it works and how it reports progress.
+    fn retry_preamble(folder: &Path) -> String {
+        let mission_id: String = folder_name(folder).chars().take(5).collect();
+        format!(
+            "This is a mission milestone. It works in the mission's single shared worktree on the mission branch: `Worktrees/<repo>` in this plan folder is a link to it. Use that worktree as it is. Never create, re-attach, reset or delete a worktree or branch. Tick tasks off with `tendril mission task {} <TaskId>` as you finish them (`--undo` if one turns out not done). Do not commit per task: the milestone's work is one commit, and this retry adds at most one fix-up commit on top of it once its changes are done.",
+            mission_id
+        )
+    }
+
+    /// The limit message, when a job that did not complete was stopped by a rate or usage limit.
+    fn rate_limited(job: &JobItem) -> Option<String> {
+        if matches!(job.status, JobStatus::Completed | JobStatus::Stopped) {
+            return None;
+        }
+        rate_limit::detect(
+            [job.reported_failure_reason.as_deref(), job.status_message.as_deref()]
+                .into_iter()
+                .flatten(),
+        )
+    }
+
+    /// Parks the step to re-run after the limit, when `job` was rate limited. Returns whether it did.
+    /// The milestone keeps its state and its attempt is given back: waiting is not trying.
+    fn park_if_rate_limited(folder: &Path, job: &JobItem, step: MissionStep, milestone: Option<&str>) -> Result<bool> {
+        let Some(reason) = Self::rate_limited(job) else {
+            return Ok(false);
+        };
+        update_mission(folder, |m| {
+            m.rate_limit_streak += 1;
+            let until = rate_limit::wait_for(&reason, m.rate_limit_streak, Utc::now());
+            if matches!(step, MissionStep::Execute | MissionStep::Retry) {
+                if let Some(ms) = milestone.and_then(|id| m.milestone_mut(id)) {
+                    ms.attempts = ms.attempts.saturating_sub(1);
+                }
+            }
+            m.rate_limit = Some(RateLimitWait {
+                until,
+                step,
+                milestone: milestone.map(str::to_string),
+                reason: reason.clone(),
+            });
+            m.log(
+                milestone,
+                format!(
+                    "Rate limited ({}); resuming {} at {} UTC",
+                    reason,
+                    step.as_str(),
+                    until.format("%H:%M")
+                ),
+            );
+            Ok(())
+        })?;
+        Ok(true)
+    }
+
+    /// The wait is over: run the interrupted step again. Plan, Judge and Final restart on their own
+    /// once the wait is cleared, because each starts its job when there is none; an interrupted
+    /// execution continues in the shared checkout instead of starting over.
+    async fn resume_after_rate_limit(&self, folder: &Path, mission: &MissionYaml, wait: &RateLimitWait) -> Result<bool> {
+        update_mission(folder, |m| {
+            m.rate_limit = None;
+            m.log(wait.milestone.as_deref(), format!("Rate limit wait over; resuming {}", wait.step.as_str()));
+            Ok(())
+        })?;
+        if !matches!(wait.step, MissionStep::Execute | MissionStep::Retry) {
+            return Ok(true);
+        }
+        let Some(ms) = wait.milestone.as_deref().and_then(|id| mission.milestone(id)).cloned() else {
+            return Ok(true);
+        };
+        let Some(plan_folder) = ms.plan.as_ref().map(|p| self.paths.plans_dir.join(p)).filter(|p| p.is_dir()) else {
+            return Ok(true);
+        };
+        let done: Vec<String> = ms.tasks.iter().filter(|t| t.done).map(|t| t.id.clone()).collect();
+        let change_request = format!(
+            "{}\n\nThe previous run of this milestone stopped early because the coding agent hit a rate or usage limit. Nothing was wrong with the work. Continue from where it stopped: the mission's shared worktree still holds everything done so far, committed or not. {} Do not redo finished work and do not reset the worktree. Finish the remaining tasks, then make the milestone's single commit.",
+            Self::retry_preamble(folder),
+            if done.is_empty() {
+                "Check `git status` and `git diff` to see what was already done.".to_string()
+            } else {
+                format!("Tasks already done: {}.", done.join(", "))
+            }
+        );
+        let args = JobArgs::RetryPlan(RetryPlanArgs {
+            folder_path: plan_folder.to_string_lossy().to_string(),
+            change_request,
+        });
+        let id = ms.id.clone();
+        self.start_job(folder, args, MissionStep::Retry, Some(&ms.id), "Continuing after the rate limit".into(), move |m| {
+            if let Some(ms) = m.milestone_mut(&id) {
+                ms.state = MilestoneState::Executing;
+                ms.attempts += 1;
+            }
+        })
+        .await
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Planning
     // ---------------------------------------------------------------------------------------------
@@ -295,6 +407,9 @@ impl MissionDriver {
             return Ok(false);
         }
         let mission = Self::settle(folder, &job)?;
+        if Self::park_if_rate_limited(folder, &job, MissionStep::Plan, None)? {
+            return Ok(true);
+        }
         if job.status == JobStatus::Completed && !mission.milestones.is_empty() {
             self.publish_plan_to_integration(&mission);
             update_mission(folder, |m| {
@@ -339,6 +454,24 @@ impl MissionDriver {
             if !ms.objective.is_empty() {
                 body.push_str(&format!("{}\n\n", ms.objective));
             }
+            if !ms.tasks.is_empty() {
+                body.push_str("**Tasks**\n\n");
+                for t in &ms.tasks {
+                    body.push_str(&format!("{}. {}\n", t.id, t.title));
+                }
+                body.push('\n');
+            }
+            if !ms.consumes.is_empty() {
+                body.push_str(&format!("**Consumes:** {}\n\n", ms.consumes.iter().map(|c| format!("`{}`", c)).collect::<Vec<_>>().join(", ")));
+            }
+            if !ms.provides.is_empty() {
+                body.push_str("**Provides**\n\n");
+                for p in &ms.provides {
+                    body.push_str(&format!("- `{}`: {}\n", p.name, p.describe()));
+                }
+                body.push('\n');
+            }
+            body.push_str("**Acceptance**\n\n");
             for a in &ms.acceptance {
                 body.push_str(&format!("- [ ] {}\n", a));
             }
@@ -365,6 +498,11 @@ impl MissionDriver {
             }
             let mission = Self::settle(folder, &job)?;
             let milestone = current.milestone.clone().unwrap_or_default();
+            if matches!(current.step, MissionStep::Execute | MissionStep::Retry | MissionStep::Judge)
+                && Self::park_if_rate_limited(folder, &job, current.step, Some(&milestone))?
+            {
+                return Ok(true);
+            }
             return match current.step {
                 MissionStep::Execute | MissionStep::Retry => {
                     if job.status == JobStatus::Stopped {
@@ -429,17 +567,32 @@ impl MissionDriver {
 
     async fn start_milestone(&self, folder: &Path, mission: &MissionYaml, milestone: &Milestone) -> Result<bool> {
         self.ensure_mission_branch(mission)?;
+        // The one checkout every milestone works in, on the mission branch.
+        self.ensure_integration_worktrees(mission)?;
+        let branch = mission.branch.clone().unwrap_or_default();
+        // Where the branch stands before this milestone touches it: its work is the diff from here,
+        // and a re-plan that drops it resets back to here. Kept from the first start, so a retry
+        // never moves the baseline.
+        let base_commits: std::collections::BTreeMap<String, String> = if milestone.base_commits.is_empty() {
+            mission_repos(&self.paths, mission)
+                .into_iter()
+                .filter_map(|repo| Some((repo.to_string_lossy().to_string(), branch_tip(&repo, &branch)?)))
+                .collect()
+        } else {
+            milestone.base_commits.clone()
+        };
         let plan_folder = match milestone.plan.as_ref().map(|p| self.paths.plans_dir.join(p)).filter(|p| p.is_dir()) {
             Some(existing) => existing,
             None => self.create_milestone_plan(folder, mission, milestone)?,
         };
         let plan_name = folder_name(&plan_folder);
-        let branch = mission.branch.clone().unwrap_or_default();
+        let mission_id = folder_name(folder).chars().take(5).collect::<String>();
         let note = format!(
-            "This plan is milestone {} of the mission \"{}\". Its worktrees are cut from the local mission branch `{}`, which already holds every earlier milestone. Build on that work; do not push, and do not open a pull request — the mission lands everything in one pull request at the end. Acceptance criteria the orchestrator will judge this against:\n{}",
+            "This plan is milestone {} of the mission \"{}\". It runs in the mission's single shared worktree, on the local mission branch `{}`, which already holds every earlier milestone. Never create another worktree or branch, never reset, and never delete this one. Work through the plan's Tasks in order and run `tendril mission task {} <TaskId>` as you finish each one. Make exactly one commit for the whole milestone when every task is done. Honour the Contract section exactly. Do not push, and do not open a pull request; the mission lands everything in one pull request at the end. Acceptance criteria the orchestrator will judge this against:\n{}",
             milestone.id,
             mission.title,
             branch,
+            mission_id,
             milestone.acceptance.iter().map(|a| format!("- {}", a)).collect::<Vec<_>>().join("\n")
         );
         let args = JobArgs::ExecutePlan(ExecutePlanArgs {
@@ -452,6 +605,7 @@ impl MissionDriver {
                 ms.state = MilestoneState::Executing;
                 ms.plan = Some(plan_name.clone());
                 ms.attempts += 1;
+                ms.base_commits = base_commits;
             }
         })
         .await
@@ -519,7 +673,40 @@ impl MissionDriver {
             mission.goal.lines().next().unwrap_or_default()
         ));
         body.push_str(milestone.spec.trim());
-        body.push_str("\n\n## Acceptance Criteria\n\n");
+        let mission_id = folder_name(mission_folder).chars().take(5).collect::<String>();
+        if !milestone.tasks.is_empty() {
+            body.push_str("\n\n## Tasks\n\n");
+            body.push_str(&format!(
+                "Do these in order. When one is finished, record it with `tendril mission task {} <TaskId>`. Do **not** commit per task: make one commit for the whole milestone once every task is done.\n\n",
+                mission_id
+            ));
+            for t in &milestone.tasks {
+                body.push_str(&format!("- [ ] **{}** {}", t.id, t.title));
+                if !t.done_when.is_empty() {
+                    body.push_str(&format!(" _(done when: {})_", t.done_when));
+                }
+                body.push('\n');
+            }
+        }
+        let consumed = consumed_items(mission, milestone);
+        if !milestone.provides.is_empty() || !consumed.is_empty() {
+            body.push_str("\n## Contract\n\n");
+            if !consumed.is_empty() {
+                body.push_str("**Consumes**: already on the branch from earlier milestones. Use these exactly as specified; do not redefine, rename or change them.\n\n");
+                for (owner, item) in &consumed {
+                    body.push_str(&format!("- `{}` (from {}): {}\n", item.name, owner, item.describe()));
+                }
+                body.push('\n');
+            }
+            if !milestone.provides.is_empty() {
+                body.push_str("**Provides**: later milestones are written against these. Deliver each exactly as specified (name, shape, location); the orchestrator rejects the milestone if any differs.\n\n");
+                for item in &milestone.provides {
+                    body.push_str(&format!("- `{}`: {}\n", item.name, item.describe()));
+                }
+                body.push('\n');
+            }
+        }
+        body.push_str("\n## Acceptance Criteria\n\n");
         for a in &milestone.acceptance {
             body.push_str(&format!("- {}\n", a));
         }
@@ -572,7 +759,7 @@ impl MissionDriver {
                 let feedback = decision.feedback.clone().unwrap_or_else(|| decision.reason.clone());
                 let args = JobArgs::RetryPlan(RetryPlanArgs {
                     folder_path: plan_folder.to_string_lossy().to_string(),
-                    change_request: feedback.clone(),
+                    change_request: format!("{}\n\n{}", Self::retry_preamble(folder), feedback),
                 });
                 let id = milestone_id.to_string();
                 self.start_job(folder, args, MissionStep::Retry, Some(milestone_id), format!("Retrying (attempt {})", ms.attempts + 1), move |m| {
@@ -588,6 +775,9 @@ impl MissionDriver {
                 let still_open = mission
                     .milestone(milestone_id)
                     .is_some_and(|ms| !ms.state.is_settled());
+                if let Some(ms) = mission.milestone(milestone_id).filter(|ms| ms.state == MilestoneState::Skipped) {
+                    self.roll_back(folder, mission, ms);
+                }
                 update_mission(folder, |m| {
                     m.decision = None;
                     m.replans += 1;
@@ -620,6 +810,26 @@ impl MissionDriver {
         }
     }
 
+    /// Resets the shared checkout to where the branch stood before `ms` started, so a milestone a
+    /// re-plan dropped leaves nothing behind for the next one to trip over.
+    fn roll_back(&self, folder: &Path, mission: &MissionYaml, ms: &Milestone) {
+        let Some(integration) = integration_folder(&self.paths, mission) else { return };
+        for repo in mission_repos(&self.paths, mission) {
+            let Some(base) = ms.base_commits.get(&repo.to_string_lossy().to_string()) else { continue };
+            let checkout = shared_path(&integration, &repo);
+            let outcome = if checkout.join(".git").exists() {
+                reset_worktree(&checkout, base).map(|_| format!("Rolled {} back to {}", repo.display(), &base[..base.len().min(8)]))
+            } else {
+                Ok(format!("No shared checkout of {}; nothing to roll back", repo.display()))
+            };
+            let message = outcome.unwrap_or_else(|e| format!("Could not roll back {}: {}", ms.id, e));
+            let _ = update_mission(folder, |m| {
+                m.log(Some(&ms.id), message.clone());
+                Ok(())
+            });
+        }
+    }
+
     fn accept_milestone(&self, folder: &Path, mission: &MissionYaml, milestone_id: &str, decision: &MissionDecision) -> Result<bool> {
         let ms = mission
             .milestone(milestone_id)
@@ -630,17 +840,14 @@ impl MissionDriver {
             .clone()
             .ok_or_else(|| TendrilError::Mission("The mission has no branch".into()))?;
         let plan_folder = ms.plan.as_ref().map(|p| self.paths.plans_dir.join(p));
-        let milestone_branch = plan_folder.as_deref().map(derive_branch_name).unwrap_or_default();
-        let integration = integration_folder(&self.paths, mission);
 
+        // The milestone worked on the mission branch itself, so what it landed is everything from the
+        // commit the branch stood at when it started.
         let mut commits = Vec::new();
         for repo in mission_repos(&self.paths, mission) {
-            let checkout = integration
-                .as_ref()
-                .map(|f| f.join("Worktrees").join(derive_worktree_relative_path(&repo)));
-            match fast_forward(&repo, &branch, &milestone_branch, checkout.as_deref())? {
-                FastForward::Advanced { from, to } => commits.extend(commits_between(&repo, &from, &to)),
-                FastForward::UpToDate | FastForward::SourceMissing => {}
+            let key = repo.to_string_lossy().to_string();
+            if let (Some(base), Some(tip)) = (ms.base_commits.get(&key), branch_tip(&repo, &branch)) {
+                commits.extend(commits_between(&repo, base, &tip));
             }
         }
 
@@ -701,6 +908,9 @@ impl MissionDriver {
             return Ok(false);
         }
         let mission = Self::settle(folder, &job)?;
+        if Self::park_if_rate_limited(folder, &job, MissionStep::Final, None)? {
+            return Ok(true);
+        }
         let decision = mission
             .decision
             .clone()

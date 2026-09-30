@@ -912,6 +912,38 @@ export interface Milestone {
   summary?: string;
   commits?: string[];
   cost: number;
+  /** The small ordered steps it is carried out in; the worker ticks each off as it finishes it. */
+  tasks?: MilestoneTask[];
+  /** Its half of the contract: what later milestones may build on. */
+  provides?: ContractItem[];
+  /** Names of items earlier milestones provide that this one uses. */
+  consumes?: string[];
+  /** The shared mission branch's commit per repo when this milestone started. */
+  baseCommits?: Record<string, string>;
+}
+
+export interface MilestoneTask {
+  /** `M2.3`. */
+  id: string;
+  title: string;
+  doneWhen?: string;
+  done: boolean;
+}
+
+export interface ContractItem {
+  name: string;
+  /** `function`, `type`, `endpoint`, `schema`, `file`… */
+  kind?: string;
+  signature?: string;
+  location?: string;
+}
+
+/** A step the mission re-runs once a coding agent's rate or usage limit has passed. */
+export interface MissionRateLimit {
+  until: string;
+  step: MissionStep;
+  milestone?: string;
+  reason: string;
 }
 
 export interface MissionJobRef {
@@ -960,6 +992,8 @@ export interface Mission {
   cost: number;
   summary?: string;
   log?: MissionLogEntry[];
+  /** Set while waiting out a rate limit; the mission carries on by itself afterwards. */
+  rateLimit?: MissionRateLimit;
 }
 
 export interface CreateMissionRequest {

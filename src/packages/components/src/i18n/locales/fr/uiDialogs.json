@@ -25,7 +25,7 @@
     "title": "Paramètres d'acceptation automatique",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
-    "intro": "Les issues GitHub qui vous sont nouvellement assignées sont importées automatiquement dans des plans Tendril, à intervalles réguliers.",
+    "intro": "Les issues GitHub qui vous sont nouvellement assignées sont importées automatiquement dans des plans Forge, à intervalles réguliers.",
     "autoAcceptLabel": "Accepter automatiquement les issues assignées",
     "intervalLabel": "Intervalle de vérification",
     "intervalOption_one": "{{count}} minute",
@@ -126,10 +126,10 @@
     "intro": "Cette action supprime définitivement le projet <name>{{name}}</name> et tout ce qui lui appartient sur le disque. Elle est irréversible.",
     "plans": "Tous les plans de ce projet, avec leurs révisions et leurs rapports de vérification.",
     "folder": "<code>{{root}}</code><code>{{name}}</code> — ses dépôts clonés, compétences, définitions MCP et mémoires, y compris tout commit qui n'a jamais été poussé.",
-    "database": "Ses plans, jobs et recommandations dans la base de données de Tendril.",
+    "database": "Ses plans, jobs et recommandations dans la base de données de Forge.",
     "config": "Son entrée dans config.yaml.",
     "logsKept": "Les journaux des jobs sont conservés : ils sont stockés par ID de job et non par projet.",
-    "removeInstead": "Pour retirer le projet de Tendril sans rien toucher sur le disque, annulez et utilisez plutôt Retirer le projet.",
+    "removeInstead": "Pour retirer le projet de Forge sans rien toucher sur le disque, annulez et utilisez plutôt Retirer le projet.",
     "typeToConfirm": "Saisissez <name>{{name}}</name> pour confirmer",
     "typeToConfirmAriaLabel": "Saisissez {{name}} pour confirmer"
   },
@@ -196,7 +196,7 @@
   },
   "noProjects": {
     "title": "Aucun projet",
-    "description": "Tout plan appartient à un projet, et ce répertoire Tendril n'en contient encore aucun.",
+    "description": "Tout plan appartient à un projet, et ce répertoire Forge n'en contient encore aucun.",
     "openSettings": "Aller aux projets",
     "body": "Ajoutez un projet dans <location>Paramètres → Projets</location> — un nom, ses dépôts et les vérifications que ses plans exécutent —, puis créez de nouveau le plan."
   },
@@ -262,7 +262,7 @@
     "title": "Retirer le projet",
     "confirm": "Retirer le projet",
     "question": "Voulez-vous vraiment retirer le projet <name>{{name}}</name> ?",
-    "consequence": "Le projet est retiré de config.yaml. Ses dépôts clonés, ses dossiers de plans et son historique restent sur le disque, donc rien n'est supprimé de votre machine — mais Tendril cessera d'afficher le projet, et ses plans et jobs existants feront référence à un projet qu'il ne connaît plus."
+    "consequence": "Le projet est retiré de config.yaml. Ses dépôts clonés, ses dossiers de plans et son historique restent sur le disque, donc rien n'est supprimé de votre machine — mais Forge cessera d'afficher le projet, et ses plans et jobs existants feront référence à un projet qu'il ne connaît plus."
   },
   "shareTunnel": {
     "title": "Partager le travail",
@@ -368,7 +368,7 @@
       "validator": "Validateur"
     },
     "machineLabel": "Créer sur",
-    "machineUnavailable": "Aucun service Tendril n'y tourne"
+    "machineUnavailable": "Aucun service Forge n'y tourne"
   },
   "recommendationNote": {
     "submit": "Envoyer",

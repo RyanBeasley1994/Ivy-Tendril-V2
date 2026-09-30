@@ -64,6 +64,17 @@ pub enum MissionCommands {
 
     #[command(about = "Record the orchestrator's decision for the current step (orchestrator)")]
     Decide(MissionDecideArgs),
+
+    #[command(about = "Mark a milestone task done as you finish it, e.g. M2.3 (worker)")]
+    Task {
+        /// The mission id.
+        id: String,
+        /// The task id, e.g. M2.3.
+        task: String,
+        /// Mark it not done again.
+        #[arg(long)]
+        undo: bool,
+    },
 }
 
 #[derive(Args)]
@@ -137,7 +148,8 @@ pub struct MissionBudgetArgs {
 #[derive(Args)]
 pub struct MissionSetMilestonesArgs {
     pub id: String,
-    /// A list of {title, objective, spec, acceptance[]}, or {milestones: [...]}.
+    /// A list of {title, objective, spec, acceptance[], tasks[{title, doneWhen}], provides[{name, kind,
+    /// signature, location}], consumes[]}, or {milestones: [...]}.
     #[arg(long)]
     pub file: PathBuf,
     /// all (before approval), pending (keep the milestone being judged) or open (drop it: a replan).
@@ -349,6 +361,11 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
             let ids = service::set_milestones(&folder, &paths.plans_dir, inputs, scope)?;
             println!("Milestones set: {}", ids.join(", "));
         }
+        MissionCommands::Task { id, task, undo } => {
+            let folder = resolve(&id)?;
+            service::set_task_done(&folder, &task, !undo)?;
+            println!("Task {} marked {}.", task, if undo { "not done" } else { "done" });
+        }
         MissionCommands::Decide(args) => {
             let folder = resolve(&args.id)?;
             let action = DecisionAction::from_str_loose(&args.action)
@@ -382,7 +399,16 @@ fn print_mission(file: &MissionFile, paths: &MissionPaths) {
         println!("Integration plan: {}", paths.plans_dir.join(plan).display());
     }
     if let Some(branch) = &m.branch {
-        println!("Mission branch: {}", branch);
+        println!("Mission branch: {} (every milestone works in the one shared worktree on it)", branch);
+    }
+    if let Some(wait) = &m.rate_limit {
+        println!(
+            "Rate limited: resuming {}{} at {} UTC ({})",
+            wait.step.as_str(),
+            wait.milestone.as_deref().map(|id| format!(" {}", id)).unwrap_or_default(),
+            wait.until.format("%Y-%m-%d %H:%M"),
+            wait.reason
+        );
     }
     println!(
         "Budget: {} attempts/milestone, {} re-plans ({} used), {}",
@@ -419,14 +445,35 @@ fn print_mission(file: &MissionFile, paths: &MissionPaths) {
         }
         if let Some(plan) = &ms.plan {
             println!("    Plan: {}", paths.plans_dir.join(plan).display());
-            println!(
-                "    Branch: {}",
-                tendril_core::git::worktree::derive_branch_name(&paths.plans_dir.join(plan))
-            );
+        }
+        for (repo, commit) in &ms.base_commits {
+            println!("    Base commit: {} in {} (this milestone's work is {}..<mission branch>)", commit, repo, &commit[..commit.len().min(12)]);
         }
         if ms.attempts > 0 {
             println!("    Attempts: {}", ms.attempts);
         }
+        if !ms.tasks.is_empty() {
+            println!("    Tasks:");
+            for t in &ms.tasks {
+                println!(
+                    "      [{}] {} {}{}",
+                    if t.done { "x" } else { " " },
+                    t.id,
+                    t.title,
+                    if t.done_when.is_empty() { String::new() } else { format!(" (done when: {})", t.done_when) }
+                );
+            }
+        }
+        if !ms.consumes.is_empty() {
+            println!("    Consumes: {}", ms.consumes.join(", "));
+        }
+        if !ms.provides.is_empty() {
+            println!("    Provides:");
+            for p in &ms.provides {
+                println!("      - {}", p.describe());
+            }
+        }
+        println!("    Acceptance:");
         for a in &ms.acceptance {
             println!("    - {}", a);
         }

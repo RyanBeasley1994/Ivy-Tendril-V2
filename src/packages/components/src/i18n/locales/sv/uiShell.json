@@ -152,15 +152,15 @@
   },
   "voice": {
     "errors": {
-      "insecureContext": "Röstinmatning kräver en säker anslutning. Öppna Tendril via HTTPS eller på localhost och försök sedan igen.",
-      "mediaDevicesUnavailable": "Röstinmatning är inte tillgänglig i det här fönstret. På macOS avslutar du Ivy Tendril och öppnar det igen efter uppdateringen, och tillåter sedan mikrofonåtkomst när du tillfrågas. Du kan också köra ”{{command}}” och använda röstinmatning i webbläsaren.",
+      "insecureContext": "Röstinmatning kräver en säker anslutning. Öppna Forge via HTTPS eller på localhost och försök sedan igen.",
+      "mediaDevicesUnavailable": "Röstinmatning är inte tillgänglig i det här fönstret. På macOS avslutar du Forge och öppnar det igen efter uppdateringen, och tillåter sedan mikrofonåtkomst när du tillfrågas. Du kan också köra ”{{command}}” och använda röstinmatning i webbläsaren.",
       "audioCaptureUnsupported": "Den här webbläsaren kan inte spela in ljud för röstinmatning.",
       "captureInitFailed": "Det gick inte att initiera ljudinspelningen: {{error}}",
       "websocket": "Ett WebSocket-fel uppstod vid anslutning till transkriberingstjänsten.",
       "closedUnexpectedly": "WebSocket-anslutningen stängdes oväntat (kod {{code}}: {{reason}})",
       "closedUnexpectedlyNoReason": "WebSocket-anslutningen stängdes oväntat (kod {{code}}: ingen orsak angavs)",
       "connectionFailed": "Mikrofonåtkomst nekades eller så misslyckades anslutningen: {{error}}",
-      "microphoneDenied": "Mikrofonåtkomst nekades. Tillåt mikrofonåtkomst för Ivy Tendril i Systeminställningar > Integritet och säkerhet > Mikrofon och försök sedan igen.",
+      "microphoneDenied": "Mikrofonåtkomst nekades. Tillåt mikrofonåtkomst för Forge i Systeminställningar > Integritet och säkerhet > Mikrofon och försök sedan igen.",
       "microphoneNotFound": "Ingen mikrofon hittades. Anslut en inmatningsenhet och försök igen."
     }
   },
@@ -213,7 +213,7 @@
       "stalled": "Fastnat"
     },
     "composer": {
-      "placeholder": "Beskriv vad Tendril ska bygga härnäst…",
+      "placeholder": "Beskriv vad Forge ska bygga härnäst…",
       "submit": "Skapa plan",
       "ariaLabel": "Beskriv en ny plan"
     },
