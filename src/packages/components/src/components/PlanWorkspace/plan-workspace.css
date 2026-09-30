@@ -662,3 +662,101 @@
   border-color: var(--input);
 }
 
+
+/* ---------- Phone layout ----------
+   Below 768px the chat stops being a side column: it docks under the plan at a fixed share of the
+   height, the top bar wraps and its actions scroll, and the markdown loses its desktop gutter.
+   Matches the shell's `MOBILE_SHELL_QUERY`. */
+@media (max-width: 767px) {
+  .pws-topbar {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .pws-title-wrap {
+    white-space: normal;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  /* Wraps rather than scrolls: the primary action (Execute, Complete) must never sit off-screen. */
+  .pws-topbar-right {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .pws-btn-kbd,
+  .pws-menu-kbd {
+    display: none;
+  }
+
+  .pws-body {
+    flex-direction: column;
+  }
+
+  .pws-resizer {
+    display: none;
+  }
+
+  .pws-chat {
+    width: 100% !important;
+    height: 42dvh;
+    flex: 0 0 auto;
+    border-left: 0;
+    border-top: var(--border-width) solid var(--border);
+    padding-bottom: 8px;
+    /* The chat's centred empty state is taller than the docked panel: clip it here and let the
+       body scroll, or it rises over the plan. */
+    overflow: hidden;
+    /* The empty state is absolutely positioned; without a containing block here it anchors
+       further up and escapes the clip. */
+    position: relative;
+  }
+
+  .pws-chat-body {
+    position: relative;
+    overflow-y: auto;
+  }
+
+  /* The chat's empty state (heading plus suggestion chips) is centred for a tall side column. In
+     the short docked panel it is anchored to the composer instead, so the chips stay whole and
+     whatever does not fit is trimmed from the top, not through the middle of the heading. */
+  .pws-chat-body .justify-center.text-center {
+    justify-content: flex-end;
+    padding-bottom: 8px;
+  }
+
+  .pws-tabs-row {
+    padding: 6px 8px 0;
+  }
+
+  /* The viewer's own scroll container has to be held to the pane: with the chat docked below, the
+     pane is short, and an unbounded wrapper let the plan run on under the chat. */
+  .pws-content .pmv-root {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .pws-content .pmv-shell {
+    height: 100%;
+  }
+
+  .pws-content .pmv-body {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pws-content .pmv-markdown {
+    padding: 16px 16px 24px;
+    overflow-wrap: anywhere;
+  }
+
+  .pws-content .pmv-markdown h1 {
+    font-size: 1.5rem;
+  }
+}

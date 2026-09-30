@@ -370,8 +370,9 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
             let folder = resolve(&args.id)?;
             let action = DecisionAction::from_str_loose(&args.action)
                 .ok_or_else(|| anyhow::anyhow!("--action must be accept, retry, replan or fail"))?;
-            service::decide(
+            service::decide_checked(
                 &folder,
+                &paths.plans_dir,
                 action,
                 args.job_id.as_deref(),
                 &args.reason,

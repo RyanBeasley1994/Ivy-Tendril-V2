@@ -1034,6 +1034,9 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
           shortcut: REQUEST_CHANGES_SHORTCUT,
           badge: draftComments.length > 0 ? String(draftComments.length) : undefined,
         },
+        // A shell in the plan's worktree, as its own tab: the server's built-in `Terminal` review
+        // action, for running a command or two while reviewing.
+        { tag: "Terminal", label: t("actions.terminal"), icon: "Terminal" },
         // `if (ctx.IsBeta) actions.Action("Share", "Share", Icons.Share2, SharePlan)`
         // (`ReviewActions.cs:88`), right after Request Changes.
         ...(isBeta
@@ -1133,6 +1136,9 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
         return;
       case "OpenPlanPage":
         if (selectedPlan) onSelectPlan(selectedPlan.id);
+        return;
+      case "Terminal":
+        void handleExecuteReviewAction("Terminal");
         return;
       case "Primary":
         firePrimary();
@@ -1899,6 +1905,10 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
             planId={selectedPlan.id}
             verificationName={openVerification}
             initialStatus={verifications.find((v) => v.name === openVerification)?.status}
+            onSetStatus={async (status) => {
+              if (!openVerification) return;
+              await plansStore.updateVerificationOptimistic(selectedPlan.id, openVerification, status);
+            }}
             onClose={() => setOpenVerification(null)}
             wireframeBaseUrl={wireframeBaseUrl}
           />

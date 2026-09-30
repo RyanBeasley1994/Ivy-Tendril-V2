@@ -118,7 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div
       data-testid="dashboard-view"
-      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6 pt-5"
+      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6 pt-5 max-md:px-3.5 max-md:pt-4"
     >
       <header className="flex shrink-0 items-end gap-3">
         <div className="flex min-w-0 flex-col gap-1.5">
@@ -165,7 +165,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </div>
 
-      <div className="grid min-h-[300px] flex-1 grid-cols-1 gap-3.5 xl:grid-cols-12">
+      {/* On a phone the column scrolls, so each card takes its own height rather than a share of one. */}
+      <div className="grid min-h-[300px] flex-1 grid-cols-1 gap-3.5 xl:grid-cols-12 max-md:flex-none max-md:[&>*]:min-h-[280px]">
         <TodayCard
           className="xl:col-span-3"
           activity={activity}

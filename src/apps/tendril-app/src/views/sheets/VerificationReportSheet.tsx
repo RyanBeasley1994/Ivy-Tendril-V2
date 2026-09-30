@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { Button } from "@ivy-interactive/components/ui";
+import { useTranslation } from "../../i18n";
 import { VerificationReportSheet as VerificationReportSheetView } from "@ivy-interactive/components/dialogs";
 import { bridge } from "../../api/bridge";
 import type { VerificationReport, VerificationStatus } from "../../types/api";
@@ -13,6 +15,11 @@ export interface VerificationReportSheetProps {
   initialStatus?: VerificationStatus;
   onClose: () => void;
   wireframeBaseUrl?: string;
+  /**
+   * Records the outcome by hand. Given, the sheet offers Pass / Fail / Skip, for a check the
+   * operator ran themselves or one an agent ran but never recorded.
+   */
+  onSetStatus?: (status: VerificationStatus) => Promise<void>;
 }
 
 /**
@@ -26,7 +33,11 @@ export const VerificationReportSheet: React.FC<VerificationReportSheetProps> = (
   initialStatus,
   onClose,
   wireframeBaseUrl,
+  onSetStatus,
 }) => {
+  const { t } = useTranslation("review");
+  const [saving, setSaving] = useState<VerificationStatus | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [report, setReport] = useState<VerificationReport | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +75,44 @@ export const VerificationReportSheet: React.FC<VerificationReportSheetProps> = (
     };
   }, [planId, verificationName]);
 
+  const record = async (status: VerificationStatus) => {
+    if (!onSetStatus) return;
+    setSaving(status);
+    setSaveError(null);
+    try {
+      await onSetStatus(status);
+    } catch (err) {
+      setSaveError(describeBridgeError(err));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const statusActions = onSetStatus ? (
+    <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/30 p-3">
+      <p className="m-0 text-xs text-muted-foreground">{t("verifications.recordHint")}</p>
+      <div className="flex flex-wrap gap-2">
+        {(["Pass", "Fail", "Skipped"] as const).map((status) => (
+          <Button
+            key={status}
+            type="button"
+            size="sm"
+            variant={status === "Pass" ? "default" : "outline"}
+            disabled={saving !== null || initialStatus === status}
+            onClick={() => void record(status)}
+            data-testid={`verification-record-${status}`}
+          >
+            {t(`verifications.record.${status}`)}
+          </Button>
+        ))}
+      </div>
+      {saveError && <p className="m-0 text-xs text-destructive">{saveError}</p>}
+    </div>
+  ) : undefined;
+
   return (
     <VerificationReportSheetView
+      statusActions={statusActions}
       verificationName={verificationName}
       onClose={onClose}
       report={report}

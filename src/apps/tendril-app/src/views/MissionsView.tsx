@@ -17,7 +17,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { AgentPicker } from "@ivy-interactive/components/dialogs";
-import { PlanMarkdown } from "@ivy-interactive/components/tendril";
+import { PlanMarkdown, useIsMobileShell } from "@ivy-interactive/components/tendril";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -168,6 +168,9 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
   }, []);
 
   const liveCount = (missions ?? []).filter((m) => !isTerminal(m.state)).length;
+  // A phone shows the list, or one mission, never both: the detail needs the whole width.
+  const mobile = useIsMobileShell();
+  const mobileDetail = mobile && !!pageArgs.mission;
   // Two or more missions in flight open on the board of all of them; otherwise on the first mission.
   const selectedId =
     pageArgs.mission ??
@@ -266,6 +269,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
 
   return (
     <div className="flex min-h-0 flex-1" data-testid="missions-view">
+      {(!mobile || !mobileDetail) && (
       <MissionList
         missions={missions}
         selectedId={selectedId}
@@ -275,7 +279,20 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
         onSelectJob={onSelectJob}
         t={t}
       />
-      <main className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-7 pb-8 pt-5">
+      )}
+      {(!mobile || mobileDetail) && (
+      <main className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-7 pb-8 pt-5 max-md:px-3.5 max-md:pt-3">
+        {mobileDetail && (
+          <button
+            type="button"
+            onClick={() => uiStore.setActiveNav("missions", {})}
+            className="inline-flex items-center gap-1.5 self-start rounded-lg px-1.5 py-1 text-[13px] text-muted-foreground active:bg-secondary/60"
+            data-testid="missions-back"
+          >
+            <ChevronRight size={15} className="rotate-180" aria-hidden="true" />
+            {t("list.title")}
+          </button>
+        )}
         {error && (
           <ErrorBanner onDismiss={() => setError(null)}>{error}</ErrorBanner>
         )}
@@ -303,6 +320,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
           </div>
         )}
       </main>
+      )}
     </div>
   );
 };
@@ -422,7 +440,7 @@ const MissionList: React.FC<{
     <aside
       aria-label={t("list.title")}
       data-testid="missions-list"
-      className="flex w-[300px] shrink-0 flex-col border-r border-border/80 bg-[color-mix(in_srgb,var(--card)_45%,var(--background))]"
+      className="flex w-[300px] shrink-0 flex-col border-r border-border/80 bg-[color-mix(in_srgb,var(--card)_45%,var(--background))] max-md:w-full max-md:border-r-0"
     >
       <div className="flex h-[52px] shrink-0 items-center gap-2 pl-4 pr-3">
         <h2 className="m-0 text-sm font-semibold">{t("list.title")}</h2>

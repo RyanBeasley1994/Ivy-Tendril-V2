@@ -1,5 +1,7 @@
 import React from "react";
 import { ForgeLogo } from "../components/ForgeLogo";
+import { MobileTabBar } from "./shell/MobileTabBar";
+import { Plus } from "lucide-react";
 import { PRODUCT_NAME } from "../branding";
 import {
   TendrilShell,
@@ -568,6 +570,34 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
           hasTabs={hasSessionTabs}
           activeSessionIndex={activeSessionIndex}
           slots={{
+            // Phone layout (below 768px): brand and New Plan in a slim top bar, the five main places
+            // in a floating tab bar, and this sidebar as a drawer behind the menu button.
+            MobileBrand: (
+              <>
+                <ForgeLogo className="size-[22px]" />
+                <span className="truncate">{PRODUCT_NAME}</span>
+              </>
+            ),
+            MobileActions: (
+              <button
+                type="button"
+                onClick={onNewPlan}
+                aria-label={t("sidebar.newPlan")}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground active:opacity-80"
+                data-testid="mobile-new-plan"
+              >
+                <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
+                {t("sidebar.newPlanShort")}
+              </button>
+            ),
+            MobileNav: (
+              <MobileTabBar
+                activeNav={activeNav}
+                onSelectNav={onSelectNav}
+                onOpenChat={onOpenChat}
+                badges={{ plans: draftCount, review: reviewCount, chat: chatCount }}
+              />
+            ),
             // The header is the brand row alone. V1 formats the version as "v <x.y.z>".
             //
             // `logo` is V1's `.LogoUrl("/tendril/assets/Tendril.svg")` in `TendrilAppShell`, which

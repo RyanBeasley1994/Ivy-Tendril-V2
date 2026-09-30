@@ -620,6 +620,43 @@ pub fn decide(
     })
 }
 
+/// [`decide`], refusing a final-phase `accept` while the integration plan still has a verification
+/// `Pending` or `Fail`. The validator runs every verification in that phase; one it ran but never
+/// recorded would reach Review looking unverified, which is what this catches, while the validator's
+/// job is still running and can fix it.
+#[allow(clippy::too_many_arguments)]
+pub fn decide_checked(
+    folder: &Path,
+    plans_dir: &Path,
+    action: DecisionAction,
+    job_id: Option<&str>,
+    reason: &str,
+    feedback: Option<&str>,
+    summary: Option<&str>,
+) -> Result<()> {
+    if action == DecisionAction::Accept {
+        let mission = crate::missions::store::read_mission(folder)?;
+        let final_phase = mission
+            .current_job
+            .as_ref()
+            .is_some_and(|j| j.step == MissionStep::Final);
+        if final_phase {
+            if let Some(integration) = mission.integration_plan.as_ref().map(|p| plans_dir.join(p)) {
+                if let Ok((plan, _)) = read_plan_yaml(&integration) {
+                    let open = crate::plans::verification_gate::incomplete_verifications(&plan);
+                    if !open.is_empty() {
+                        return Err(TendrilError::Validation(format!(
+                            "The integration plan still has verification(s) {} not passed. Record each result first with `tendril plan set-verification <TendrilPlanId> <Name> Pass|Fail` (and its report in Verification/<Name>.md), then accept. A failed one needs a fix-up milestone (replan), not an accept.",
+                            open.join(", ")
+                        )));
+                    }
+                }
+            }
+        }
+    }
+    decide(folder, action, job_id, reason, feedback, summary)
+}
+
 /// Writes a fresh mission file, for the few callers that replace it whole.
 pub fn save(folder: &Path, mission: &MissionYaml) -> Result<()> {
     write_mission(folder, mission)

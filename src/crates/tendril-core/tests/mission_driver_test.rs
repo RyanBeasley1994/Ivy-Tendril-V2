@@ -651,3 +651,33 @@ async fn tasks_are_ticked_off_and_shown_in_the_milestone_plan() {
     assert!(m.milestone("M1").unwrap().tasks[1].done);
     assert!(service::set_task_done(&folder, "M9.1", true).is_err());
 }
+
+#[tokio::test]
+async fn the_final_phase_cannot_accept_until_every_verification_is_recorded() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (exec, _) = w.jobs.last();
+    w.jobs.finish(&exec, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    let (judge, _) = w.jobs.last();
+    service::decide(&folder, DecisionAction::Accept, Some(&judge), "ok", None, None).unwrap();
+    w.jobs.finish(&judge, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    let (final_job, args) = w.jobs.last();
+    assert!(matches!(&args, JobArgs::OrchestrateMission(a) if a.phase == "Final"));
+
+    // `Build` is still Pending on the integration plan: the accept is refused, with the fix.
+    let err = service::decide_checked(&folder, &w.paths.plans_dir, DecisionAction::Accept, Some(&final_job), "all green", None, None)
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("Build") && err.contains("set-verification"), "{err}");
+
+    // Recorded: the accept goes through.
+    let integration = w.paths.plans_dir.join(read_mission(&folder).unwrap().integration_plan.unwrap());
+    let (mut yaml, _) = read_plan_yaml(&integration).unwrap();
+    for v in yaml.verifications.iter_mut() {
+        v.status = tendril_core::models::VerificationStatus::Pass;
+    }
+    tendril_core::plans::writer::write_plan_yaml(&integration, &yaml).unwrap();
+    service::decide_checked(&folder, &w.paths.plans_dir, DecisionAction::Accept, Some(&final_job), "all green", None, None).unwrap();
+}

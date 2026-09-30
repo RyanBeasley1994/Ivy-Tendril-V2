@@ -58,6 +58,8 @@ export interface VerificationReportSheetProps {
   initialStatus?: VerificationReportStatus;
   /** Passed to the report's markdown renderer. */
   wireframeBaseUrl?: string;
+  /** Controls the host shows above the report, e.g. recording the outcome by hand. */
+  statusActions?: React.ReactNode;
 }
 
 /**
@@ -76,6 +78,7 @@ export const VerificationReportSheet: React.FC<VerificationReportSheetProps> = (
   error,
   initialStatus,
   wireframeBaseUrl,
+  statusActions,
 }) => {
   const { t } = useTranslation("uiReview");
   const outcome = report?.result ?? initialStatus;
@@ -108,6 +111,7 @@ export const VerificationReportSheet: React.FC<VerificationReportSheetProps> = (
         )
       }
     >
+      {statusActions && <div className="mb-4" data-testid="verification-sheet-status-actions">{statusActions}</div>}
       {loading && (
         <div
           className="flex h-32 items-center justify-center text-sm text-muted-foreground"

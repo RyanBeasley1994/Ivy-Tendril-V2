@@ -430,6 +430,18 @@ fn action_environment(
     ActionEnvironment { ports, env }
 }
 
+/// The review action every project has without configuring it: a shell.
+pub const BUILTIN_TERMINAL: &str = "Terminal";
+
+/// The operator's own login shell, interactive, so their aliases and PATH (pnpm, nvm, cargo) work.
+fn terminal_command() -> String {
+    if cfg!(windows) {
+        "powershell -NoLogo".to_string()
+    } else {
+        "exec \"${SHELL:-/bin/bash}\" -il".to_string()
+    }
+}
+
 pub async fn execute_review_action(
     State(state): State<Arc<AppState>>,
     Path((project_name, action_name)): Path<(String, String)>,
@@ -471,12 +483,25 @@ pub async fn execute_review_action(
         }
     };
 
+    // `Terminal` is built in: an interactive login shell in the plan's worktree, for running a command
+    // or two while reviewing. A project that defines its own `Terminal` action gets that instead.
+    let builtin_terminal;
     let action = match project
         .review_actions
         .iter()
         .find(|a| a.name.eq_ignore_ascii_case(&action_name))
     {
         Some(a) => a,
+        None if action_name.eq_ignore_ascii_case(BUILTIN_TERMINAL) => {
+            builtin_terminal = tendril_core::models::project::ReviewActionConfig {
+                name: BUILTIN_TERMINAL.to_string(),
+                command: terminal_command(),
+                condition: String::new(),
+                paths: Vec::new(),
+                extra: Default::default(),
+            };
+            &builtin_terminal
+        }
         None => {
             return (
                 StatusCode::NOT_FOUND,

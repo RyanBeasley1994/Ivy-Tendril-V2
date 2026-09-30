@@ -51,6 +51,7 @@
   },
   "shell": {
     "toggleSidebarShortcut": "Toggle sidebar",
+    "mobileMenu": "Menu",
     "resizer": {
       "ariaLabel": "Resize sidebar",
       "title": "Drag to resize sidebar, double-click to reset"

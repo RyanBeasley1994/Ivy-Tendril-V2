@@ -7,6 +7,8 @@ export { TendrilLogo, type TendrilLogoProps } from "./components/TendrilLogo";
 // Shell Components
 export {
   TendrilShell,
+  useIsMobileShell,
+  MOBILE_SHELL_QUERY,
   ShellNav,
   ShellTabs,
   ShellAgentButton,

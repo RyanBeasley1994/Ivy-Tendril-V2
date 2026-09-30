@@ -65,7 +65,7 @@ export const PlansOverview: React.FC<{
   const cols = "grid grid-cols-[64px_minmax(0,1fr)_minmax(0,160px)_96px_120px_72px_64px] gap-3";
 
   return (
-    <div data-testid="plans-overview" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6 pt-5">
+    <div data-testid="plans-overview" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6 pt-5 max-md:px-3.5 max-md:pt-4">
       <header className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">
           <h1 className="m-0 text-[26px] font-semibold tracking-[-0.025em]">{t("overview.title")}</h1>
@@ -83,6 +83,7 @@ export const PlansOverview: React.FC<{
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
+        <div className="max-md:-mx-3.5 max-md:w-[calc(100%+1.75rem)] max-md:overflow-x-auto max-md:px-3.5 max-md:[scrollbar-width:none]">
         <Seg<Filter>
           label={t("overview.title")}
           value={filter}
@@ -97,7 +98,8 @@ export const PlansOverview: React.FC<{
             ),
           }))}
         />
-        <label className="ml-auto flex h-8 w-72 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-muted-foreground focus-within:border-input">
+        </div>
+        <label className="ml-auto flex h-8 w-72 max-md:ml-0 max-md:h-10 max-md:w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-muted-foreground focus-within:border-input">
           <Search size={14} aria-hidden="true" />
           <input
             value={query}
@@ -110,7 +112,7 @@ export const PlansOverview: React.FC<{
       </div>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className={cn(cols, "px-4 pb-2 pt-3 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground")}>
+        <div className={cn(cols, "px-4 pb-2 pt-3 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground max-md:hidden")}>
           <span>{t("overview.columns.id")}</span>
           <span>{t("overview.columns.plan")}</span>
           <span>{t("overview.columns.project")}</span>
@@ -135,8 +137,31 @@ export const PlansOverview: React.FC<{
               key={p.id}
               type="button"
               onClick={() => onSelectPlan(p.id)}
-              className={cn(cols, "h-11 w-full items-center border-t border-border/70 px-4 text-left text-[13px] transition-colors hover:bg-muted/60")}
+              className={cn(
+                cols,
+                "h-11 w-full items-center border-t border-border/70 px-4 text-left text-[13px] transition-colors hover:bg-muted/60",
+                // A phone gets a two-line card: the title, then everything else.
+                "max-md:flex max-md:h-auto max-md:flex-col max-md:items-stretch max-md:gap-1.5 max-md:py-3 max-md:[&>*:not(:first-child)]:hidden",
+              )}
             >
+              <span className="hidden max-md:flex max-md:flex-col max-md:gap-1.5">
+                <span className="line-clamp-2 text-[14px] font-medium leading-snug">{p.title}</span>
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    {live && <span className="size-1.5 animate-pulse rounded-full bg-success" aria-hidden="true" />}#{p.id}
+                  </span>
+                  <Pill tone={STATE_TONE[state] ?? "mute"} dot={live} live={live}>
+                    {labels.planState(state)}
+                  </Pill>
+                  <span className="truncate font-sans">{p.project}</span>
+                  {checks.length > 0 && (
+                    <span className={failed ? "text-destructive" : passed === checks.length ? "text-success" : undefined}>
+                      {passed}/{checks.length}
+                    </span>
+                  )}
+                  <span className="ml-auto">{updatedAt(p) ? formatAge(now - updatedAt(p)) : ""}</span>
+                </span>
+              </span>
               <span className="flex items-center gap-1.5 font-mono text-[11.5px] text-muted-foreground">
                 {live && <span className="size-1.5 animate-pulse rounded-full bg-success" aria-hidden="true" />}#{p.id}
               </span>

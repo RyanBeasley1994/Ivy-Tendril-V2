@@ -1,4 +1,4 @@
-export { TendrilShell } from "./TendrilShell.tsx";
+export { TendrilShell, useIsMobileShell, MOBILE_SHELL_QUERY } from "./TendrilShell.tsx";
 export { ShellNav } from "./ShellNav.tsx";
 export { ShellTabs } from "./ShellTabs.tsx";
 export { ShellAgentButton } from "./ShellAgentButton.tsx";

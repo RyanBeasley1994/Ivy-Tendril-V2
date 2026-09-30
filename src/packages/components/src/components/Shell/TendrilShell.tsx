@@ -1,4 +1,5 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Menu } from "lucide-react";
 import { ShellContext } from "./ShellContext.tsx";
 import { type ShellWidgetProps } from "./types.ts";
 import {
@@ -23,8 +24,37 @@ interface TendrilShellProps extends ShellWidgetProps {
     SessionContents?: React.ReactNode;
     Tabs?: React.ReactNode;
     Hidden?: React.ReactNode;
+    /** Phone layout: the brand in the top bar, beside the menu button. */
+    MobileBrand?: React.ReactNode;
+    /** Phone layout: the top bar's right-hand actions (New plan, inbox). */
+    MobileActions?: React.ReactNode;
+    /** Phone layout: the bottom tab bar. */
+    MobileNav?: React.ReactNode;
   };
 }
+
+/** Below this width the sidebar becomes a drawer and the frame goes edge to edge. Mirrors `shell.css`. */
+export const MOBILE_SHELL_QUERY = "(max-width: 767px)";
+
+/** Whether the shell is in its phone layout. */
+export function useIsMobileShell(): boolean {
+  const [mobile, setMobile] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.(MOBILE_SHELL_QUERY).matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia?.(MOBILE_SHELL_QUERY);
+    if (!media) return;
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return mobile;
+}
+
+/** What, clicked in the drawer, is a navigation: picking it closes the drawer. */
+const DRAWER_CLOSERS =
+  ".tsh-nav-item, .tsh-section-item, .tsh-list-row, [data-drawer-close], a[href]";
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = "tendril.shell.sidebarCollapsed";
 export const SIDEBAR_WIDTH_STORAGE_KEY = "tendril.shell.sidebarWidth";
@@ -94,6 +124,23 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
     minWidth: MIN_SIDEBAR_WIDTH,
     maxWidth: MAX_SIDEBAR_WIDTH,
   });
+  const mobile = useIsMobileShell();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Leaving the phone layout (rotating a tablet, widening a window) must not leave a drawer open
+  // over the desktop sidebar.
+  useEffect(() => {
+    if (!mobile) setDrawerOpen(false);
+  }, [mobile]);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+  // The drawer always shows full labels: the desktop rail is not a phone layout.
+  const effectiveCollapsed = mobile ? false : collapsed;
   const prevPropRef = useRef(collapsedProp);
   if (collapsedProp !== prevPropRef.current) {
     prevPropRef.current = collapsedProp;
@@ -135,7 +182,9 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
          they handled their own inset while the shell went on padding them anyway. V2 decides full-bleed
          in one place instead: `AppDescriptor.fullBleed` in the app registry, read by `ShellLayout`. */
         className="tsh-root"
-        data-collapsed={collapsed}
+        data-collapsed={effectiveCollapsed}
+        data-mobile={mobile}
+        data-drawer-open={drawerOpen}
         data-resizing={isDragging}
         style={
           {
@@ -143,12 +192,41 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
           } as React.CSSProperties
         }
       >
-        <ShellContext.Provider value={{ collapsed, toggle }}>
-          <div className="tsh-sidebar">
+        {mobile && (
+          <div className="tsh-mobile-bar">
+            <button
+              type="button"
+              className="tsh-mobile-menu"
+              aria-label={t("shell.mobileMenu")}
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen((open) => !open)}
+            >
+              <Menu size={20} aria-hidden="true" />
+            </button>
+            <div className="tsh-mobile-brand">{slots?.MobileBrand}</div>
+            <div className="tsh-mobile-actions">{slots?.MobileActions}</div>
+          </div>
+        )}
+        {mobile && drawerOpen && (
+          <div className="tsh-backdrop" aria-hidden="true" onClick={() => setDrawerOpen(false)} />
+        )}
+        <ShellContext.Provider value={{ collapsed: effectiveCollapsed, toggle }}>
+          <div
+            className="tsh-sidebar"
+            aria-hidden={mobile && !drawerOpen ? true : undefined}
+            onClickCapture={(e) => {
+              if (!mobile) return;
+              const target = e.target as HTMLElement | null;
+              if (target?.closest(DRAWER_CLOSERS)) {
+                // After the click has done its work.
+                setTimeout(() => setDrawerOpen(false), 0);
+              }
+            }}
+          >
             <div className="tsh-sidebar-header">{slots?.SidebarHeader}</div>
             <div className="tsh-sidebar-body">{slots?.SidebarBody}</div>
             <div className="tsh-sidebar-footer">{slots?.SidebarFooter}</div>
-            {!collapsed && (
+            {!effectiveCollapsed && !mobile && (
               <div
                 className="tsh-sidebar-resizer"
                 {...separatorProps}
@@ -179,6 +257,7 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
               </div>
               {hasTabs && slots?.Tabs && <div className="tsh-tabs-row">{slots.Tabs}</div>}
             </div>
+            {mobile && slots?.MobileNav && <div className="tsh-mobile-nav">{slots.MobileNav}</div>}
           </div>
         </ShellContext.Provider>
         {slots?.Hidden && <div style={{ display: "none" }}>{slots.Hidden}</div>}

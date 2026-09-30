@@ -89,7 +89,9 @@ export const ShellTopBar: React.FC<ShellTopBarProps> = ({
     <header
       data-testid="shell-top-bar"
       data-tauri-drag-region
-      className="flex h-12 shrink-0 select-none items-center gap-3 border-b border-border/80 px-5"
+      // Phones get the shell's own top bar (menu, brand, New) instead: this one's back/forward,
+      // breadcrumb and search do not fit, and search is in the drawer.
+      className="flex h-12 shrink-0 select-none items-center gap-3 border-b border-border/80 px-5 max-md:hidden"
     >
       <div className="-ml-1.5 flex shrink-0 items-center gap-0.5">
         <button

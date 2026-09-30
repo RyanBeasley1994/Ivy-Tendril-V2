@@ -1524,3 +1524,128 @@
 .dark .tsh-nav-divider::after {
   background: color-mix(in srgb, var(--border) 80%, transparent);
 }
+
+/* ---------- Phone layout ----------
+   Below 768px the sidebar is a drawer over the page, a slim top bar carries the menu button, the
+   brand and the page's primary action, and a floating tab bar docks at the bottom. The frame loses
+   its inset and radius so every page gets the full width. Mirrors `MOBILE_SHELL_QUERY`. */
+
+.tsh-mobile-bar,
+.tsh-mobile-nav,
+.tsh-backdrop {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .tsh-root {
+    flex-direction: column;
+    /* The page scrolls inside its panes; the document itself never should. */
+    height: 100dvh;
+  }
+
+  .tsh-mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    height: calc(52px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
+    background: var(--tsh-bg);
+    border-bottom: var(--border-width) solid var(--border);
+  }
+
+  .tsh-mobile-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg, 10px);
+    color: var(--foreground);
+    background: transparent;
+    border: 0;
+  }
+
+  .tsh-mobile-menu:active {
+    background: var(--tsh-row-active);
+  }
+
+  .tsh-mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+
+  .tsh-mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .tsh-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    width: min(86vw, 320px) !important;
+    padding-top: calc(16px + env(safe-area-inset-top));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    background: var(--tsh-bg);
+    border-right: var(--border-width) solid var(--border);
+    box-shadow: 24px 0 48px -24px rgb(0 0 0 / 0.6);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 260ms var(--ease-in-out-standard, ease),
+      visibility 0s linear 260ms;
+  }
+
+  .tsh-root[data-drawer-open="true"] .tsh-sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform 260ms var(--ease-in-out-standard, ease);
+  }
+
+  .tsh-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  .tsh-main {
+    padding: 0;
+  }
+
+  .tsh-container {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .tsh-frame {
+    border-radius: 0;
+  }
+
+  /* Session tabs scroll sideways instead of squeezing. */
+  .tsh-tabs-row {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tsh-mobile-nav {
+    display: block;
+    flex-shrink: 0;
+    padding: 6px max(10px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+    background: var(--tsh-bg);
+  }
+}

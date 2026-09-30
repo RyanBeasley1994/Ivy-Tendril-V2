@@ -78,6 +78,9 @@
   },
   "sidebar": {
     "version": "v {{version}}",
+    "newPlan": "New plan",
+    "newPlanShort": "New",
+    "mobileTabs": "Main sections",
     "nav": {
       "dashboard": "Dashboard",
       "plans": "Plans",

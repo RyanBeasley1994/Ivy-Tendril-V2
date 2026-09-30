@@ -24,6 +24,7 @@
   },
   "actions": {
     "requestChanges": "Request Changes",
+    "terminal": "Open a terminal in this plan's worktree",
     "resetToDraft": "Reset to Draft",
     "deletePlan": "Delete Plan",
     "openPlanPage": "Open Full Spec & Diff",
@@ -68,7 +69,13 @@
   },
   "verifications": {
     "none": "No verifications",
-    "viewReport": "View {{name}} report"
+    "viewReport": "View {{name}} report",
+    "recordHint": "Record the outcome yourself: for a check you ran in the terminal, or one an agent ran but never recorded.",
+    "record": {
+      "Pass": "Mark passed",
+      "Fail": "Mark failed",
+      "Skipped": "Skip"
+    }
   },
   "verificationStatus": {
     "pending": "Pending",
