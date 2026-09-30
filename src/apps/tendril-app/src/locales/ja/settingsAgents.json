@@ -120,7 +120,8 @@
     "asOf": "{{relative}} 時点",
     "countdown": {
       "now": "まもなく",
-      "hoursMinutes": "{{hours}} {{minutes}}"
+      "hoursMinutes": "{{hours}} {{minutes}}",
+      "daysHours": "{{days}} {{hours}}"
     },
     "justNow": "たった今"
   },

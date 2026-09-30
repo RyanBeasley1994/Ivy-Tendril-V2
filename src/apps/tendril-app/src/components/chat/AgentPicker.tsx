@@ -9,6 +9,8 @@ import {
   type ModelOption,
 } from "../../types/agents";
 import { useTranslation } from "../../i18n";
+import { PROFILE_TIERS } from "../../views/settings/codingAgents";
+import type { ResolvedProfiles } from "../../state/chatProfiles";
 
 /**
  * V1 `Helpers/AgentBranding.IconFor`: the brand mark each coding agent carries in the picker, keyed
@@ -59,6 +61,17 @@ export interface AgentPickerProps {
    * per-user state, so the store answers instead.
    */
   rememberedFor?: (agentId: string) => { modelId?: string; effort?: string };
+  /**
+   * What each profile gives an agent. When given, an agent's panel offers its profiles (Deep /
+   * Balanced / Quick, each naming the model it runs) in place of the raw model and effort lists,
+   * and choosing one reports through {@link onProfileChange}.
+   */
+  profilesFor?: (agentId: string) => ResolvedProfiles;
+  /** The profile an agent is set to run on. */
+  profileFor?: (agentId: string) => string;
+  onProfileChange?: (agentId: string, profile: string) => void;
+  /** The menu opened, so the host can re-read anything the panels show (profiles edited in Settings). */
+  onOpen?: () => void;
   /** Prefix for this instance's test ids, so two pickers cannot share one set. */
   instanceId?: string;
 }
@@ -132,6 +145,9 @@ const UNPLACED_LAYER: React.CSSProperties = {
 };
 
 interface AgentSettings {
+  /** Set when the host resolves profiles: the panel shows these instead of models and efforts. */
+  profiles?: SelectOption[];
+  profile?: string;
   models: SelectOption[];
   model: string;
   supportsEffort: boolean;
@@ -140,7 +156,7 @@ interface AgentSettings {
 }
 
 const hasSettings = (settings: AgentSettings) =>
-  settings.models.length > 0 || settings.supportsEffort;
+  (settings.profiles?.length ?? 0) > 0 || settings.models.length > 0 || settings.supportsEffort;
 
 /**
  * The composer's agent pill, mirroring V1's `ChatWidget/AgentPicker.tsx`.
@@ -163,6 +179,10 @@ export const AgentPicker: React.FC<AgentPickerProps> = ({
   onEffortChange,
   compact = false,
   rememberedFor,
+  profilesFor,
+  profileFor,
+  onProfileChange,
+  onOpen,
   instanceId = "agent-picker",
 }) => {
   const { t } = useTranslation("chat");
@@ -222,7 +242,31 @@ export const AgentPicker: React.FC<AgentPickerProps> = ({
           : isSelected
             ? efforts
             : [];
+    const modelName = (id: string) =>
+      modelSource.find((candidate) => candidate.id === id)?.displayName ?? id;
+    const effortName = (id: string) =>
+      isEffortLevelId(id) ? t(`agentPicker.effortLevels.${id}`) : id;
+    const resolvedProfiles = profilesFor?.(agent.id);
+    const profiles = resolvedProfiles
+      ? PROFILE_TIERS.map((tier) => {
+          const { model: profileModel, effort: profileEffort } = resolvedProfiles[tier];
+          const values = {
+            profile: t(`agentPicker.profiles.${tier}`),
+            model: profileModel ? modelName(profileModel) : t("agentPicker.profileDefaultModel"),
+            effort: profileEffort ? effortName(profileEffort) : "",
+          };
+          return {
+            value: tier,
+            label: profileEffort
+              ? t("agentPicker.profileOptionWithEffort", values)
+              : t("agentPicker.profileOption", values),
+          };
+        })
+      : undefined;
+
     return {
+      profiles,
+      profile: profileFor?.(agent.id),
       models: modelOptions,
       model,
       supportsEffort: agent.supportsEffort || (isSelected && supportsEffort === true),
@@ -311,6 +355,7 @@ export const AgentPicker: React.FC<AgentPickerProps> = ({
   const toggleMenu = () => {
     setOptionsAgentId(null);
     setLayerStyle(UNPLACED_LAYER);
+    if (!open) onOpen?.();
     setOpen((state) => !state);
   };
 
@@ -418,7 +463,15 @@ export const AgentPicker: React.FC<AgentPickerProps> = ({
                 <div className="whitespace-nowrap px-0.5 pb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {optionsAgent.label}
                 </div>
-                {optionsSettings.models.length > 0 && (
+                {optionsSettings.profiles && optionsSettings.profiles.length > 0 && (
+                  <PanelSelect
+                    title={t("agentPicker.profile")}
+                    value={optionsSettings.profile ?? ""}
+                    options={optionsSettings.profiles}
+                    onChange={(profile) => onProfileChange?.(optionsAgent.id, profile)}
+                  />
+                )}
+                {!optionsSettings.profiles && optionsSettings.models.length > 0 && (
                   <PanelSelect
                     title={t("agentPicker.model")}
                     value={optionsSettings.model}
@@ -426,7 +479,7 @@ export const AgentPicker: React.FC<AgentPickerProps> = ({
                     onChange={(modelId) => onModelChange(optionsAgent.id, modelId)}
                   />
                 )}
-                {optionsSettings.supportsEffort && (
+                {!optionsSettings.profiles && optionsSettings.supportsEffort && (
                   <PanelSelect
                     title={t("agentPicker.effort")}
                     value={optionsSettings.effort}

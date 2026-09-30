@@ -20,6 +20,7 @@ import type {
   DraftComment,
   GitHubAccountOption,
   GitHubIssuesPage,
+  GitHubRepo,
   InboxProposal,
   CreateMissionRequest,
   BranchPreview,
@@ -286,12 +287,12 @@ async function invokeOrFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  try {
-    if (isTauri()) {
-      return await invoke<T>(command, args);
-    }
-  } catch {
-    // Fall back to direct fetch if Tauri invoke is not available
+  // Under Tauri the command's own rejection is the answer. Falling back to `fetch(path)` there cannot
+  // work - the webview's origin serves the app's assets, so the "response" is `index.html` - and it
+  // replaced the daemon's real reason with WebKit's JSON parse error ("The string did not match the
+  // expected pattern").
+  if (isTauri()) {
+    return invoke<T>(command, args);
   }
 
   /* `Headers` rather than an object spread: `HeadersInit` also allows an array of pairs, and
@@ -1113,6 +1114,14 @@ const tauriClient = {
       {},
       "/api/vaults/accounts",
     );
+  },
+
+  /**
+   * Every GitHub repository the daemon's `gh` user can clone, most recently updated first, for the
+   * Add Project picker. Rejects with `gh`'s own reason (not installed, not signed in).
+   */
+  async listGitHubRepos(this: void): Promise<GitHubRepo[]> {
+    return invokeOrFetch<GitHubRepo[]>("cmd_list_github_repos", {}, "/api/github/repos");
   },
 
   /** Repositories on GitHub that look like a Tendril vault, for the connect dialog. */

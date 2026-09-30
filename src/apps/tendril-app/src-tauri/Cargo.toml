@@ -33,9 +33,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 # `wss:` for a remote daemon behind TLS (a tunnel or reverse proxy on :443); ring, like reqwest above.
 tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
 futures-util = "0.3"
-# SSH tunnel to a remote daemon (`service::ssh_tunnel`). `ring`, not the default aws-lc-rs: ring is
-# already in the build for rustls, and aws-lc-rs means a C toolchain build.
-russh = { version = "0.63", default-features = false, features = ["ring", "rsa", "flate2"] }
 anyhow = "1"
 base64 = "0.22"
 url = "2"
@@ -56,9 +53,6 @@ tempfile = "3"
 axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
 futures-util = "0.3"
-# SSH tunnel to a remote daemon (`service::ssh_tunnel`). `ring`, not the default aws-lc-rs: ring is
-# already in the build for rustls, and aws-lc-rs means a C toolchain build.
-russh = { version = "0.63", default-features = false, features = ["ring", "rsa", "flate2"] }
 base64 = "0.22"
 # Tests only: the file-preview command's whole claim is that the daemon's `local_file_guard` is what
 # decides which paths may be read, and that claim can only be tested against the real router.

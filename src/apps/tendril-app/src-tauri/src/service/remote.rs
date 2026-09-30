@@ -11,15 +11,10 @@
 //! disk: it sits in `<TendrilHome>/remote-connection.json`, owner-only on Unix, next to the `.master`
 //! secret and `config.yaml` credentials that folder already holds.
 //!
-//! With [`SavedConnection::ssh`] set, the daemon is not reached at `url` at all: an SSH tunnel
-//! (`service::ssh_tunnel`) forwards a loopback port to it and the origin is that port, so the daemon
-//! can stay bound to the server's loopback, off the internet.
-//!
 //! The connection is chosen at startup. Connecting or disconnecting saves the choice and restarts
 //! the app, because the bridges are wired up once in `setup`.
 
 use crate::daemon::MasterInfo;
-use crate::service::ssh_tunnel::{SshSettings, Tunnel};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -30,7 +25,7 @@ const FILE_NAME: &str = "remote-connection.json";
 const REFRESH_EVERY: Duration = Duration::from_secs(10 * 60);
 const RETRY_EVERY: Duration = Duration::from_secs(15);
 /// `tendril run`'s default, assumed when the operator types a bare host or IP.
-pub const DEFAULT_PORT: u16 = 5010;
+const DEFAULT_PORT: u16 = 5010;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -39,9 +34,6 @@ pub struct SavedConnection {
     #[serde(default)]
     pub username: String,
     pub password: String,
-    /// Reach the daemon through SSH rather than at `url`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ssh: Option<SshSettings>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,52 +58,6 @@ struct Active {
 }
 
 static ACTIVE: RwLock<Option<Active>> = RwLock::new(None);
-/// Held for the process lifetime: dropping it stops the forward.
-static TUNNEL: std::sync::Mutex<Option<Tunnel>> = std::sync::Mutex::new(None);
-
-impl Origin {
-    fn loopback(port: u16) -> Origin {
-        Origin {
-            scheme: "http".to_string(),
-            host: "127.0.0.1".to_string(),
-            port,
-        }
-    }
-}
-
-/// Starts the SSH forward and answers with the origin it serves, or why the session is down.
-async fn open_tunnel(ssh: SshSettings) -> Result<(Tunnel, Origin), String> {
-    let tunnel = Tunnel::start(ssh).await?;
-    let origin = Origin::loopback(tunnel.local_port);
-    Ok((tunnel, origin))
-}
-
-/// For `cmd_connect_remote`: tunnels in, logs in through the tunnel, and answers with the settings
-/// to save, host key pinned. Nothing is kept running; the restart that follows opens its own.
-pub async fn probe_ssh(
-    ssh: SshSettings,
-    username: &str,
-    password: &str,
-) -> Result<SshSettings, String> {
-    let (tunnel, origin) = open_tunnel(ssh.clone()).await?;
-    if let Some(e) = tunnel.first_error.clone() {
-        return Err(e);
-    }
-    login(&origin, username, password).await.map_err(|e| {
-        if e.starts_with("Could not reach") {
-            format!(
-                "SSH worked, but no Tendril server answered on port {} there. Is `tendril run` going on the server?",
-                ssh.remote_port
-            )
-        } else {
-            e
-        }
-    })?;
-    Ok(SshSettings {
-        host_key: tunnel.host_key.clone(),
-        ..ssh
-    })
-}
 
 /// Accepts what an operator is likely to type: `1.2.3.4`, `my-vps:5010`, `http://host:5010`, or a
 /// tunnel's `https://name.trycloudflare.com`. Without a scheme it is `http` on port 5010; with one,
@@ -224,37 +170,21 @@ pub fn init_at_startup(home: &Path) {
     let Some(saved) = load_saved(home) else {
         return;
     };
-    let (origin, tunnel_error) = match &saved.ssh {
-        Some(ssh) => match tauri::async_runtime::block_on(open_tunnel(ssh.clone())) {
-            Ok((tunnel, origin)) => {
-                let error = tunnel.first_error.clone();
-                *TUNNEL.lock().unwrap_or_else(|e| e.into_inner()) = Some(tunnel);
-                (origin, error)
-            }
-            Err(e) => {
-                tracing::warn!("Ignoring saved SSH connection: {e}");
-                return;
-            }
-        },
-        None => match parse_origin(&saved.url) {
-            Ok(origin) => (origin, None),
-            Err(e) => {
-                tracing::warn!("Ignoring saved remote connection: {e}");
-                return;
-            }
-        },
+    let origin = match parse_origin(&saved.url) {
+        Ok(origin) => origin,
+        Err(e) => {
+            tracing::warn!("Ignoring saved remote connection: {e}");
+            return;
+        }
     };
-    let first = match tunnel_error {
-        Some(e) => Err(e),
-        None => tauri::async_runtime::block_on(async {
-            tokio::time::timeout(
-                Duration::from_secs(8),
-                login(&origin, &saved.username, &saved.password),
-            )
-            .await
-            .unwrap_or_else(|_| Err(format!("Timed out reaching {}", origin.base_url())))
-        }),
-    };
+    let first = tauri::async_runtime::block_on(async {
+        tokio::time::timeout(
+            Duration::from_secs(8),
+            login(&origin, &saved.username, &saved.password),
+        )
+        .await
+        .unwrap_or_else(|_| Err(format!("Timed out reaching {}", origin.base_url())))
+    });
     let (token, last_error) = match first {
         Ok(token) => (Some(token), None),
         Err(e) => {
@@ -273,7 +203,12 @@ pub fn init_at_startup(home: &Path) {
     tauri::async_runtime::spawn(async {
         loop {
             let healthy = current().is_some_and(|a| a.token.is_some() && a.last_error.is_none());
-            tokio::time::sleep(if healthy { REFRESH_EVERY } else { RETRY_EVERY }).await;
+            tokio::time::sleep(if healthy {
+                REFRESH_EVERY
+            } else {
+                RETRY_EVERY
+            })
+            .await;
             let Some(active) = current() else { return };
             let result = login(
                 &active.origin,
@@ -340,10 +275,7 @@ pub fn status() -> RemoteStatusDto {
     match current() {
         Some(active) => RemoteStatusDto {
             active: true,
-            url: Some(match &active.saved.ssh {
-                Some(ssh) => ssh.label(),
-                None => active.origin.base_url(),
-            }),
+            url: Some(active.origin.base_url()),
             username: Some(active.saved.username),
             authenticated: active.token.is_some(),
             error: active.last_error,
@@ -401,7 +333,6 @@ mod tests {
             url: "1.2.3.4".into(),
             username: "admin".into(),
             password: "pw".into(),
-            ssh: None,
         };
         save(&home, &saved).unwrap();
         assert_eq!(load_saved(&home), Some(saved));

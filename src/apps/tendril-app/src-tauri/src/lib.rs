@@ -254,6 +254,7 @@ pub fn run() {
             cmd_vault_status,
             cmd_vault_catalog,
             cmd_vault_github_accounts,
+            cmd_list_github_repos,
             cmd_vault_discover,
             cmd_vault_create,
             cmd_vault_connect,

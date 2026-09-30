@@ -120,7 +120,8 @@
     "asOf": "更新于 {{relative}}",
     "countdown": {
       "now": "现在",
-      "hoursMinutes": "{{hours}} {{minutes}}"
+      "hoursMinutes": "{{hours}} {{minutes}}",
+      "daysHours": "{{days}} {{hours}}"
     },
     "justNow": "刚刚"
   },

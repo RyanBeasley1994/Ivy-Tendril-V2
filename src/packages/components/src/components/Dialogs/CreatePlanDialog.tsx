@@ -11,6 +11,17 @@ import { AgentPicker, RoleAgentsPicker } from "./AgentPicker";
  */
 export const ADD_PROJECT_VALUE = "__tendril_add_project__";
 
+/** The inset track the dialog's two small segmented choices sit in. */
+const SEGMENTED = "inline-flex gap-0.5 rounded-field bg-muted/60 p-0.5";
+
+/** One option of a {@link SEGMENTED} group: raised when chosen, quiet otherwise. */
+const segment = (active: boolean) =>
+  `rounded-selector px-2.5 py-1 text-xs font-medium transition ${
+    active
+      ? "bg-background text-foreground shadow-sm"
+      : "text-muted-foreground hover:text-foreground"
+  }`;
+
 /**
  * The project value that asks CreatePlan to pick the project itself. It is what the job is sent and
  * what {@link defaultProject} compares, so only its label is translated.
@@ -142,6 +153,13 @@ export interface CreatePlanDialogProps {
   /** Opens project settings, for the picker's "+ Add New Project" entry. Omitted, it is not offered. */
   onAddProject?: () => void;
   /**
+   * The host adds the project in a dialog of its own over this one, so choosing "+ Add New Project"
+   * leaves this dialog open with what was typed. Unset, it closes first (the Settings hand-off).
+   */
+  addProjectKeepsOpen?: boolean;
+  /** A project to select as soon as it is among `projects`: the one just added over this dialog. */
+  selectProject?: string;
+  /**
    * The configured coding agent's name, for V1's split-button entry "Chat with <agent>". Offered only
    * together with {@link onContinueInChat}.
    */
@@ -212,6 +230,8 @@ export function CreatePlanDialog({
   initialDescription = "",
   onSubmit,
   onAddProject,
+  addProjectKeepsOpen = false,
+  selectProject,
   agentLabel,
   onContinueInChat,
   onUploadFile,
@@ -275,6 +295,11 @@ export function CreatePlanDialog({
     );
   }, [projects, initialProject]);
 
+  // Selected once it is offered, and again only if the host names a different one.
+  React.useEffect(() => {
+    if (selectProject && projects.includes(selectProject)) setSelectedProject(selectProject);
+  }, [selectProject, projects]);
+
   const options = buildProjectOptions(projects, onAddProject !== undefined, {
     auto: t("createPlan.autoProject"),
     addProject: t("createPlan.addProject"),
@@ -289,7 +314,7 @@ export function CreatePlanDialog({
     // `UseEffect` on `selectedProject` in V1: the action value is never a selection, it closes the
     // dialog and takes you to Settings → Projects.
     if (value === ADD_PROJECT_VALUE) {
-      onClose();
+      if (!addProjectKeepsOpen) onClose();
       onAddProject?.();
       return;
     }
@@ -368,68 +393,69 @@ export function CreatePlanDialog({
       mobileSheet
       initialFocusRef={textareaRef}
     >
-      <div ref={containerRef} className="space-y-2" data-testid="new-plan-surface">
+      <div ref={containerRef} className="space-y-3" data-testid="new-plan-surface">
         {shownError && (
           <Callout.Error className="mb-2" data-testid="create-plan-error">
             {shownError}
           </Callout.Error>
         )}
 
-        {machines && machines.length > 1 && (
-          <div className="flex items-center gap-2" data-testid="machine-picker">
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {t("createPlan.machineLabel")}
-            </span>
-            <div
-              role="radiogroup"
-              aria-label={t("createPlan.machineLabel")}
-              className="flex flex-1 flex-wrap gap-1 rounded-field border border-border p-1"
-            >
-              {machines.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedMachine === m.value}
-                  disabled={m.disabled}
-                  title={m.disabled ? t("createPlan.machineUnavailable") : undefined}
-                  onClick={() => onMachineChange?.(m.value)}
-                  className={`flex-1 rounded-selector px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                    selectedMachine === m.value
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {onSubmitMission && (
-          <div
-            role="radiogroup"
-            aria-label={t("createPlan.modeLabel")}
-            className="grid grid-cols-2 gap-1 rounded-field border border-border p-1"
-            data-testid="create-mode"
-          >
-            {(["plan", "mission"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={mode === m}
-                onClick={() => setMode(m)}
-                className={`rounded-selector px-3 py-1.5 text-sm font-medium transition ${
-                  mode === m
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                }`}
+        {/* One compact row: what to create on the left, where on the right. Pills rather than three
+            stacked full-width bars, so the description - the part being written - leads the dialog. */}
+        {(onSubmitMission || (machines && machines.length > 1)) && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {onSubmitMission && (
+              <div
+                role="radiogroup"
+                aria-label={t("createPlan.modeLabel")}
+                className={SEGMENTED}
+                data-testid="create-mode"
               >
-                {m === "plan" ? t("createPlan.modePlan") : t("createPlan.modeMission")}
-              </button>
-            ))}
+                {(["plan", "mission"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === m}
+                    onClick={() => setMode(m)}
+                    className={segment(mode === m)}
+                  >
+                    {m === "plan" ? t("createPlan.modePlan") : t("createPlan.modeMission")}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {machines && machines.length > 1 && (
+              <div
+                className="ml-auto flex min-w-0 items-center gap-1.5"
+                data-testid="machine-picker"
+              >
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {t("createPlan.machineLabel")}
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-label={t("createPlan.machineLabel")}
+                  className={`${SEGMENTED} min-w-0`}
+                >
+                  {machines.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedMachine === m.value}
+                      disabled={m.disabled}
+                      title={m.disabled ? t("createPlan.machineUnavailable") : m.label}
+                      onClick={() => onMachineChange?.(m.value)}
+                      className={`${segment(selectedMachine === m.value)} max-w-40 truncate disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         {isMission && (
@@ -440,27 +466,38 @@ export function CreatePlanDialog({
 
         {/* `Layout.Vertical().Gap(2) | projectPickerWidget | contentInputWidget` */}
         {useToggleVariant ? (
-          <div
-            role="radiogroup"
-            aria-label={t("createPlan.projectPickerLabel")}
-            className="flex flex-wrap gap-1 rounded-field border border-border p-1"
-          >
-            {options.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                role="radio"
-                aria-checked={selectedProject === o.value}
-                onClick={() => handleProjectChange(o.value)}
-                className={`rounded-selector px-3 py-1.5 text-sm font-medium transition ${
-                  selectedProject === o.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
+          <div className="flex items-start gap-2">
+            <span className="shrink-0 pt-1.5 text-xs text-muted-foreground">
+              {t("createPlan.projectPickerLabel")}
+            </span>
+            <div
+              role="radiogroup"
+              aria-label={t("createPlan.projectPickerLabel")}
+              className="flex min-w-0 flex-1 flex-wrap gap-1.5"
+            >
+              {options.map((o) => {
+                const isAdd = o.value === ADD_PROJECT_VALUE;
+                const isSelected = selectedProject === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => handleProjectChange(o.value)}
+                    className={`rounded-selector px-2.5 py-1 text-xs font-medium transition ${
+                      isAdd
+                        ? "border border-dashed border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+                        : isSelected
+                          ? "bg-primary/15 text-primary ring-1 ring-inset ring-primary/40"
+                          : "bg-muted/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <NativeSelect
@@ -476,7 +513,6 @@ export function CreatePlanDialog({
             ))}
           </NativeSelect>
         )}
-
 
         <ContentInput
           id="content-input"

@@ -42,6 +42,13 @@ pub async fn cmd_vault_github_accounts() -> Result<serde_json::Value, BridgeErro
     get_client_from_master()?.list_github_accounts().await
 }
 
+/// The GitHub repositories the Add Project picker offers to clone. On the daemon's host, so a remote
+/// connection lists what *that* machine's `gh` can clone, which is where the clone will run.
+#[tauri::command]
+pub async fn cmd_list_github_repos() -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.list_github_repos().await
+}
+
 #[tauri::command]
 pub async fn cmd_vault_discover() -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?.discover_vaults().await

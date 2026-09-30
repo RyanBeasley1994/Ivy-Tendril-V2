@@ -371,6 +371,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/vaults/create", post(vault::create_vault_repo))
         .route("/api/vaults/discover", get(vault::discover_vaults))
         .route("/api/vaults/accounts", get(vault::github_accounts))
+        .route("/api/github/repos", get(vault::github_repos))
         .route(
             "/api/vaults/project-assets/:name",
             get(vault::project_assets),

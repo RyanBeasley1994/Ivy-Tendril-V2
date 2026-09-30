@@ -51,6 +51,8 @@ export interface StoredSessionSelection {
   agentId: string;
   modelId: string;
   effort: string;
+  /** Absent on a selection recorded before chat used profiles. */
+  profile?: string;
 }
 
 export function loadStoredSessionSelections(): Record<string, StoredSessionSelection> {

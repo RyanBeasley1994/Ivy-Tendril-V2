@@ -1,4 +1,12 @@
 import { agentsApi } from "../api/agentsApi";
+import { bridge } from "../api/bridge";
+import {
+  DEFAULT_CHAT_PROFILE,
+  isProfileTier,
+  resolveChatProfiles,
+  type ResolvedProfiles,
+} from "./chatProfiles";
+import type { TendrilConfig } from "../types/api";
 import { chatApi } from "../api/chatApi";
 import { chatLauncher } from "./chatLauncher";
 import { publishChatSessionCount } from "./chatSessionCount";
@@ -120,6 +128,7 @@ export class ChatStore {
     selectedAgentId: loadStoredSelectedAgent() ?? FALLBACK_AGENT_ID,
     selectedModelId: DEFAULT_OPTION_ID,
     selectedEffort: DEFAULT_OPTION_ID,
+    selectedProfile: DEFAULT_CHAT_PROFILE,
     queuedItems: [],
     isGenerating: false,
     isCancelling: false,
@@ -174,6 +183,11 @@ export class ChatStore {
   private questionDraftStores: Map<string, QuestionsDraftStore> = new Map();
   private pinnedSessions: Record<string, string> = loadStoredPinnedSessions();
   private agentPreferences: AgentPreferences = loadStoredAgentPreferences();
+  /**
+   * `config.yaml`, for the `codingAgents[].profiles[]` a chat's profile resolves against. Null until
+   * it has loaded, which resolves every profile to the built-in tier defaults.
+   */
+  private profileConfig: TendrilConfig | null = null;
   /**
    * What each session runs with, keyed by session id. See
    * {@link SESSION_SELECTIONS_STORAGE_KEY} for why the session record cannot serve as this in V2.
@@ -424,6 +438,9 @@ export class ChatStore {
    */
   public async loadAgents(): Promise<AgentOption[]> {
     const generation = this.generation;
+    // Not awaited: the catalog is what the view waits on, and the config re-resolves the selection
+    // on its own when it lands.
+    void this.loadProfileConfig();
     try {
       return this.acceptAgents(await agentsApi.listAgents());
     } catch {
@@ -503,10 +520,46 @@ export class ChatStore {
     return DEFAULT_OPTION_ID;
   }
 
+  /**
+   * Re-reads `config.yaml` so a profile edited in Settings applies to the next turn, then re-resolves
+   * the current selection against it. A failure keeps what was loaded before.
+   */
+  public async loadProfileConfig(): Promise<void> {
+    try {
+      this.profileConfig = await bridge.getConfig();
+    } catch {
+      return;
+    }
+    this.applyAgentPreference(this.state.selectedAgentId);
+    this.notify();
+  }
+
+  /** What each profile tier gives `agentId`: see {@link resolveChatProfiles}. */
+  public profilesFor(agentId: string): ResolvedProfiles {
+    return resolveChatProfiles(this.profileConfig, agentId);
+  }
+
+  /** The profile an agent runs on: the one picked for it, else Balanced. */
+  public profileFor(agentId: string): string {
+    const chosen = this.agentPreferences[agentId]?.profile;
+    return isProfileTier(chosen) ? chosen : DEFAULT_CHAT_PROFILE;
+  }
+
+  /**
+   * Points the selection at `profile`'s model and effort for `agentId`. A profile that names no
+   * model runs the agent's catalog default. The profile's model is passed through unvalidated, as
+   * a workflow agent's is: a custom endpoint's model is not a catalog row.
+   */
+  private applyProfile(agentId: string, profile: string): void {
+    const tier = isProfileTier(profile) ? profile : DEFAULT_CHAT_PROFILE;
+    const resolved = this.profilesFor(agentId)[tier];
+    this.state.selectedProfile = tier;
+    this.state.selectedModelId = resolved.model || this.resolveModel(agentId);
+    this.state.selectedEffort = resolved.effort || DEFAULT_OPTION_ID;
+  }
+
   private applyAgentPreference(agentId: string): void {
-    const preference = this.agentPreferences[agentId];
-    this.state.selectedModelId = this.resolveModel(agentId, preference?.modelId);
-    this.state.selectedEffort = this.resolveEffort(agentId, preference?.effort);
+    this.applyProfile(agentId, this.profileFor(agentId));
   }
 
   /**
@@ -535,6 +588,10 @@ export class ChatStore {
       this.applyAgentPreference(agentId);
     }
     const resolvedAgentId = this.state.selectedAgentId;
+    if (own?.profile) {
+      this.applyProfile(resolvedAgentId, own.profile);
+      return;
+    }
     const modelId = own?.modelId ?? session.modelId;
     if (modelId) {
       this.state.selectedModelId = this.resolveModel(resolvedAgentId, modelId);
@@ -563,6 +620,7 @@ export class ChatStore {
         agentId: this.state.selectedAgentId,
         modelId: this.state.selectedModelId,
         effort: this.state.selectedEffort,
+        profile: this.state.selectedProfile,
       },
     };
     this.persistSessionSelections(next);
@@ -785,6 +843,22 @@ export class ChatStore {
     this.notify();
   }
 
+  /**
+   * Remembers a profile for an agent, selected or not, and applies it if that agent is current. Any
+   * model or effort remembered from before profiles is dropped, so the profile is what runs.
+   */
+  public setProfileForAgent(agentId: string, profile: string): void {
+    if (!isProfileTier(profile)) return;
+    this.agentPreferences = { ...this.agentPreferences, [agentId]: { profile } };
+    saveStoredAgentPreferences(this.agentPreferences);
+    this.broadcastStorageChange(AGENT_PREFERENCES_STORAGE_KEY, this.agentPreferences);
+    if (agentId === this.state.selectedAgentId) {
+      this.applyProfile(agentId, profile);
+      this.rememberSelectionForActiveSession();
+    }
+    this.notify();
+  }
+
   /** The model and effort an agent is remembered with, for the picker's per-agent rows. */
   public getAgentPreference(agentId: string): AgentPreference {
     return this.agentPreferences[agentId] ?? {};
@@ -836,6 +910,7 @@ export class ChatStore {
       selectedAgentId: FALLBACK_AGENT_ID,
       selectedModelId: DEFAULT_OPTION_ID,
       selectedEffort: DEFAULT_OPTION_ID,
+      selectedProfile: DEFAULT_CHAT_PROFILE,
       queuedItems: [],
       isGenerating: false,
       isCancelling: false,

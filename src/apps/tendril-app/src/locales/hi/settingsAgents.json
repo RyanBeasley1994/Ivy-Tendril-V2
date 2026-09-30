@@ -121,7 +121,8 @@
     "asOf": "{{relative}} की स्थिति",
     "countdown": {
       "now": "अभी",
-      "hoursMinutes": "{{hours}} {{minutes}}"
+      "hoursMinutes": "{{hours}} {{minutes}}",
+      "daysHours": "{{days}} {{hours}}"
     },
     "justNow": "अभी-अभी"
   },

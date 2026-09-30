@@ -656,6 +656,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
       onModelChange={(agentId, modelId) => store.setModelForAgent(agentId, modelId)}
       onEffortChange={(agentId, effort) => store.setEffortForAgent(agentId, effort)}
       rememberedFor={(agentId) => store.getAgentPreference(agentId)}
+      profilesFor={(agentId) => store.profilesFor(agentId)}
+      profileFor={(agentId) => store.profileFor(agentId)}
+      onProfileChange={(agentId, profile) => store.setProfileForAgent(agentId, profile)}
+      onOpen={() => void store.loadProfileConfig()}
     />
   );
 

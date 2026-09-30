@@ -1006,3 +1006,16 @@ export interface BranchPreview {
   mission: string;
   unknownTokens: string[];
 }
+
+/** One repository from `GET /api/github/repos`: something the daemon's `gh` user can clone. */
+export interface GitHubRepo {
+  /** `owner/name`. */
+  fullName: string;
+  owner: string;
+  name: string;
+  /** The HTTPS clone URL, which is what a project's repository list is given. */
+  cloneUrl: string;
+  description?: string | null;
+  isPrivate: boolean;
+  updatedAt?: string | null;
+}

@@ -123,7 +123,8 @@
     "asOf": "обновлено {{relative}}",
     "countdown": {
       "now": "сейчас",
-      "hoursMinutes": "{{hours}} {{minutes}}"
+      "hoursMinutes": "{{hours}} {{minutes}}",
+      "daysHours": "{{days}} {{hours}}"
     },
     "justNow": "только что"
   },

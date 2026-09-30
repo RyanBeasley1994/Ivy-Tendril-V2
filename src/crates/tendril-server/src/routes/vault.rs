@@ -191,6 +191,20 @@ pub async fn github_accounts() -> impl IntoResponse {
     }
 }
 
+/// Every repository the daemon's `gh` user can clone, for the Add Project picker. Lives beside the
+/// vault's GitHub routes because it is the same `gh` session they use.
+pub async fn github_repos() -> impl IntoResponse {
+    match tendril_core::git::list_github_repos().await {
+        Ok(repos) => (StatusCode::OK, Json(json!(repos))).into_response(),
+        // The message is what the picker shows, so it goes out as-is rather than as a 500 wrapper.
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            Json(json!({ "error": e.to_string() })),
+        )
+            .into_response(),
+    }
+}
+
 /// What a *local* project could publish, for the export dialog's asset picker.
 ///
 /// It lives under `/api/vaults` because the export flow is its only consumer: the lists are assembled

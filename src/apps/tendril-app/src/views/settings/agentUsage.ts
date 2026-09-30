@@ -44,7 +44,7 @@ export function formatWindow(minutes: number): string {
 }
 
 /**
- * `UsageWindowCalculator.FormatCountdown`: "now", "30m", "2h 05m".
+ * `UsageWindowCalculator.FormatCountdown`: "now", "30m", "2h 05m", and from a day out "3d 17h".
  *
  * An unparseable or absent instant is the empty string, which the caller drops rather than renders -
  * a window whose provider did not say when it rolls over has nothing to count down to.
@@ -53,6 +53,14 @@ export function formatCountdown(resetsAt: string, now: Date): string {
   const totalMinutes = minutesUntil(resetsAt, now);
   if (totalMinutes === null) return "";
   if (totalMinutes <= 0) return t("usage.countdown.now");
+  // A weekly window is days away, and "89h 01m" is arithmetic for the reader: at a day or more the
+  // minutes stop mattering, so it reads "3d 17h".
+  if (totalMinutes >= 1440) {
+    return t("usage.countdown.daysHours", {
+      days: narrowUnit(Math.floor(totalMinutes / 1440), "day"),
+      hours: narrowUnit(Math.floor((totalMinutes % 1440) / 60), "hour"),
+    });
+  }
   if (totalMinutes >= 60) {
     return t("usage.countdown.hoursMinutes", {
       hours: narrowUnit(Math.floor(totalMinutes / 60), "hour"),

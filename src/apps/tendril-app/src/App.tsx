@@ -53,6 +53,9 @@ const KeyboardShortcutsHelp = React.lazy(() =>
   import("./components/KeyboardShortcutsHelp").then((m) => ({ default: m.KeyboardShortcutsHelp })),
 );
 
+const AddProjectDialog = React.lazy(() =>
+  import("./views/dialogs/AddProjectDialog").then((m) => ({ default: m.AddProjectDialog })),
+);
 const NoProjectsDialog = React.lazy(() =>
   import("@ivy-interactive/components/dialogs").then((m) => ({ default: m.NoProjectsDialog })),
 );
@@ -205,6 +208,10 @@ export const App: React.FC = () => {
   // so the new-plan flow does not flash the empty state on startup.
   const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [isNewPlanOpen, setIsNewPlanOpen] = useState(false);
+  // Add Project as a modal over the Create Plan / Mission dialog, and the project it just made, which
+  // that dialog selects once the refreshed list includes it.
+  const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
+  const [addedProject, setAddedProject] = useState<string | undefined>(undefined);
   // The two bulk job sweeps. Confirmed because both kill work in flight.
   const [stopQueuedOpen, setStopQueuedOpen] = useState(false);
   const [stopAllOpen, setStopAllOpen] = useState(false);
@@ -1404,14 +1411,32 @@ export const App: React.FC = () => {
       {/* A plan needs a project. With none configured the new-plan flow explains
           that instead of offering an empty picker. Mounted only while it applies,
           so the lazy chunk is fetched at that moment and not before. */}
-      {isNewPlanOpen && projectsLoaded && projects.length === 0 && (
+      {isNewPlanOpen && projectsLoaded && projects.length === 0 && !isAddProjectOpen && (
         <React.Suspense fallback={null}>
           <NoProjectsDialog
             isOpen
             onClose={() => setIsNewPlanOpen(false)}
-            onOpenSettings={() => {
-              setIsNewPlanOpen(false);
-              uiStore.setActiveNav("settings");
+            // Adds the first project in place; the create dialog takes over once it exists.
+            onOpenSettings={() => setIsAddProjectOpen(true)}
+          />
+        </React.Suspense>
+      )}
+
+      {isAddProjectOpen && (
+        <React.Suspense fallback={null}>
+          <AddProjectDialog
+            isOpen
+            onClose={() => setIsAddProjectOpen(false)}
+            existingNames={projects.map((project) => project.name)}
+            onCreated={(name) => {
+              setAddedProject(name);
+              bridge
+                .listProjects()
+                .then((list) => {
+                  setProjects(list);
+                  setProjectsLoaded(true);
+                })
+                .catch(() => {});
             }}
           />
         </React.Suspense>
@@ -1424,6 +1449,7 @@ export const App: React.FC = () => {
             onClose={() => {
               setIsNewPlanOpen(false);
               setNewPlanPrefill({});
+              setAddedProject(undefined);
             }}
             projects={projects}
             initialTitle={newPlanPrefill.title}
@@ -1437,13 +1463,11 @@ export const App: React.FC = () => {
             onMissionCreated={(mission) => {
               uiStore.setActiveNav("missions", { mission: mission.id });
             }}
-            // V1's project picker always ends with "+ Add New Project", which navigates to Settings.
-            // Without the handler the entry never renders, so a project the operator has not created
-            // yet is a dead end in the one flow that needs one. Same route as the no-projects dialog.
-            onAddProject={() => {
-              setIsNewPlanOpen(false);
-              uiStore.setActiveNav("settings");
-            }}
+            // The picker's "+ Add New Project" opens Add Project over this dialog rather than leaving
+            // for Settings, so what was typed survives and the new project is selected on return.
+            onAddProject={() => setIsAddProjectOpen(true)}
+            addProjectKeepsOpen
+            selectProject={addedProject}
           />
         </React.Suspense>
       )}

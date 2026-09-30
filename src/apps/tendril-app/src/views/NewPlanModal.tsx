@@ -41,6 +41,10 @@ interface NewPlanModalProps {
   onMissionCreated?: (mission: Mission) => void;
   /** Opens project settings, for the picker's "+ Add New Project" entry. Omitted, the entry is not offered. */
   onAddProject?: () => void;
+  /** `onAddProject` opens a dialog over this one, so this stays open (see `CreatePlanDialog`). */
+  addProjectKeepsOpen?: boolean;
+  /** A project to select once it is listed: the one just added. */
+  selectProject?: string;
   initialTitle?: string;
   initialDescription?: string;
   initialProject?: string;
@@ -117,6 +121,8 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
   onJobStarted,
   onMissionCreated,
   onAddProject,
+  addProjectKeepsOpen,
+  selectProject,
   initialTitle = "",
   initialDescription = "",
   initialProject = "",
@@ -411,6 +417,8 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
       agentOptions={visibleAgents(config).map((agent) => ({ value: agent.id, label: agent.label }))}
       defaultAgentLabel={agentLabel}
       onAddProject={onAddProject}
+      addProjectKeepsOpen={addProjectKeepsOpen}
+      selectProject={selectProject}
       agentLabel={agentLabel}
       onContinueInChat={handleContinueInChat}
       onUploadFile={handleUploadFile}

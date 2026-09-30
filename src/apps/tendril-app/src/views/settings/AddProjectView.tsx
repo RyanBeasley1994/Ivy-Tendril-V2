@@ -13,6 +13,7 @@ import {
   normalizeRepoPath,
 } from "../onboarding/validation";
 import { useRepoFolderPicker } from "../onboarding/useRepoFolderPicker";
+import { GitHubRepoPicker } from "./GitHubRepoPicker";
 
 /**
  * `Apps/Settings/Blades/AddProjectBladeView.cs`, which is what the "Add Project" sub-item under the
@@ -279,6 +280,7 @@ export const AddProjectView: React.FC<AddProjectViewProps> = ({
                 <FolderOpen className="size-4" aria-hidden />
                 {t("firstProject.browse")}
               </Button>
+              <GitHubRepoPicker onPick={(url) => addRepo(url)} added={repos} />
               <Button
                 type="button"
                 variant="outline"

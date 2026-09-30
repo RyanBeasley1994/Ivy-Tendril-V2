@@ -121,7 +121,8 @@
     "asOf": "as of {{relative}}",
     "countdown": {
       "now": "now",
-      "hoursMinutes": "{{hours}} {{minutes}}"
+      "hoursMinutes": "{{hours}} {{minutes}}",
+      "daysHours": "{{days}} {{hours}}"
     },
     "justNow": "just now"
   },

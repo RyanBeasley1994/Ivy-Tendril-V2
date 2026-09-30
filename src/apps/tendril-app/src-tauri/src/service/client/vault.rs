@@ -95,6 +95,26 @@ impl TendrilClient {
             .await
     }
 
+    /// `GET /api/github/repos`: every repository the daemon's `gh` user can clone.
+    pub async fn list_github_repos(&self) -> Result<serde_json::Value, BridgeError> {
+        self.vault_request(reqwest::Method::GET, "/api/github/repos", None)
+            .await
+            .map_err(|e| {
+                // A 404 here is the route, not a repo: the server predates the picker.
+                if e.code == "NOT_FOUND" {
+                    BridgeError::new(
+                        "UNSUPPORTED",
+                        format!(
+                            "The Tendril server at {} is too old to list GitHub repositories. Update `tendril` there and restart it.",
+                            self.base_url
+                        ),
+                    )
+                } else {
+                    e
+                }
+            })
+    }
+
     pub async fn discover_vaults(&self) -> Result<serde_json::Value, BridgeError> {
         self.vault_request(reqwest::Method::GET, "/api/vaults/discover", None)
             .await

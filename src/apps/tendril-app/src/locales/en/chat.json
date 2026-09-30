@@ -1,13 +1,23 @@
 {
   "agentPicker": {
-    "tooltip": "Agent, model and effort",
+    "tooltip": "Agent and profile",
     "triggerLabel": "Agent: {{agent}}",
     "menuLabel": "Agents",
-    "optionsTooltip": "Model and effort",
+    "optionsTooltip": "Profile",
     "optionsLabel": "{{agent}} options",
     "settingsLabel": "{{agent}} settings",
     "model": "Model",
     "effort": "Effort Level",
+    "profile": "Profile",
+    "profileTooltip": "Profile",
+    "profiles": {
+      "deep": "Deep",
+      "balanced": "Balanced",
+      "quick": "Quick"
+    },
+    "profileOption": "{{profile}} · {{model}}",
+    "profileOptionWithEffort": "{{profile}} · {{model}} · {{effort}}",
+    "profileDefaultModel": "default model",
     "unlistedValue": "Default",
     "effortLevels": {
       "default": "Default",

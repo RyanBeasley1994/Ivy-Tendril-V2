@@ -122,7 +122,8 @@
     "asOf": "actualizado {{relative}}",
     "countdown": {
       "now": "ahora",
-      "hoursMinutes": "{{hours}} {{minutes}}"
+      "hoursMinutes": "{{hours}} {{minutes}}",
+      "daysHours": "{{days}} {{hours}}"
     },
     "justNow": "ahora mismo"
   },

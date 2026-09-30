@@ -12,22 +12,18 @@ export interface RemoteServerSectionProps {
 }
 
 /**
- * Points the desktop app at a Tendril server running somewhere else, such as a VPS, over SSH: the
- * app tunnels to the server's loopback, so the daemon never has to face the internet. The server
- * still has to have session protection on (a password set), since the Tendril login is what the
- * daemon checks.
+ * Points the desktop app at a Tendril server running somewhere else, such as a VPS, by address and
+ * password. The server has to have session protection on (a password set), since that is the only
+ * credential a remote caller can hold.
  *
- * Connecting opens the tunnel and logs in first and only then saves, so a wrong password or a typo
- * in the address is reported here and leaves the current connection alone. Success restarts the app
- * onto the new server; see `service::remote` in src-tauri for why it is a restart.
+ * Connecting logs in first and only then saves, so a wrong password or a typo in the address is
+ * reported here and leaves the current connection alone. Success restarts the app onto the new
+ * server; see `service::remote` in src-tauri for why it is a restart.
  */
 export const RemoteServerSection: React.FC<RemoteServerSectionProps> = ({ api = remoteApi }) => {
   const { t } = useTranslation("settings");
   const [connection, setConnection] = React.useState<RemoteConnection | null>(null);
-  const [sshAddress, setSshAddress] = React.useState("");
-  const [sshUsername, setSshUsername] = React.useState("");
-  const [sshPassword, setSshPassword] = React.useState("");
-  const [remotePort, setRemotePort] = React.useState("");
+  const [url, setUrl] = React.useState("");
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -49,15 +45,7 @@ export const RemoteServerSection: React.FC<RemoteServerSectionProps> = ({ api = 
     setBusy(true);
     setError(null);
     try {
-      const port = Number.parseInt(remotePort.trim(), 10);
-      await api.connect({
-        sshAddress: sshAddress.trim(),
-        sshUsername: sshUsername.trim(),
-        sshPassword,
-        remotePort: Number.isFinite(port) ? port : undefined,
-        username: username.trim(),
-        password,
-      });
+      await api.connect(url.trim(), username.trim(), password);
       setRestarting(true);
     } catch (err) {
       setError(describeBridgeError(err));
@@ -132,61 +120,17 @@ export const RemoteServerSection: React.FC<RemoteServerSectionProps> = ({ api = 
             }}
           >
             <div className="space-y-1.5">
-              <Label htmlFor="remote-server-ssh-address">{t("remoteServer.sshAddressLabel")}</Label>
+              <Label htmlFor="remote-server-url">{t("remoteServer.urlLabel")}</Label>
               <Input
-                id="remote-server-ssh-address"
-                value={sshAddress}
-                placeholder={t("remoteServer.sshAddressPlaceholder")}
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(e) => setSshAddress(e.target.value)}
-                data-testid="remote-server-ssh-address"
+                id="remote-server-url"
+                value={url}
+                placeholder={t("remoteServer.urlPlaceholder")}
+                autoComplete="url"
+                onChange={(e) => setUrl(e.target.value)}
+                data-testid="remote-server-url"
               />
-              <p className="text-xs text-muted-foreground">{t("remoteServer.sshAddressHint")}</p>
+              <p className="text-xs text-muted-foreground">{t("remoteServer.urlHint")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="remote-server-ssh-username">
-                  {t("remoteServer.sshUsernameLabel")}
-                </Label>
-                <Input
-                  id="remote-server-ssh-username"
-                  value={sshUsername}
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(e) => setSshUsername(e.target.value)}
-                  data-testid="remote-server-ssh-username"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="remote-server-ssh-password">
-                  {t("remoteServer.sshPasswordLabel")}
-                </Label>
-                <Input
-                  id="remote-server-ssh-password"
-                  type="password"
-                  value={sshPassword}
-                  autoComplete="off"
-                  onChange={(e) => setSshPassword(e.target.value)}
-                  data-testid="remote-server-ssh-password"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="remote-server-remote-port">{t("remoteServer.remotePortLabel")}</Label>
-              <Input
-                id="remote-server-remote-port"
-                inputMode="numeric"
-                value={remotePort}
-                placeholder="5010"
-                onChange={(e) => setRemotePort(e.target.value.replace(/\D/g, ""))}
-                data-testid="remote-server-remote-port"
-              />
-              <p className="text-xs text-muted-foreground">{t("remoteServer.remotePortHint")}</p>
-            </div>
-            <p className="pt-1 text-xs font-medium text-foreground">
-              {t("remoteServer.tendrilLoginTitle")}
-            </p>
             <div className="space-y-1.5">
               <Label htmlFor="remote-server-username">{t("remoteServer.usernameLabel")}</Label>
               <Input
@@ -211,13 +155,7 @@ export const RemoteServerSection: React.FC<RemoteServerSectionProps> = ({ api = 
             </div>
             <Button
               type="submit"
-              disabled={
-                busy ||
-                restarting ||
-                sshAddress.trim() === "" ||
-                sshPassword === "" ||
-                password === ""
-              }
+              disabled={busy || restarting || url.trim() === "" || password === ""}
               data-testid="remote-server-connect"
             >
               {busy && <Spinner size="sm" aria-hidden />}

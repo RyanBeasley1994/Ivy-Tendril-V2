@@ -8,6 +8,9 @@ export const AGENT_PREFERENCES_STORAGE_KEY = "tendril:chat:agent_preferences";
 export const SELECTED_AGENT_STORAGE_KEY = "tendril:chat:selected_agent";
 
 export interface AgentPreference {
+  /** The profile tier chosen for the agent; its model and effort come from that profile. */
+  profile?: string;
+  /** From before chat used profiles. No longer applied: an agent with no profile runs Balanced. */
   modelId?: string;
   effort?: string;
 }

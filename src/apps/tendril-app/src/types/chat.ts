@@ -118,6 +118,11 @@ export interface ChatState {
   selectedAgentId: string;
   selectedModelId: string;
   selectedEffort: string;
+  /**
+   * The profile tier (`deep` / `balanced` / `quick`) the selected agent runs on. `selectedModelId` and
+   * `selectedEffort` are what it resolves to, or what an older session recorded before profiles.
+   */
+  selectedProfile: string;
   queuedItems: ChatQueuedItem[];
   isGenerating: boolean;
   /**
