@@ -74,6 +74,11 @@ pub trait GitHub: Send + Sync {
 /// validation and not-found fail at once.
 fn is_transient(stderr: &str) -> bool {
     let s = stderr.to_ascii_lowercase();
+    // A hook that failed is never the network, whatever it printed: a test run's "timed out" must not
+    // make the push (and so the whole test suite) run three more times.
+    if s.contains("hook") || s.contains("husky") {
+        return false;
+    }
     [
         "could not resolve host",
         "connection reset",
@@ -91,7 +96,8 @@ fn is_transient(stderr: &str) -> bool {
         "429",
         "rate limit",
         "bad gateway",
-        "timed out",
+        "operation timed out",
+        "gateway timeout",
     ]
     .iter()
     .any(|needle| s.contains(needle))
@@ -250,6 +256,58 @@ fn git_out(dir: &Path, args: &[&str]) -> std::result::Result<String, String> {
     }
 }
 
+thread_local! {
+    /// Where the running push records its process id, so cancelling the job can kill the push and
+    /// every hook it started (a pre-push test run can take many minutes). Set by
+    /// [`run_native_create_pr`] for the duration of one run on its thread.
+    static PUSH_PID: std::cell::RefCell<Option<std::sync::Arc<std::sync::atomic::AtomicU32>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// `git push` for a plan branch. With `skip_hooks`, the repo's pre-push hook is bypassed both ways a
+/// hook can run: git's own (`--no-verify`) and husky's (`HUSKY=0`, which also covers a husky set up to
+/// ignore `--no-verify`).
+fn git_push(dir: &Path, branch: &str, force: bool, skip_hooks: bool) -> std::result::Result<String, String> {
+    let mut args = vec!["push"];
+    if force {
+        args.push("-f");
+    }
+    if skip_hooks {
+        args.push("--no-verify");
+    }
+    args.extend(["-u", "origin", branch]);
+    let mut cmd = Command::new("git");
+    cmd.args(&args)
+        .current_dir(dir)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    if skip_hooks {
+        cmd.env("HUSKY", "0");
+    }
+    // Its own process group, so cancelling (which signals the group) takes the hook and everything it
+    // started - a turbo test run - down with the push, instead of leaving them running for minutes.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+    let child = cmd.spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let pid_slot = PUSH_PID.with(|slot| slot.borrow().clone());
+    if let Some(slot) = &pid_slot {
+        slot.store(child.id(), std::sync::atomic::Ordering::SeqCst);
+    }
+    let out = child.wait_with_output();
+    if let Some(slot) = &pid_slot {
+        slot.store(0, std::sync::atomic::Ordering::SeqCst);
+    }
+    let out = out.map_err(|e| format!("could not run git: {e}"))?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
+}
+
 /// One repo's part of the plan: a worktree with commits to ship.
 struct RepoPush {
     repo_root: PathBuf,
@@ -344,10 +402,29 @@ pub fn run_native_create_pr(
     timing: &NativePrTiming,
     progress: &mut dyn Progress,
 ) -> NativePrOutcome {
-    match run(plan_folder, args, settings, tendril_home, gh, timing, progress) {
+    run_native_create_pr_with_pid(plan_folder, args, settings, tendril_home, gh, timing, progress, None)
+}
+
+/// [`run_native_create_pr`], recording each push's process id in `push_pid` while it runs - the job's
+/// own pid slot, which is what cancellation kills.
+#[allow(clippy::too_many_arguments)]
+pub fn run_native_create_pr_with_pid(
+    plan_folder: &Path,
+    args: &CreatePrArgs,
+    settings: &TendrilSettings,
+    tendril_home: &Path,
+    gh: &dyn GitHub,
+    timing: &NativePrTiming,
+    progress: &mut dyn Progress,
+    push_pid: Option<std::sync::Arc<std::sync::atomic::AtomicU32>>,
+) -> NativePrOutcome {
+    PUSH_PID.with(|slot| *slot.borrow_mut() = push_pid);
+    let outcome = match run(plan_folder, args, settings, tendril_home, gh, timing, progress) {
         Ok(outcome) => outcome,
         Err(e) => NativePrOutcome::NeedsAgent { reason: e.to_string() },
-    }
+    };
+    PUSH_PID.with(|slot| *slot.borrow_mut() = None);
+    outcome
 }
 
 #[allow(clippy::too_many_lines)]
@@ -474,12 +551,13 @@ fn run(
         }
 
         progress.step(&format!("Pushing {} to {}...", push.branch, push.slug));
-        let pushed = with_retry(|| git_out(&push.worktree, &["push", "-u", "origin", &push.branch]));
+        let skip_hooks = settings.git.skip_push_hooks == Some(true);
+        let pushed = with_retry(|| git_push(&push.worktree, &push.branch, false, skip_hooks));
         if let Err(e) = pushed {
             // A diverged remote branch is stale state from an earlier run of this plan: the branch is
             // private to it, so the local history wins.
             if e.contains("non-fast-forward") || e.contains("rejected") || e.contains("fetch first") {
-                with_retry(|| git_out(&push.worktree, &["push", "-f", "-u", "origin", &push.branch]))
+                with_retry(|| git_push(&push.worktree, &push.branch, true, skip_hooks))
                     .map_err(|e| TendrilError::Git(format!("push failed: {e}")))?;
             } else {
                 return Err(TendrilError::Git(format!("push failed: {e}")));
@@ -499,7 +577,7 @@ fn run(
             if visible || round == 1 {
                 break;
             }
-            let _ = with_retry(|| git_out(&push.worktree, &["push", "-u", "origin", &push.branch]));
+            let _ = with_retry(|| git_push(&push.worktree, &push.branch, false, skip_hooks));
         }
         if !visible {
             return Err(TendrilError::Git(format!(
@@ -649,6 +727,9 @@ mod tests {
         assert!(is_transient("HTTP 502: Bad Gateway"));
         assert!(!is_transient("HTTP 403: Resource not accessible by integration"));
         assert!(!is_transient("GraphQL: No commits between main and feature"));
+        assert!(!is_transient("husky - pre-push script failed (code 1)\nTest timed out in 5000ms"));
+        assert!(!is_transient("error: failed to push some refs\nTest timed out in 5000ms"));
+        assert!(is_transient("ssh: connect to host github.com port 22: Operation timed out"));
     }
 
     #[test]

@@ -411,6 +411,8 @@
     "save": "Spara",
     "saved": "Greninställningar sparade",
     "nativeLabel": "Skapa pull requests utan agenten",
-    "nativeHint": "Tendril pushar grenen, skapar eller uppdaterar PR:en, tillämpar dina val och mergar själv – på sekunder och utan tokens. Agenten anropas bara för mergekonflikter eller ovanliga grenar. Stäng av för att skicka varje PR via agenten."
+    "nativeHint": "Tendril pushar grenen, skapar eller uppdaterar PR:en, tillämpar dina val och mergar själv – på sekunder och utan tokens. Agenten anropas bara för mergekonflikter eller ovanliga grenar. Stäng av för att skicka varje PR via agenten.",
+    "skipHooksLabel": "Hoppa över pre-push-hooks när PR skapas",
+    "skipHooksHint": "Pushar plangrenar med --no-verify och HUSKY=0, så att en repo-hook som kör hela testsviten igen inte blockerar PR:en. Planens egna verifieringar har redan gått igenom. Påverkar bara pushen i Skapa PR: commits behåller sina hooks och dina egna pushar ändras inte."
   }
 }

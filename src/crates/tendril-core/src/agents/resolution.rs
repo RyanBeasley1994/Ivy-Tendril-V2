@@ -245,6 +245,12 @@ pub fn resolve_agent(
         }
     }
 
+    // `git.skipPushHooks`: the CreatePr agent (the native path's fallback) pushes the same way the
+    // native path does. Only CreatePr - every other promptware's commits keep their hooks.
+    if promptware == "CreatePr" && settings.git.skip_push_hooks == Some(true) {
+        environment_variables.insert("HUSKY".to_string(), "0".to_string());
+    }
+
     // `git.signCommits: false`: one more `GIT_CONFIG_*` pair, appended after any the customer or the
     // co-author shim already set, so the agent's commits skip a signer that needs a person present.
     if settings.git.sign_commits == Some(false) {
@@ -675,5 +681,14 @@ mod sign_commits_tests {
             .environment_variables
             .values()
             .any(|v| v == "commit.gpgsign"));
+    }
+
+    #[test]
+    fn skipping_push_hooks_sets_husky_for_create_pr_only() {
+        let mut settings = TendrilSettings::default();
+        settings.git.skip_push_hooks = Some(true);
+        let for_pr = resolve_agent(&settings, "claude", "CreatePr", None, &HashMap::new());
+        assert_eq!(for_pr.environment_variables.get("HUSKY").map(String::as_str), Some("0"));
+        assert!(!resolve(&settings).environment_variables.contains_key("HUSKY"), "ExecutePlan keeps its hooks");
     }
 }

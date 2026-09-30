@@ -67,7 +67,9 @@
     "retryPlan": "重试计划",
     "acceptPartialDelivery": "接受部分交付",
     "resetToDraft": "重置为草稿…",
-    "share": "共享"
+    "share": "共享",
+    "queueAfter": "排在 {{plans}} 之后",
+    "queued": "已排队"
   },
   "draftActions": {
     "execute": "执行计划",
@@ -261,5 +263,18 @@
   "share": {
     "linkCopiedTitle": "已复制链接",
     "linkCopied": "已将计划共享链接复制到剪贴板"
+  },
+  "dependency": {
+    "title": "正在等待另一个计划",
+    "queuedTitle": "已排队——依赖完成后自动开始",
+    "hint": "此计划依赖尚未进入基础分支的更改，在此之前无法运行。现在排队，依赖的拉取请求合并后它会自动开始。",
+    "queuedHint": "作业正在等待。上方所有计划完成且其拉取请求合并后会自动开始。",
+    "missing": "未找到",
+    "next": {
+      "createPr": "需要创建并合并其拉取请求",
+      "execute": "需要先运行",
+      "running": "正在运行",
+      "complete": "需要完成"
+    }
   }
 }

@@ -20,6 +20,7 @@ import {
 } from "../types/api";
 import { bridge } from "../api/bridge";
 import { plansStore } from "../state/plansStore";
+import { uiStore } from "../state/uiStore";
 import { PlanChatPanel } from "../components/chat/PlanChatPanel";
 import { extractPlanQuestions, patchQuestionsMarkdown } from "../utils/questionMarkdown";
 import { PlanActionsController } from "../controllers/planActions";
@@ -40,6 +41,7 @@ import {
 import { LifecycleBar } from "./planDetail/LifecycleBar";
 import { PlanTrace } from "./planDetail/PlanTrace";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { DependencyBanner } from "./planDetail/DependencyBanner";
 import { VerificationReportSheet } from "./sheets/VerificationReportSheet";
 import { CommitDetailSheet } from "./sheets/CommitDetailSheet";
 import { FileSheet } from "./sheets/FileSheet";
@@ -1154,6 +1156,16 @@ export const PlanDetailView: React.FC<PlanDetailViewProps> = ({
            */
           Toolbar: [
             <LifecycleBar key="lifecycle" state={effectivePlan.state} />,
+            <DependencyBanner
+              key="dependency"
+              plan={effectivePlan}
+              allPlans={allPlans}
+              onOpenPlan={(id) => {
+                uiStore.setSelectedPlanId(id);
+                uiStore.navigate({ appId: `plan-${id}`, args: { planId: id } });
+                plansStore.fetchPlanDetail(id).catch(() => {});
+              }}
+            />,
             ...(actionError
               ? [
                   <ErrorBanner key="error" data-testid="plan-action-error" className="flex-1">

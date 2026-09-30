@@ -47,6 +47,16 @@ pub(super) fn spawn_runner(
     permit: OwnedSemaphorePermit,
 ) {
     let tendril_home = ctx.tendril_home.clone();
+    // `git:` is re-read from `config.yaml` for every job, so a Settings change (skip push hooks, sign
+    // commits, branch naming) applies to the next job rather than after a daemon restart. Only that
+    // block: the rest of the settings keep the manager's snapshot, which tests inject directly.
+    let mut settings = settings;
+    let config_path = crate::config::get_config_path(&tendril_home);
+    if config_path.is_file() {
+        if let Ok(fresh) = crate::config::load_config(&config_path) {
+            settings.git = fresh.git;
+        }
+    }
     // Resolved once, here, and passed down: `finish_job` deletes orphan plan folders, and an
     // ambient `TENDRIL_PLANS` lookup inside it would point a test at the real plans directory.
     let plans_dir = ctx
@@ -118,8 +128,17 @@ pub(super) fn spawn_runner(
                     &settings,
                     ctx.github.clone(),
                     ctx.pr_timing.clone(),
+                    pid.clone(),
                 )
                 .await;
+                // Cancelled while the native step ran: `cancel_job` has written the terminal state and
+                // killed the push, so the job must not go on to an agent.
+                if *cancel_rx.borrow() {
+                    pid.store(0, Ordering::SeqCst);
+                    drop(permit);
+                    dispatch_notify.notify_one();
+                    return;
+                }
                 let native_finish = match outcome {
                     crate::pull_request::NativePrOutcome::Done { summary } => {
                         Some((JobStatus::Completed, summary))
@@ -497,6 +516,7 @@ async fn run_native_pr(
     settings: &TendrilSettings,
     github: Arc<dyn crate::pull_request::GitHub>,
     timing: crate::pull_request::NativePrTiming,
+    push_pid: Arc<AtomicU32>,
 ) -> crate::pull_request::NativePrOutcome {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
     let plan_folder = std::path::PathBuf::from(&job.plan_file);
@@ -507,7 +527,7 @@ async fn run_native_pr(
         let mut progress = |message: &str| {
             let _ = tx.send(message.to_string());
         };
-        crate::pull_request::run_native_create_pr(
+        crate::pull_request::run_native_create_pr_with_pid(
             &plan_folder,
             &args,
             &settings,
@@ -515,14 +535,19 @@ async fn run_native_pr(
             github.as_ref(),
             &timing,
             &mut progress,
+            Some(push_pid),
         )
     });
 
-    let mut status_job = job.clone();
     while let Some(message) = rx.recv().await {
         let _ = append_to_raw_log(tendril_home, &job.id, &format!("[native] {message}"));
-        status_job.status_message = Some(message);
-        persist(tendril_home, jobs_map, &status_job, Some(job_events)).await;
+        // Updated on the job as it is *now*: a cancellation may have written Stopped meanwhile, and
+        // persisting an old Running copy over it is how a cancelled job used to look alive forever.
+        let current = jobs_map.read().await.get(&job.id).cloned();
+        if let Some(mut current) = current.filter(|j| j.status == JobStatus::Running) {
+            current.status_message = Some(message);
+            persist(tendril_home, jobs_map, &current, Some(job_events)).await;
+        }
     }
     task.await.unwrap_or_else(|e| crate::pull_request::NativePrOutcome::NeedsAgent {
         reason: format!("the native pull request step crashed: {e}"),

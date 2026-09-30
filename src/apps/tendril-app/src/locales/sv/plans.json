@@ -71,7 +71,9 @@
     "retryPlan": "Försök igen med planen",
     "acceptPartialDelivery": "Acceptera delleverans",
     "resetToDraft": "Återställ till utkast…",
-    "share": "Dela"
+    "share": "Dela",
+    "queueAfter": "Köa efter {{plans}}",
+    "queued": "Köad"
   },
   "draftActions": {
     "execute": "Exekvera plan",
@@ -268,5 +270,18 @@
   "share": {
     "linkCopiedTitle": "Länken kopierad",
     "linkCopied": "Planens delningslänk kopierades till urklipp"
+  },
+  "dependency": {
+    "title": "Väntar på en annan plan",
+    "queuedTitle": "Köad – startar när beroendet är klart",
+    "hint": "Planen bygger på ändringar som inte finns i basgrenen än och kan inte köras förrän de gör det. Köa den nu så startar den av sig själv när beroendets pull request är mergad.",
+    "queuedHint": "Jobbet väntar. Det startar automatiskt när alla planer ovan är klara och deras pull requests mergade.",
+    "missing": "hittades inte",
+    "next": {
+      "createPr": "behöver sin pull request skapad och mergad",
+      "execute": "måste köras först",
+      "running": "körs nu",
+      "complete": "måste bli klar"
+    }
   }
 }

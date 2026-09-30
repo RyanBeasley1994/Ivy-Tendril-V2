@@ -71,7 +71,9 @@
     "retryPlan": "Plan erneut versuchen",
     "acceptPartialDelivery": "Teilauslieferung annehmen",
     "resetToDraft": "Auf Entwurf zurücksetzen…",
-    "share": "Teilen"
+    "share": "Teilen",
+    "queueAfter": "Nach {{plans}} einreihen",
+    "queued": "Eingereiht"
   },
   "draftActions": {
     "execute": "Plan ausführen",
@@ -268,5 +270,18 @@
   "share": {
     "linkCopiedTitle": "Link kopiert",
     "linkCopied": "Freigabelink des Plans in die Zwischenablage kopiert"
+  },
+  "dependency": {
+    "title": "Wartet auf einen anderen Plan",
+    "queuedTitle": "Eingereiht – startet, sobald die Abhängigkeit da ist",
+    "hint": "Dieser Plan baut auf Änderungen auf, die noch nicht im Basis-Branch sind, und kann erst danach laufen. Reihe ihn jetzt ein, dann startet er von selbst, sobald der Pull Request der Abhängigkeit gemergt ist.",
+    "queuedHint": "Der Job wartet. Er startet automatisch, wenn alle obigen Pläne abgeschlossen und ihre Pull Requests gemergt sind.",
+    "missing": "nicht gefunden",
+    "next": {
+      "createPr": "braucht einen erstellten und gemergten Pull Request",
+      "execute": "muss zuerst laufen",
+      "running": "läuft gerade",
+      "complete": "muss abgeschlossen werden"
+    }
   }
 }

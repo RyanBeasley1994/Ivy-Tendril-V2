@@ -75,7 +75,9 @@
     "retryPlan": "Reintentar plan",
     "acceptPartialDelivery": "Aceptar entrega parcial",
     "resetToDraft": "Restablecer a borrador…",
-    "share": "Compartir"
+    "share": "Compartir",
+    "queueAfter": "Encolar tras {{plans}}",
+    "queued": "En cola"
   },
   "draftActions": {
     "execute": "Ejecutar plan",
@@ -275,5 +277,18 @@
   "share": {
     "linkCopiedTitle": "Enlace copiado",
     "linkCopied": "Enlace para compartir el plan copiado al portapapeles"
+  },
+  "dependency": {
+    "title": "Esperando otro plan",
+    "queuedTitle": "En cola: empieza cuando llegue su dependencia",
+    "hint": "Este plan se basa en cambios que aún no están en la rama base, así que no puede ejecutarse hasta entonces. Encólalo ahora y empezará solo cuando se fusione el pull request de la dependencia.",
+    "queuedHint": "El trabajo está en espera. Empieza automáticamente cuando todos los planes de arriba estén completados y su pull request fusionado.",
+    "missing": "no encontrado",
+    "next": {
+      "createPr": "necesita su pull request creado y fusionado",
+      "execute": "debe ejecutarse primero",
+      "running": "se está ejecutando",
+      "complete": "debe terminar"
+    }
   }
 }

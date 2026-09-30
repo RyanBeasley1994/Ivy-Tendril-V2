@@ -413,6 +413,8 @@
     "save": "Guardar",
     "saved": "Ajustes de ramas guardados",
     "nativeLabel": "Crear pull requests sin el agente",
-    "nativeHint": "Tendril sube la rama, crea o actualiza el PR, aplica tus opciones y hace el merge por sí mismo, en segundos y sin tokens. El agente solo interviene para resolver conflictos o recuperar una rama inusual. Desactívalo para que cada PR pase por el agente."
+    "nativeHint": "Tendril sube la rama, crea o actualiza el PR, aplica tus opciones y hace el merge por sí mismo, en segundos y sin tokens. El agente solo interviene para resolver conflictos o recuperar una rama inusual. Desactívalo para que cada PR pase por el agente.",
+    "skipHooksLabel": "Omitir los hooks pre-push al crear PR",
+    "skipHooksHint": "Sube las ramas de los planes con --no-verify y HUSKY=0, para que un hook del repositorio que vuelve a ejecutar toda la suite de pruebas no bloquee el PR. Las verificaciones del plan ya han pasado. Solo afecta al push de Crear PR: los commits conservan sus hooks y tus propios push no cambian."
   }
 }

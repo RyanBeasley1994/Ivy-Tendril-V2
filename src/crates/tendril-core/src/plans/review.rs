@@ -287,6 +287,13 @@ pub fn resolve_diagnostic_summary(tendril_home: &Path, folder: &Path) -> Option<
 
     let (job_id, job_type, status, status_msg, failure_reason) = row;
 
+    // The fallback explains a run that failed. A completed newest job did not fail, and saying it
+    // "did not complete successfully" beside "Completed successfully" is simply wrong - an
+    // OrchestrateMission run on an integration plan is the everyday case.
+    if status.eq_ignore_ascii_case("Completed") {
+        return None;
+    }
+
     let mut agent_output: Option<String> = None;
     if let Ok(Some(lines)) = crate::jobs::logger::read_eventwire_log(tendril_home, &job_id, None) {
         agent_output = extract_last_agent_text(&lines);

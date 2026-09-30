@@ -247,3 +247,30 @@ fn a_failed_verification_records_the_pr_but_does_not_complete() {
     assert_eq!(plan.state, "Failed");
     assert_eq!(plan.prs.len(), 1);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_failing_pre_push_hook_blocks_the_push_unless_skipping_is_allowed() {
+    use std::os::unix::fs::PermissionsExt;
+    let install_hook = |w: &World| {
+        let hook = w.repo.join(".git/hooks/pre-push");
+        std::fs::write(&hook, "#!/bin/sh\n[ \"$HUSKY\" = \"0\" ] && exit 0\necho 'tests timed out' >&2\nexit 1\n").unwrap();
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+    };
+
+    let w = world(true);
+    install_hook(&w);
+    let gh = FakeGh { remote: w.remote.clone(), mergeable: "MERGEABLE".into(), ..Default::default() };
+    match run(&w, &gh, &args()).0 {
+        NativePrOutcome::NeedsAgent { reason } => assert!(reason.contains("push failed"), "{reason}"),
+        other => panic!("{other:?}"),
+    }
+    assert!(!gh.branch_visible("", "tendril/00001-AddLogin"), "the hook stopped the push");
+
+    let mut w = world(true);
+    install_hook(&w);
+    w.settings.git.skip_push_hooks = Some(true);
+    let gh = FakeGh { remote: w.remote.clone(), mergeable: "MERGEABLE".into(), ..Default::default() };
+    assert!(matches!(run(&w, &gh, &args()).0, NativePrOutcome::Done { .. }));
+    assert!(gh.branch_visible("", "tendril/00001-AddLogin"));
+}

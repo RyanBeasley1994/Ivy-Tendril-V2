@@ -169,3 +169,91 @@ async fn turning_native_off_always_uses_the_agent() {
     assert_eq!(launches, 1);
     assert!(!prompt.contains("Handoff:"));
 }
+
+/// The repo's pre-push hook: sleeps like a long test run, unless husky is told to stand down.
+#[cfg(unix)]
+fn slow_hook(home: &HomeFixture) {
+    use std::os::unix::fs::PermissionsExt;
+    let hook = home.path.join("repo/.git/hooks/pre-push");
+    std::fs::write(&hook, "#!/bin/sh\n[ \"$HUSKY\" = \"0\" ] && exit 0\nsleep 30\nexit 1\n").unwrap();
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_config_change_applies_to_the_next_job_without_a_restart() {
+    let home = HomeFixture::new("native-pr-fresh-config");
+    let (plan, remote, settings) = setup(&home);
+    slow_hook(&home);
+    // Written after the manager's settings were captured: only the per-job re-read can see it.
+    let mut on_disk = settings.clone();
+    on_disk.git.skip_push_hooks = Some(true);
+    std::fs::write(home.path.join("config.yaml"), serde_yaml::to_string(&on_disk).unwrap()).unwrap();
+    let started = std::time::Instant::now();
+    let (status, launches, _) = run_job(&home, settings, Gh { remote, mergeable: "MERGEABLE" }, &plan).await;
+    assert_eq!(status, JobStatus::Completed);
+    assert_eq!(launches, 0);
+    assert!(started.elapsed() < Duration::from_secs(20), "the 30s hook was skipped");
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn cancelling_during_a_slow_push_stops_it_and_never_starts_the_agent() {
+    let home = HomeFixture::new("native-pr-cancel");
+    let (plan, remote, settings) = setup(&home);
+    slow_hook(&home);
+    let launches = Arc::new(AtomicUsize::new(0));
+    let counter = launches.clone();
+    let workdir = home.path.clone();
+    let manager = JobManager::new(home.path.clone(), settings)
+        .with_plans_dir(Some(home.plans_dir()))
+        .with_github(
+            Arc::new(Gh { remote, mergeable: "MERGEABLE" }),
+            NativePrTiming { visibility_polls: 2, mergeable_polls: 2, poll_interval: Duration::from_millis(1) },
+        )
+        .with_spec_builder(Arc::new(move |_, _| {
+            counter.fetch_add(1, Ordering::SeqCst);
+            AgentProcessSpec {
+                command: "/bin/sh".into(),
+                args: vec!["-c".into(), "exit 0".into()],
+                environment: Default::default(),
+                working_directory: workdir.clone(),
+                stdin_content: None,
+                redirect_stdin: false,
+                temp_files: vec![],
+            }
+        }))
+        .share();
+    let args: JobArgs = serde_json::from_value(serde_json::json!({
+        "type": "CreatePr", "folderPath": plan.to_string_lossy(), "merge": false
+    }))
+    .unwrap();
+    let id = manager.start_job(args).await.unwrap();
+
+    // Wait until the push (and so the hook) is running.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+    loop {
+        let job = manager.get_job(&id).await.unwrap().unwrap();
+        if job.status_message.as_deref().is_some_and(|m| m.starts_with("Pushing")) {
+            break;
+        }
+        assert!(tokio::time::Instant::now() < deadline, "the push never started");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let cancelled_at = std::time::Instant::now();
+    manager.cancel_job(&id, Some("test")).await.unwrap();
+
+    // Stays Stopped (no stale Running written back over it) and finishes well before the hook would.
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    let job = manager.get_job(&id).await.unwrap().unwrap();
+    assert_eq!(job.status, JobStatus::Stopped);
+    assert_eq!(launches.load(Ordering::SeqCst), 0, "no agent after a cancel");
+    assert!(cancelled_at.elapsed() < Duration::from_secs(10));
+    let hook_alive = std::process::Command::new("pgrep")
+        .args(["-f", &format!("{}/repo/.git/hooks/pre-push", home.path.display())])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    assert!(!hook_alive, "the hook was killed with the push");
+}

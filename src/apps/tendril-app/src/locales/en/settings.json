@@ -411,6 +411,8 @@
     "save": "Save",
     "saved": "Branch settings saved",
     "nativeLabel": "Create pull requests without the agent",
-    "nativeHint": "Tendril pushes the branch, opens or updates the PR, applies your options and merges by itself, in seconds and without tokens. The agent is only called to resolve merge conflicts or recover an unusual branch. Turn off to send every Create PR through the agent."
+    "nativeHint": "Tendril pushes the branch, opens or updates the PR, applies your options and merges by itself, in seconds and without tokens. The agent is only called to resolve merge conflicts or recover an unusual branch. Turn off to send every Create PR through the agent.",
+    "skipHooksLabel": "Skip pre-push hooks when creating PRs",
+    "skipHooksHint": "Pushes plan branches with --no-verify and HUSKY=0, so a repo hook that re-runs the whole test suite cannot block the PR. The plan's own verifications have already passed. Only Create PR's push is affected: commits keep their hooks, and your own pushes are unchanged."
   }
 }

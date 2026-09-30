@@ -182,16 +182,32 @@ export function buildPlanActions({
     // `actions.SetPrimary("Execute", "Execute", Icons.Rocket, ..., "x", disabled: isCheckingPreflight,
     // loading: isCheckingPreflight)`.
     if (availableDraft.has("execute")) {
+      // A plan held back only by its dependencies can still be queued: the daemon parks the job as
+      // Blocked and starts it the moment the dependency lands, so the button says that instead of
+      // simply going grey with the reason hidden in a tooltip.
+      const waiting = PlanActionsController.waitingOn(effectivePlan, allPlans);
+      // Already queued: the daemon holds the job as Blocked, and a second submission would be refused.
+      const queued = effectivePlan.state === "Blocked";
+      const queueAfter = !queued && !canExec.allowed && waiting.length > 0;
+      const waitingIds = waiting.map((w) => `#${(w.plan?.id ?? w.ref).slice(0, 5)}`).join(", ");
       primaryAction = {
         tag: "execute",
         label: isCheckingPreflight
           ? t("actions.checking")
           : pendingAction === "executePlan"
             ? t("actions.starting")
-            : draftLabel("execute"),
+            : queued
+              ? t("actions.queued")
+              : queueAfter
+                ? t("actions.queueAfter", { plans: waitingIds })
+                : draftLabel("execute"),
         icon: "Rocket",
         shortcut: "x",
-        disabled: pendingAction !== null || isCheckingPreflight || !canExec.allowed,
+        disabled:
+          queued ||
+          pendingAction !== null ||
+          isCheckingPreflight ||
+          (!canExec.allowed && !queueAfter),
         loading: isCheckingPreflight,
       };
     }

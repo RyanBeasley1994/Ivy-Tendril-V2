@@ -75,7 +75,9 @@
     "retryPlan": "Réessayer le plan",
     "acceptPartialDelivery": "Accepter la livraison partielle",
     "resetToDraft": "Remettre en brouillon…",
-    "share": "Partager"
+    "share": "Partager",
+    "queueAfter": "Mettre en file après {{plans}}",
+    "queued": "En file"
   },
   "draftActions": {
     "execute": "Exécuter le plan",
@@ -275,5 +277,18 @@
   "share": {
     "linkCopiedTitle": "Lien copié",
     "linkCopied": "Lien de partage du plan copié dans le presse-papiers"
+  },
+  "dependency": {
+    "title": "En attente d'un autre plan",
+    "queuedTitle": "En file — démarre quand sa dépendance arrive",
+    "hint": "Ce plan s'appuie sur des changements qui ne sont pas encore sur la branche de base : il ne peut pas s'exécuter avant. Mettez-le en file maintenant, il démarrera seul une fois la pull request de la dépendance fusionnée.",
+    "queuedHint": "Le job attend. Il démarre automatiquement quand tous les plans ci-dessus sont terminés et leur pull request fusionnée.",
+    "missing": "introuvable",
+    "next": {
+      "createPr": "doit avoir sa pull request créée et fusionnée",
+      "execute": "doit s'exécuter d'abord",
+      "running": "est en cours",
+      "complete": "doit se terminer"
+    }
   }
 }

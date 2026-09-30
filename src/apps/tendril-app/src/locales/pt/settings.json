@@ -413,6 +413,8 @@
     "save": "Salvar",
     "saved": "Configurações de branch salvas",
     "nativeLabel": "Criar pull requests sem o agente",
-    "nativeHint": "O Tendril envia a branch, cria ou atualiza o PR, aplica suas opções e faz o merge sozinho, em segundos e sem tokens. O agente só entra para resolver conflitos ou recuperar uma branch incomum. Desative para mandar todo PR pelo agente."
+    "nativeHint": "O Tendril envia a branch, cria ou atualiza o PR, aplica suas opções e faz o merge sozinho, em segundos e sem tokens. O agente só entra para resolver conflitos ou recuperar uma branch incomum. Desative para mandar todo PR pelo agente.",
+    "skipHooksLabel": "Pular hooks pre-push ao criar PRs",
+    "skipHooksHint": "Envia as branches dos planos com --no-verify e HUSKY=0, para que um hook do repositório que roda toda a suíte de testes de novo não bloqueie o PR. As verificações do plano já passaram. Afeta só o push de Criar PR: os commits mantêm seus hooks e seus próprios pushes não mudam."
   }
 }

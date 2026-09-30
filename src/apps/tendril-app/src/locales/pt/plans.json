@@ -75,7 +75,9 @@
     "retryPlan": "Tentar Plano Novamente",
     "acceptPartialDelivery": "Aceitar Entrega Parcial",
     "resetToDraft": "Redefinir para Rascunho…",
-    "share": "Compartilhar"
+    "share": "Compartilhar",
+    "queueAfter": "Enfileirar após {{plans}}",
+    "queued": "Na fila"
   },
   "draftActions": {
     "execute": "Executar Plano",
@@ -275,5 +277,18 @@
   "share": {
     "linkCopiedTitle": "Link copiado",
     "linkCopied": "Link de compartilhamento do plano copiado para a área de transferência"
+  },
+  "dependency": {
+    "title": "Aguardando outro plano",
+    "queuedTitle": "Na fila — começa quando a dependência chegar",
+    "hint": "Este plano depende de mudanças que ainda não estão na branch base, então não pode rodar antes disso. Enfileire agora e ele começa sozinho quando o pull request da dependência for mesclado.",
+    "queuedHint": "O job está aguardando. Ele começa automaticamente quando todos os planos acima estiverem concluídos e com o pull request mesclado.",
+    "missing": "não encontrado",
+    "next": {
+      "createPr": "precisa ter o pull request criado e mesclado",
+      "execute": "precisa rodar antes",
+      "running": "está rodando agora",
+      "complete": "precisa terminar"
+    }
   }
 }

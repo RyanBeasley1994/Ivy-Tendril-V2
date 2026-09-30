@@ -63,6 +63,7 @@ Before processing, read `plan.yaml` and check the `state` field. After reading, 
   - `PrReviewer` — comma-separated GitHub usernames to request as reviewers (default: none)
   - `PrComment` — Review comment text (default: none)
   - `PrDraft` — `true`/`false` (default: `false`)
+  - `PrSkipPushHooks` — `true`/`false` (default: `false`) — the operator allowed pushing past the repo's pre-push hook
   - `PrBaseBranch` — Target branch for pull request (default: repo default branch or project configured base branch)
 
 ### 2. For Each Worktree
@@ -90,7 +91,7 @@ For each worktree:
    merging a change into a repo outside the plan's project (#1340). Never push to a repo just because
    a worktree for it exists on disk.
 4. `git rev-parse --abbrev-ref HEAD` to get the branch name
-5. `git push -u origin <branch>` — apply the **transient-error retry convention** above (a
+5. `git push -u origin <branch>` — or `git push --no-verify -u origin <branch>` when `PrSkipPushHooks` is `true` (`HUSKY=0` is already set in your environment then; never skip hooks otherwise) — apply the **transient-error retry convention** above (a
    first-attempt `git push` commonly fails transiently and succeeds on retry)
 
 > **Stale remote tracking refs warning:** A ref appearing in `git branch -a` as `remotes/origin/<branch>` does NOT guarantee the branch exists on GitHub. Always verify with `gh api repos/<owner>/<repo>/branches/<branch>` or `git ls-remote origin <branch>` before assuming the push succeeded.

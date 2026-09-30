@@ -52,6 +52,11 @@ pub struct GitSettings {
     /// pushes and opens the PR itself and only calls the agent for merge conflicts and odd cases.
     #[serde(rename = "nativePullRequests", default, skip_serializing_if = "Option::is_none")]
     pub native_pull_requests: Option<bool>,
+    /// `true` pushes plan branches with `--no-verify` and `HUSKY=0`, so a repo's pre-push hook (a full
+    /// test run, say) does not block the pull request. The plan's own verifications have already run.
+    /// Only Create PR's push is affected - never commits, and never your own pushes.
+    #[serde(rename = "skipPushHooks", default, skip_serializing_if = "Option::is_none")]
+    pub skip_push_hooks: Option<bool>,
 }
 
 impl GitSettings {
@@ -319,6 +324,7 @@ mod tests {
             mission_branch_template: Some("{prefix}mission-{mission}-{slug}".into()),
             sign_commits: None,
             native_pull_requests: None,
+            skip_push_hooks: None,
         };
         assert_eq!(render_branch_name(&s, &ctx(), false), "rb/feature/00042-add-sso-login");
         let mut c = ctx();

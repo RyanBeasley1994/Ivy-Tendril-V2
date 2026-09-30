@@ -75,6 +75,28 @@ export class PlanActionsController {
   }
 
   /**
+   * The dependencies this plan is still waiting on: each `dependsOn` entry whose plan is not
+   * Completed, with that plan when it is known. Empty means nothing holds the plan back.
+   *
+   * Mirrors {@link canExecute}'s matching, so the banner and the button can never disagree about
+   * why Execute is not a plain Execute.
+   */
+  public static waitingOn(
+    plan: PlanDetail | PlanSummary,
+    allPlans: PlanSummary[] = [],
+  ): { ref: string; plan?: PlanSummary }[] {
+    const dependsOn = "dependsOn" in plan && plan.dependsOn ? plan.dependsOn : [];
+    const waiting: { ref: string; plan?: PlanSummary }[] = [];
+    for (const dep of dependsOn) {
+      const match = allPlans.find(
+        (p) => p.id === dep || dep.startsWith(p.id) || p.id === dep.split("-")[0],
+      );
+      if (!match || match.state !== "Completed") waiting.push({ ref: dep, plan: match });
+    }
+    return waiting;
+  }
+
+  /**
    * Check if CreatePr is allowed.
    * Gating:
    * - Must be in Review or Failed state

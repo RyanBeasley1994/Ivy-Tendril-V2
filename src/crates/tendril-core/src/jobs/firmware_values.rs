@@ -190,6 +190,9 @@ fn add_plan_scoped_values(
             if let Some(base) = pr_base_branch_override(args) {
                 values.insert("PrBaseBranch".to_string(), base.to_string());
             }
+            if settings.git.skip_push_hooks == Some(true) {
+                values.insert("PrSkipPushHooks".to_string(), "true".to_string());
+            }
         }
         JobArgs::CreateIssue(a) => {
             if !a.repo.is_empty() {

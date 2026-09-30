@@ -267,6 +267,12 @@ async fn a_mission_runs_from_goal_to_review() {
     assert_eq!(yaml.commits.len(), 3);
     assert!(check_dependencies_with(&integration, &w.paths.plans_dir, &never).unwrap().ok);
     assert!((m.cost - 5.6).abs() < 1e-9, "cost {}", m.cost);
+    let summary = std::fs::read_to_string(integration.join("Artifacts/summary.md")).unwrap();
+    assert!(summary.starts_with("# Summary\n\nSSO shipped"), "{summary}");
+    assert!(summary.contains("### M1 — Backend") && summary.contains("Backend done"));
+    assert!(summary.contains("- [x] Frontend v2 works"));
+    assert!(!summary.contains("M2 — Frontend\n"), "skipped milestones are left out");
+    assert!(summary.contains("| Build | Pending |"));
 
     // The PR is created → the mission completes.
     tendril_core::jobs::manager::apply_plan_state(&integration, PlanStatus::Completed);

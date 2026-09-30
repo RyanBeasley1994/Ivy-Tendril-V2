@@ -811,6 +811,9 @@ impl MissionDriver {
             }
             body.push_str("## Tests\n\nEvery project verification was run against this branch by the mission's final validation; see `Verification/`.\n");
             let _ = write_revision(&integration, &body, false);
+            let mut handed_over = mission.clone();
+            handed_over.summary = Some(summary.clone());
+            write_integration_summary(&integration, &handed_over);
             apply_plan_state(&integration, PlanStatus::Review);
             sync_plan_state_to_db(&self.paths.tendril_home, &integration);
         }
@@ -825,6 +828,11 @@ impl MissionDriver {
         let Some(integration) = integration_folder(&self.paths, mission) else {
             return Ok(false);
         };
+        // Missions handed over before the summary was written get one now. Writes nothing to the
+        // mission, so it does not count as a change.
+        if !integration.join("Artifacts").join("summary.md").is_file() {
+            write_integration_summary(&integration, mission);
+        }
         let Ok((plan, _)) = read_plan_yaml(&integration) else {
             return Ok(false);
         };
@@ -845,5 +853,48 @@ impl MissionDriver {
             Ok(())
         })?;
         Ok(true)
+    }
+}
+
+/// `Artifacts/summary.md` for a mission's integration plan: what the Review screen shows as the
+/// execution summary and what the pull request is described with. ExecutePlan writes this for an
+/// ordinary plan; an integration plan is never executed, so the mission writes it on hand-over.
+pub(crate) fn write_integration_summary(integration: &Path, mission: &MissionYaml) {
+    let mut out = String::from("# Summary\n\n");
+    if let Some(summary) = &mission.summary {
+        out.push_str(summary.trim());
+        out.push_str("\n\n");
+    }
+    out.push_str(&format!("Delivered by a mission of {} milestones.\n\n## Changes\n\n", mission.passed_count()));
+    for ms in mission.milestones.iter().filter(|m| m.state == MilestoneState::Passed) {
+        out.push_str(&format!("### {} — {}\n\n", ms.id, ms.title));
+        if let Some(s) = ms.summary.as_ref().filter(|s| !s.trim().is_empty()) {
+            out.push_str(&format!("{}\n\n", s.trim()));
+        } else if !ms.objective.is_empty() {
+            out.push_str(&format!("{}\n\n", ms.objective));
+        }
+        for a in &ms.acceptance {
+            out.push_str(&format!("- [x] {}\n", a));
+        }
+        if !ms.commits.is_empty() {
+            let short: Vec<String> = ms.commits.iter().map(|c| c.chars().take(8).collect()).collect();
+            out.push_str(&format!("\nCommits: {}\n", short.join(", ")));
+        }
+        out.push('\n');
+    }
+    if let Ok((plan, _)) = read_plan_yaml(integration) {
+        if !plan.verifications.is_empty() {
+            out.push_str("## Verifications\n\n| Verification | Result |\n| --- | --- |\n");
+            for v in &plan.verifications {
+                out.push_str(&format!("| {} | {} |\n", v.name, v.status));
+            }
+            out.push('\n');
+        }
+    }
+    let dir = integration.join("Artifacts");
+    if std::fs::create_dir_all(&dir).is_ok() {
+        if let Err(e) = crate::fs_lock::write_atomic(&dir.join("summary.md"), out.as_bytes()) {
+            tracing::warn!("Could not write the mission summary to {}: {}", dir.display(), e);
+        }
     }
 }

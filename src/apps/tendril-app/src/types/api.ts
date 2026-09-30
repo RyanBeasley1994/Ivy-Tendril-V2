@@ -995,6 +995,8 @@ export interface GitSettings {
   signCommits?: boolean;
   /** `false`: every Create PR goes through the agent. Absent: Tendril pushes and opens PRs itself. */
   nativePullRequests?: boolean;
+  /** `true`: Create PR pushes with `--no-verify` and `HUSKY=0`, past the repo's pre-push hook. */
+  skipPushHooks?: boolean;
 }
 
 /** What each kind of branch would be called under a `GitSettings`, rendered by the daemon. */

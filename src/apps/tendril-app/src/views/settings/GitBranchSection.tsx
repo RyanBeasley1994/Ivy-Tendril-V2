@@ -38,6 +38,7 @@ const readGit = (config: TendrilConfig | null): GitSettings => {
     signCommits: typeof git.signCommits === "boolean" ? git.signCommits : undefined,
     nativePullRequests:
       typeof git.nativePullRequests === "boolean" ? git.nativePullRequests : undefined,
+    skipPushHooks: typeof git.skipPushHooks === "boolean" ? git.skipPushHooks : undefined,
   };
 };
 
@@ -49,6 +50,8 @@ interface GitForm {
   signCommits: boolean;
   /** Checked means Tendril opens PRs itself - the default. */
   nativePullRequests: boolean;
+  /** Off by default: the repo's pre-push hook runs. */
+  skipPushHooks: boolean;
 }
 
 /** Blank fields are left out, so the daemon's default applies rather than an empty template. */
@@ -61,6 +64,7 @@ const toWire = (form: GitForm): GitSettings => {
   // Only the non-default value is written, so an untouched install keeps no `signCommits` key.
   if (!form.signCommits) out.signCommits = false;
   if (!form.nativePullRequests) out.nativePullRequests = false;
+  if (form.skipPushHooks) out.skipPushHooks = true;
   return out;
 };
 
@@ -82,6 +86,7 @@ export const GitBranchSection: React.FC<{
     missionBranchTemplate: "",
     signCommits: true,
     nativePullRequests: true,
+    skipPushHooks: false,
   });
   const [preview, setPreview] = React.useState<BranchPreview | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -94,6 +99,7 @@ export const GitBranchSection: React.FC<{
       missionBranchTemplate: saved.missionBranchTemplate ?? "",
       signCommits: saved.signCommits !== false,
       nativePullRequests: saved.nativePullRequests !== false,
+      skipPushHooks: saved.skipPushHooks === true,
     });
   }, [saved]);
 
@@ -122,7 +128,8 @@ export const GitBranchSection: React.FC<{
     form.branchTemplate !== (saved.branchTemplate ?? "") ||
     form.missionBranchTemplate !== (saved.missionBranchTemplate ?? "") ||
     form.signCommits !== (saved.signCommits !== false) ||
-    form.nativePullRequests !== (saved.nativePullRequests !== false);
+    form.nativePullRequests !== (saved.nativePullRequests !== false) ||
+    form.skipPushHooks !== (saved.skipPushHooks === true);
 
   const save = async () => {
     if (unknown.length > 0) return;
@@ -245,6 +252,22 @@ export const GitBranchSection: React.FC<{
             </Label>
           </div>
           <p className="text-xs text-muted-foreground">{t("git.nativeHint")}</p>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <Switch
+              id="git-skip-push-hooks"
+              checked={form.skipPushHooks}
+              onCheckedChange={(checked) =>
+                setForm((current) => ({ ...current, skipPushHooks: checked }))
+              }
+            />
+            <Label htmlFor="git-skip-push-hooks" className="text-xs font-medium text-foreground">
+              {t("git.skipHooksLabel")}
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("git.skipHooksHint")}</p>
         </div>
         <SaveError message={error} />
         <Button type="submit" disabled={!dirty || isSaving || unknown.length > 0}>

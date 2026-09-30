@@ -81,7 +81,9 @@
     "retryPlan": "Retry Plan",
     "acceptPartialDelivery": "Accept Partial Delivery",
     "resetToDraft": "Reset to Draft…",
-    "share": "Share"
+    "share": "Share",
+    "queueAfter": "Queue after {{plans}}",
+    "queued": "Queued"
   },
   "draftActions": {
     "execute": "Execute Plan",
@@ -301,6 +303,19 @@
       "state": "State",
       "checks": "Checks",
       "updated": "Updated"
+    }
+  },
+  "dependency": {
+    "title": "Waiting on another plan",
+    "queuedTitle": "Queued — starts when its dependency lands",
+    "hint": "This plan builds on changes that aren't on the base branch yet, so it can't run until they are. Queue it now and it starts on its own once the dependency's pull request is merged.",
+    "queuedHint": "The job is parked. It starts automatically when every plan above is Completed and its pull request is merged.",
+    "missing": "not found",
+    "next": {
+      "createPr": "needs its pull request created and merged",
+      "execute": "needs to run first",
+      "running": "is running now",
+      "complete": "needs to finish"
     }
   }
 }
