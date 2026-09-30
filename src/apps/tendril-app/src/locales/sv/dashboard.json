@@ -5,7 +5,10 @@
       "afternoon": "God eftermiddag!",
       "evening": "God kväll!"
     },
-    "headline": "Vad ska vi producera i dag?"
+    "headline": "Vad ska vi producera i dag?",
+    "status": "{{running}} körs · {{queued}} i kö",
+    "systemsOk": "Alla system i drift",
+    "systemsDown": "Tjänsten går inte att nå"
   },
   "kpis": {
     "featuresShipped": {
@@ -71,5 +74,27 @@
       "thousand": "{{value}} tn",
       "million": "{{value}} mn"
     }
+  },
+  "insights": {
+    "title": "Insikter",
+    "subtitle": "Tokens, kostnader och resultat för alla agenter och projekt",
+    "tokens30": "Tokens · 30 dagar",
+    "spendByAgent": "Kostnad per agent",
+    "agents": "Agenter",
+    "agent": "Agent",
+    "plans": "Planer",
+    "tokensPerPlan": "Tokens / plan",
+    "tokens": "Tokens",
+    "cost": "Kostnad",
+    "trendTitle": "Kostnad och planer",
+    "noAgents": "Ingen agent har registrerat användning än",
+    "ofMonth": "av månadens kostnad",
+    "gitActivity": "Git-aktivitet",
+    "pullRequests": "Sammanfogade pull requests",
+    "rolling": "7-dagarsgenomsnitt",
+    "window": "Senaste 4 veckorna",
+    "week": "Vecka",
+    "month": "Månad",
+    "loading": "Läser in mätvärden"
   }
 }

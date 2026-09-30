@@ -14,6 +14,7 @@ const SERVICE_STATE_LABEL_KEYS = {
 const OWNERSHIP_LABEL_KEYS = {
   AdoptedExternal: "service.ownership.adoptedExternal",
   Managed: "service.ownership.managed",
+  Remote: "service.ownership.remote",
 } as const;
 
 /**
@@ -47,6 +48,8 @@ export const ServiceStatusBanner: React.FC<ServiceStatusBannerProps> = ({
   onViewDiagnostics,
 }) => {
   const { t } = useTranslation("common");
+  // Restart and Repair act on the local daemon, which is not the one in use.
+  const isRemote = serviceInfo?.ownership === "Remote";
 
   /* The colour is read off the raw, English value - the daemon's own `statusBadge` or its `state` -
      so it is the same in every language. What the badge says is looked up separately: the daemon's
@@ -102,7 +105,7 @@ export const ServiceStatusBanner: React.FC<ServiceStatusBannerProps> = ({
       </div>
 
       <div className="flex items-center space-x-2">
-        {onRestart && (
+        {onRestart && !isRemote && (
           <Button
             type="button"
             size="sm"
@@ -115,7 +118,7 @@ export const ServiceStatusBanner: React.FC<ServiceStatusBannerProps> = ({
         )}
         {/* Repair is the one that changes something on the machine, so it keeps the warning tint
             it had — see the note on `UpdateNotice` for why that is a className and not a variant. */}
-        {onRepair && (
+        {onRepair && !isRemote && (
           <Button
             type="button"
             size="sm"

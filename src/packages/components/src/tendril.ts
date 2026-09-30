@@ -240,6 +240,7 @@ export {
   niceTicks,
   formatCurrencyTick,
   formatCountTick,
+  KPI_ICON_NAMES,
 } from "./components/TendrilDashboard/index.ts";
 export type {
   DashboardKpiDto,
@@ -247,6 +248,10 @@ export type {
   DashboardActivityMonthDto,
   DashboardJobDto,
   DashboardTrendDto,
+  DashboardAttentionDto,
+  DashboardTokenDayDto,
+  DashboardTokenShareDto,
+  DashboardFlowStageDto,
   TendrilDashboardProps,
 } from "./components/TendrilDashboard/index.ts";
 

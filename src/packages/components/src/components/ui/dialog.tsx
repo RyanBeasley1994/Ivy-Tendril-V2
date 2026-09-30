@@ -20,7 +20,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/30  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-box border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] sm:rounded-box overflow-hidden focus:outline-none focus:ring-0",
+        "fixed left-[50%] top-[10%] z-50 flex flex-col w-[calc(100%-2rem)] max-sm:!w-[calc(100%-2rem)] max-sm:!max-w-[calc(100%-2rem)] sm:w-full max-w-xl max-h-[85vh] translate-x-[-50%] translate-y-0 rounded-2xl border border-input bg-card shadow-[0_24px_60px_-20px_rgb(0_0_0/0.7)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[5%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[5%] sm:rounded-box overflow-hidden focus:outline-none focus:ring-0",
         className,
       )}
       {...props}
@@ -58,7 +58,7 @@ const DialogHeader = ({ className, children, hideCloseButton, ...props }: Dialog
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 bg-background p-6 pb-4 flex-shrink-0 flex items-center justify-between",
+        "sticky top-0 z-10 bg-card p-5 pb-3 flex-shrink-0 flex items-center justify-between",
         className,
       )}
       {...props}
@@ -78,7 +78,7 @@ DialogHeader.displayName = "DialogHeader";
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 p-6 pt-4",
+      "flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 p-5 pt-3",
       className,
     )}
     {...props}

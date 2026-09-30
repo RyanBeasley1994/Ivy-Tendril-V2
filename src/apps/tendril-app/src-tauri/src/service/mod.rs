@@ -6,6 +6,7 @@ pub mod job_events_bridge;
 pub mod master;
 pub mod plan_mapping;
 pub mod provision;
+pub mod remote;
 pub mod review_action_bridge;
 pub mod supervisor;
 pub mod tunnel_client;

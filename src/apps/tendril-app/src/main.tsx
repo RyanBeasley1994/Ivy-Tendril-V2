@@ -5,7 +5,17 @@ import { App } from "./App";
 import { ProxyOriginProvider } from "./api/proxyOrigin";
 import { initI18n } from "./i18n";
 import { startupLanguage, syncDocumentLanguage } from "./state/language";
+import { applyAppZoom } from "./state/zoom";
+import { isTauri } from "./utils/tauri";
 import "./index.css";
+
+applyAppZoom();
+
+// The macOS window has no title bar (`titleBarStyle: Overlay`): the traffic lights float over the
+// sidebar, so the layout leaves them room. Other platforms keep their native frame.
+if (isTauri() && /Mac/.test(navigator.platform)) {
+  document.documentElement.classList.add("tauri-macos");
+}
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
@@ -18,7 +28,7 @@ if (rootElement) {
     syncDocumentLanguage();
     ReactDOM.createRoot(rootElement).render(
       <React.StrictMode>
-        <ThemeProvider defaultTheme="system" storageKey="tendril-theme">
+        <ThemeProvider defaultTheme="dark" storageKey="tendril-theme">
           {/* Answers, once for the whole shell, where the WebViewer's proxy lives. See
               `api/proxyOrigin` for why this cannot be left to the call sites. */}
           <ProxyOriginProvider>

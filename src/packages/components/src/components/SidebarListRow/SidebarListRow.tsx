@@ -47,7 +47,10 @@ const ROW_BASE = "flex w-full items-center gap-2 py-1.5 text-left text-sm transi
 const ROW_INTERACTIVE =
   "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
-const ROW_SELECTED = "bg-secondary text-secondary-foreground";
+// The main sidebar's "you are here": a green-tinted row with a hairline ring, so every rail in the app
+// (Settings, Inbox, the plan lists) marks its selection the same way.
+const ROW_SELECTED =
+  "bg-primary/12 text-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_28%,transparent)]";
 const ROW_IDLE = "text-foreground";
 
 /**

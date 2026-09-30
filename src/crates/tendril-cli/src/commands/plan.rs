@@ -68,7 +68,7 @@ pub async fn handle_plan_command(
         // Worktree creation and removal are filesystem-only: unlike the project commands there is
         // no `_daemon` variant, because the daemon has no worktree endpoints to route to. Whoever
         // adds them should keep both paths in step.
-        PlanCommands::AddWorktree(args) => worktrees::add(args, plans_dir)?,
+        PlanCommands::AddWorktree(args) => worktrees::add(args, plans_dir, tendril_home)?,
         PlanCommands::RemoveWorktree(args) => worktrees::remove(args, plans_dir)?,
         PlanCommands::WriteRevision(args) => {
             lifecycle::write_revision_command(args, tendril_home, plans_dir, db_path).await?

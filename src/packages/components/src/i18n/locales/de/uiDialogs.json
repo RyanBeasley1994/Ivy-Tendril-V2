@@ -336,7 +336,23 @@
     "submit": "Erstellen",
     "placeholder": "Aufgabenbeschreibung eingeben…",
     "emptyDescription": "Geben Sie eine Beschreibung für den neuen Plan ein.",
-    "continueInChat": "Mit {{agent}} chatten"
+    "continueInChat": "Mit {{agent}} chatten",
+    "missionTitle": "Neue Mission erstellen",
+    "modeLabel": "Was erstellt werden soll",
+    "modePlan": "Plan",
+    "modeMission": "Mission",
+    "modeMissionHint": "Ein Orchestrator zerlegt die Aufgabe in Meilensteine, führt jeden aus und bewertet ihn, validiert das Ganze und liefert einen Pull Request. Du bestätigst die Meilensteine einmal.",
+    "harness": "Harness",
+    "defaultAgent": "Standard ({{agent}})",
+    "submitMission": "Mission starten",
+    "roles": {
+      "planner": "Planer",
+      "worker": "Ausführer",
+      "judge": "Prüfer",
+      "validator": "Validierer"
+    },
+    "machineLabel": "Erstellen auf",
+    "machineUnavailable": "Dort läuft kein Tendril-Dienst"
   },
   "recommendationNote": {
     "submit": "Absenden",

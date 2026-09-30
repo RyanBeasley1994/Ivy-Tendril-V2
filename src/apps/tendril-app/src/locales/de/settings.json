@@ -18,7 +18,8 @@
     "security": "Sicherheit & Tunneling",
     "advanced": "Erweitert",
     "newsletter": "Newsletter",
-    "fallback": "Konfiguration"
+    "fallback": "Konfiguration",
+    "git": "Git & Branches"
   },
   "nav": {
     "ariaLabel": "Konfigurationsabschnitte",
@@ -358,5 +359,56 @@
     "emailLabel": "E-Mail-Adresse",
     "subscribing": "Wird abonniert…",
     "subscribe": "Abonnieren"
+  },
+  "remoteServer": {
+    "title": "Remote-Server",
+    "hint": "Tendril auf einem anderen Rechner, etwa einem VPS, statt auf diesem verwenden. Auf dem Server muss ein Passwort gesetzt sein (Sitzungsschutz).",
+    "urlLabel": "Serveradresse",
+    "urlPlaceholder": "203.0.113.7 oder https://mein-server.example.com",
+    "urlHint": "Eine IP oder ein Hostname verwendet Port 5010. Für einen Tunnel oder Reverse-Proxy https:// angeben.",
+    "usernameLabel": "Benutzername",
+    "defaultUser": "admin",
+    "passwordLabel": "Passwort",
+    "connect": "Verbinden",
+    "disconnect": "Trennen und diesen Rechner verwenden",
+    "connectedAs": "Verbunden als {{username}}",
+    "notAuthenticated": "Nicht angemeldet: {{error}}",
+    "restarting": "Tendril wird neu gestartet…"
+  },
+  "git": {
+    "title": "Git & Branches",
+    "hint": "Wie Tendril die Branches von Plänen und Missionen benennt und wie Agenten committen.",
+    "prefixLabel": "Branch-Präfix",
+    "prefixHint": "Wofür {prefix} steht. Standard: tendril/.",
+    "templateLabel": "Plan-Branch",
+    "templateHint": "Pläne und Meilensteine von Missionen. Standard: {prefix}{folder}.",
+    "missionTemplateLabel": "Missions-Branch",
+    "missionTemplateHint": "Der Integrations-Branch einer Mission, auf dem alle Meilensteine landen und von dem ihr Pull Request kommt.",
+    "previewTitle": "Vorschau",
+    "previewUnavailable": "Keine Vorschau: Der Dienst ist nicht erreichbar.",
+    "preview": {
+      "plan": "Plan",
+      "milestone": "Meilenstein",
+      "mission": "Mission"
+    },
+    "unknownTokens": "Unbekannte Platzhalter: {{tokens}}",
+    "tokensTitle": "Platzhalter",
+    "tokens": {
+      "prefix": "das Branch-Präfix",
+      "folder": "Planordner, z. B. 00042-AddLogin",
+      "id": "Plan-ID, z. B. 00042",
+      "title": "Plantitel, z. B. AddLogin",
+      "slug": "Titel in kebab-case, z. B. add-login",
+      "project": "Projekt, kebab-case",
+      "level": "Level, z. B. feature",
+      "date": "heute, JJJJMMTT",
+      "mission": "Missions-ID (nur Missionen)",
+      "milestone": "Meilenstein-ID, z. B. m2 (nur Meilensteine)"
+    },
+    "stableNote": "Der Branch eines Plans wird festgelegt, sobald er seinen ersten Worktree bekommt. Änderungen gelten daher für neue Pläne; laufende Pläne behalten ihren Branch.",
+    "signLabel": "Commits von Agenten signieren",
+    "signHint": "Ausschalten, wenn deine Signatur deine Anwesenheit braucht (1Password-SSH-Schlüssel, GPG-Pinentry): Agenten ohne Oberfläche können nicht signieren, ihre Commits schlagen fehl. Betrifft nur Commits von Agenten; deine Git-Konfiguration bleibt unverändert.",
+    "save": "Speichern",
+    "saved": "Branch-Einstellungen gespeichert"
   }
 }

@@ -27,6 +27,15 @@ pub struct WorktreeCreation {
 }
 
 pub fn derive_branch_name(plan_folder: &Path) -> String {
+    // A branch recorded when the plan's first worktree was made wins: it is what the configured
+    // template produced then, and re-rendering it now could name a branch that does not exist. See
+    // [`crate::git::branch_naming`].
+    if let Some(recorded) = crate::plans::reader::read_plan_yaml(plan_folder)
+        .ok()
+        .and_then(|(plan, _)| crate::git::branch_naming::recorded_branch(&plan))
+    {
+        return recorded;
+    }
     let folder_name = plan_folder
         .file_name()
         .and_then(|f| f.to_str())

@@ -26,6 +26,12 @@ pub enum TendrilError {
     #[error("Job not found: {0}")]
     JobNotFound(String),
 
+    #[error("Mission error: {0}")]
+    Mission(String),
+
+    #[error("Mission not found: {0}")]
+    MissionNotFound(String),
+
     #[error("Project not found: {0}")]
     ProjectNotFound(String),
 

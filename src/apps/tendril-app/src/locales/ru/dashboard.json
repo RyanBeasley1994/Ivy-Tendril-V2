@@ -5,7 +5,10 @@
       "afternoon": "Добрый день",
       "evening": "Добрый вечер"
     },
-    "headline": "Что создаём сегодня?"
+    "headline": "Что создаём сегодня?",
+    "status": "выполняется: {{running}} · в очереди: {{queued}}",
+    "systemsOk": "Все системы работают",
+    "systemsDown": "Сервис недоступен"
   },
   "kpis": {
     "featuresShipped": {
@@ -81,5 +84,27 @@
       "thousand": "{{value}} тыс.",
       "million": "{{value}} млн"
     }
+  },
+  "insights": {
+    "title": "Аналитика",
+    "subtitle": "Токены, расходы и результаты по всем агентам и проектам",
+    "tokens30": "Токены · 30 дней",
+    "spendByAgent": "Расходы по агентам",
+    "agents": "Агенты",
+    "agent": "Агент",
+    "plans": "Планы",
+    "tokensPerPlan": "Токенов / план",
+    "tokens": "Токены",
+    "cost": "Стоимость",
+    "trendTitle": "Стоимость и планы",
+    "noAgents": "Ни один агент ещё не записал использование",
+    "ofMonth": "от расходов этого месяца",
+    "gitActivity": "Активность Git",
+    "pullRequests": "Слитые pull request",
+    "rolling": "Среднее за 7 дней",
+    "window": "Последние 4 недели",
+    "week": "Неделя",
+    "month": "Месяц",
+    "loading": "Загрузка показателей"
   }
 }

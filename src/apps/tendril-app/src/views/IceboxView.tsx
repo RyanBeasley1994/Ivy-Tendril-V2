@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { PageHeader } from "../components/page/Page";
 import { Flame, Search, Trash2 } from "lucide-react";
 import { Badge, Button, NativeSelect } from "@ivy-interactive/components/ui";
 import { plansStore } from "../state/plansStore";
@@ -149,11 +150,7 @@ export const IceboxView: React.FC<IceboxViewProps> = ({ plans, onSelectPlan, onP
 
   return (
     <div data-testid="icebox-view" className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("icebox.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("icebox.description")}</p>
-      </div>
+      <PageHeader title={t("icebox.title")} subtitle={t("icebox.description")} />
 
       {actionError && (
         <ErrorBanner onDismiss={() => setActionError(null)}>{actionError}</ErrorBanner>

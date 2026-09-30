@@ -18,7 +18,8 @@
     "security": "Security & Tunneling",
     "advanced": "Advanced",
     "newsletter": "Newsletter",
-    "fallback": "Configuration"
+    "fallback": "Configuration",
+    "git": "Git & Branches"
   },
   "nav": {
     "ariaLabel": "Configuration sections",
@@ -358,5 +359,56 @@
     "emailLabel": "Email address",
     "subscribing": "Subscribing…",
     "subscribe": "Subscribe"
+  },
+  "remoteServer": {
+    "title": "Remote Server",
+    "hint": "Use Tendril on another machine, such as a VPS, instead of this one. The server needs a password set (session protection).",
+    "urlLabel": "Server address",
+    "urlPlaceholder": "203.0.113.7 or https://my-server.example.com",
+    "urlHint": "An IP or host name uses port 5010. Include https:// for a tunnel or reverse proxy.",
+    "usernameLabel": "Username",
+    "defaultUser": "admin",
+    "passwordLabel": "Password",
+    "connect": "Connect",
+    "disconnect": "Disconnect and use this machine",
+    "connectedAs": "Connected as {{username}}",
+    "notAuthenticated": "Not logged in: {{error}}",
+    "restarting": "Restarting Tendril…"
+  },
+  "git": {
+    "title": "Git & Branches",
+    "hint": "How Tendril names the branches plans and missions are built on, and how agents commit.",
+    "prefixLabel": "Branch prefix",
+    "prefixHint": "What {prefix} expands to. Default tendril/.",
+    "templateLabel": "Plan branch",
+    "templateHint": "Plans and mission milestones. Default {prefix}{folder}.",
+    "missionTemplateLabel": "Mission branch",
+    "missionTemplateHint": "A mission's integration branch, where every milestone lands and its pull request comes from.",
+    "previewTitle": "Preview",
+    "previewUnavailable": "Preview unavailable: the daemon is not reachable.",
+    "preview": {
+      "plan": "Plan",
+      "milestone": "Milestone",
+      "mission": "Mission"
+    },
+    "unknownTokens": "Unknown tokens: {{tokens}}",
+    "tokensTitle": "Tokens",
+    "tokens": {
+      "prefix": "the branch prefix",
+      "folder": "plan folder, e.g. 00042-AddLogin",
+      "id": "plan id, e.g. 00042",
+      "title": "plan title, e.g. AddLogin",
+      "slug": "kebab-case title, e.g. add-login",
+      "project": "project, kebab-case",
+      "level": "level, e.g. feature",
+      "date": "today, YYYYMMDD",
+      "mission": "mission id (missions only)",
+      "milestone": "milestone id, e.g. m2 (milestones only)"
+    },
+    "stableNote": "A plan's branch is fixed the first time it gets a worktree, so changes here apply to new plans; plans already in progress keep their branch.",
+    "signLabel": "Sign commits made by agents",
+    "signHint": "Turn off if your signing needs you present (a 1Password SSH key, a GPG pinentry): headless agents cannot sign, and their commits fail. Only agents' commits are affected; your git config is not changed.",
+    "save": "Save",
+    "saved": "Branch settings saved"
   }
 }

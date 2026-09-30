@@ -131,6 +131,12 @@ fn add_plan_scoped_values(
         );
     }
 
+    // The plan's branch, fixed from the configured template on first use, so the agent never has to
+    // guess it from the folder name. Idempotent: an already-recorded branch is returned as it is.
+    let branch = crate::git::branch_naming::assign_branch_name(&plan_folder, &settings.git)
+        .unwrap_or_else(|_| crate::git::worktree::derive_branch_name(&plan_folder));
+    values.insert("PlanBranch".to_string(), branch);
+
     let Ok((plan, _)) = read_plan_yaml(&plan_folder) else {
         return;
     };
@@ -213,16 +219,52 @@ fn add_plan_scoped_values(
                 values.insert("IssueSource".to_string(), source.clone());
             }
         }
+        JobArgs::OrchestrateMission(a) => {
+            values.insert("MissionFolder".to_string(), a.mission_folder.clone());
+            values.insert("MissionPhase".to_string(), a.phase.clone());
+            if let Some(id) = Path::new(&a.mission_folder)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.chars().take(5).collect::<String>())
+            {
+                values.insert("MissionId".to_string(), id);
+            }
+            if let Some(milestone) = a.milestone.as_ref().filter(|m| !m.is_empty()) {
+                values.insert("MilestoneId".to_string(), milestone.clone());
+            }
+        }
         _ => {}
+    }
+
+    // A milestone plan is cut from the mission branch, not the repo's base branch, and is told so.
+    let mission = crate::missions::model::mission_link(&plan)
+        .filter(|l| l.role == crate::missions::model::MissionRole::Milestone);
+    let mission_base = mission.as_ref().and_then(|l| l.base_branch.clone());
+    if let Some(link) = &mission {
+        if matches!(args, JobArgs::ExecutePlan(_) | JobArgs::RetryPlan(_)) {
+            values.insert("MissionFolder".to_string(), link.folder.clone());
+            if let Some(branch) = &link.base_branch {
+                values.insert("MissionBranch".to_string(), branch.clone());
+            }
+            if let Some(milestone) = &link.milestone {
+                values.insert("MilestoneId".to_string(), milestone.clone());
+            }
+        }
     }
 
     if matches!(
         args,
-        JobArgs::ExecutePlan(_) | JobArgs::RetryPlan(_) | JobArgs::CreatePr(_)
+        JobArgs::ExecutePlan(_)
+            | JobArgs::RetryPlan(_)
+            | JobArgs::CreatePr(_)
+            | JobArgs::OrchestrateMission(_)
     ) {
         let project_config = find_project(settings, &resolve_project(job, settings));
-        if let Some(repo_configs) =
-            build_repo_configs_yaml_with_base(&plan, project_config, pr_base_branch_override(args))
+        let base = match args {
+            JobArgs::ExecutePlan(_) | JobArgs::RetryPlan(_) => mission_base.as_deref(),
+            _ => pr_base_branch_override(args),
+        };
+        if let Some(repo_configs) = build_repo_configs_yaml_with_base(&plan, project_config, base)
         {
             values.insert("RepoConfigs".to_string(), repo_configs);
         }

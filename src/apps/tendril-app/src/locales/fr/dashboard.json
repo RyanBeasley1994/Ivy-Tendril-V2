@@ -5,7 +5,10 @@
       "afternoon": "Bon après-midi !",
       "evening": "Bonsoir !"
     },
-    "headline": "Que produisons-nous aujourd'hui ?"
+    "headline": "Que produisons-nous aujourd'hui ?",
+    "status": "{{running}} en cours · {{queued}} en file",
+    "systemsOk": "Tous les systèmes opérationnels",
+    "systemsDown": "Service injoignable"
   },
   "kpis": {
     "featuresShipped": {
@@ -76,5 +79,27 @@
       "thousand": "{{value}} k",
       "million": "{{value}} M"
     }
+  },
+  "insights": {
+    "title": "Analyses",
+    "subtitle": "Tokens, dépenses et résultats de tous les agents et projets",
+    "tokens30": "Tokens · 30 jours",
+    "spendByAgent": "Dépenses par agent",
+    "agents": "Agents",
+    "agent": "Agent",
+    "plans": "Plans",
+    "tokensPerPlan": "Tokens / plan",
+    "tokens": "Tokens",
+    "cost": "Coût",
+    "trendTitle": "Coût et plans",
+    "noAgents": "Aucun agent n'a encore enregistré d'utilisation",
+    "ofMonth": "des dépenses du mois",
+    "gitActivity": "Activité Git",
+    "pullRequests": "Pull requests fusionnées",
+    "rolling": "Moyenne sur 7 jours",
+    "window": "4 dernières semaines",
+    "week": "Semaine",
+    "month": "Mois",
+    "loading": "Chargement des métriques"
   }
 }

@@ -18,7 +18,8 @@
     "security": "安全与穿透",
     "advanced": "高级",
     "newsletter": "新闻通讯",
-    "fallback": "配置"
+    "fallback": "配置",
+    "git": "Git 与分支"
   },
   "nav": {
     "ariaLabel": "配置分区",
@@ -356,5 +357,56 @@
     "emailLabel": "电子邮件地址",
     "subscribing": "正在订阅…",
     "subscribe": "订阅"
+  },
+  "remoteServer": {
+    "title": "远程服务器",
+    "hint": "在另一台机器(例如 VPS)上使用 Tendril,而不是本机。服务器需要设置密码(会话保护)。",
+    "urlLabel": "服务器地址",
+    "urlPlaceholder": "203.0.113.7 或 https://my-server.example.com",
+    "urlHint": "IP 或主机名默认使用端口 5010。隧道或反向代理请加上 https://。",
+    "usernameLabel": "用户名",
+    "defaultUser": "admin",
+    "passwordLabel": "密码",
+    "connect": "连接",
+    "disconnect": "断开并使用本机",
+    "connectedAs": "已以 {{username}} 身份连接",
+    "notAuthenticated": "未登录:{{error}}",
+    "restarting": "正在重启 Tendril…"
+  },
+  "git": {
+    "title": "Git 与分支",
+    "hint": "Tendril 如何命名计划和使命的分支，以及代理如何提交。",
+    "prefixLabel": "分支前缀",
+    "prefixHint": "{prefix} 的值。默认 tendril/。",
+    "templateLabel": "计划分支",
+    "templateHint": "计划和使命里程碑。默认 {prefix}{folder}。",
+    "missionTemplateLabel": "使命分支",
+    "missionTemplateHint": "使命的集成分支，所有里程碑都合入这里，拉取请求也从这里发起。",
+    "previewTitle": "预览",
+    "previewUnavailable": "无法预览：服务不可达。",
+    "preview": {
+      "plan": "计划",
+      "milestone": "里程碑",
+      "mission": "使命"
+    },
+    "unknownTokens": "未知占位符：{{tokens}}",
+    "tokensTitle": "占位符",
+    "tokens": {
+      "prefix": "分支前缀",
+      "folder": "计划文件夹，如 00042-AddLogin",
+      "id": "计划 ID，如 00042",
+      "title": "计划标题，如 AddLogin",
+      "slug": "kebab-case 标题，如 add-login",
+      "project": "项目（kebab-case）",
+      "level": "级别，如 feature",
+      "date": "今天，YYYYMMDD",
+      "mission": "使命 ID（仅使命）",
+      "milestone": "里程碑 ID，如 m2（仅里程碑）"
+    },
+    "stableNote": "计划的分支在首次创建 worktree 时确定，因此更改只对新计划生效；进行中的计划保留原分支。",
+    "signLabel": "为代理的提交签名",
+    "signHint": "如果签名需要您在场（1Password SSH 密钥、GPG pinentry），请关闭：无界面的代理无法签名，提交会失败。只影响代理的提交；您的 git 配置不会改变。",
+    "save": "保存",
+    "saved": "分支设置已保存"
   }
 }

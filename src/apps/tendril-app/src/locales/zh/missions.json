@@ -1,0 +1,117 @@
+{
+  "page": {
+    "title": "使命",
+    "subtitle": "由 AI 编排器拆分为里程碑、执行、评审并以一个拉取请求交付的目标。",
+    "new": "新建使命"
+  },
+  "empty": {
+    "title": "还没有使命",
+    "description": "把整个功能交给 Tendril。编排器规划里程碑，逐个执行，按验收标准评审，并验证最终结果。",
+    "steps": {
+      "plan": {
+        "title": "规划",
+        "body": "规划者研究目标，编写带验收标准的里程碑。"
+      },
+      "approve": {
+        "title": "批准",
+        "body": "您只需审阅一次里程碑，这是唯一的停顿。"
+      },
+      "run": {
+        "title": "执行与评审",
+        "body": "执行者实现每个里程碑；评审者接受、重试或重新规划。"
+      },
+      "ship": {
+        "title": "验证与交付",
+        "body": "验证者在分支上运行所有验证，然后作为一个 PR 进入评审。"
+      }
+    }
+  },
+  "list": {
+    "title": "使命",
+    "progress": "{{passed}}/{{total}} 个里程碑"
+  },
+  "stats": {
+    "progress": "进度",
+    "replans": "已用 {{count}}/{{max}} 次重新规划",
+    "cost": "花费",
+    "costCap": "预算 {{cap}}",
+    "noCap": "无预算上限",
+    "step": "当前步骤",
+    "attempts": "每个里程碑的尝试次数",
+    "attemptsHint": "超过后会暂停等待您"
+  },
+  "actions": {
+    "approve": "批准里程碑",
+    "pause": "暂停",
+    "resume": "继续",
+    "cancel": "取消",
+    "openPlan": "打开计划"
+  },
+  "banner": {
+    "paused": "已暂停：{{reason}}",
+    "approve": "请审阅下面的里程碑。批准后使命会自动运行，直到可以评审。",
+    "planning": "规划者正在研究目标并编写里程碑…",
+    "review": "已验证。集成计划正在评审中，请在那里创建拉取请求。"
+  },
+  "milestones": {
+    "title": "里程碑",
+    "none": "规划者写好后，里程碑会显示在这里。",
+    "attempt": "第 {{attempt}}/{{max}} 次尝试",
+    "feedback": "评审者：{{feedback}}",
+    "commits_other": "{{count}} 个提交"
+  },
+  "agents": {
+    "title": "代理",
+    "hint": "每个角色使用的执行代理。更改从下一个作业开始生效。",
+    "default": "默认代理",
+    "roles": {
+      "planner": "规划者",
+      "worker": "执行者",
+      "judge": "评审者",
+      "validator": "验证者"
+    },
+    "describe": {
+      "planner": "研究目标并编写里程碑",
+      "worker": "实现每个里程碑（ExecutePlan / RetryPlan）",
+      "judge": "按标准评审每个里程碑",
+      "validator": "运行所有验证并检查目标"
+    }
+  },
+  "goal": {
+    "title": "目标"
+  },
+  "log": {
+    "title": "动态"
+  },
+  "state": {
+    "Planning": "规划中",
+    "AwaitingApproval": "等待批准",
+    "Running": "运行中",
+    "Validating": "验证中",
+    "Review": "评审中",
+    "Completed": "已完成",
+    "Paused": "已暂停",
+    "Cancelled": "已取消"
+  },
+  "milestoneState": {
+    "Pending": "待处理",
+    "Executing": "执行中",
+    "Judging": "评审中",
+    "Passed": "已通过",
+    "Skipped": "已跳过"
+  },
+  "step": {
+    "Plan": "规划",
+    "Execute": "执行",
+    "Retry": "重试",
+    "Judge": "评审",
+    "Final": "验证"
+  },
+  "create": {
+    "needsProject": "请为使命选择一个项目：它从第一步起就在该项目的仓库中运行。"
+  },
+  "machines": {
+    "local": "本机",
+    "startedElsewhere": "已在 {{machine}} 上启动。它在那里运行；切换服务器即可查看。"
+  }
+}

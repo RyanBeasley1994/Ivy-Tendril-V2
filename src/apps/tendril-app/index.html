@@ -1,9 +1,42 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tendril</title>
+    <!-- The default command-center palette, painted before any script runs, so the first frame is
+         already blue-black rather than tokens.css's neutral dark. It is the default preset's dark half
+         verbatim (`COMMAND_CENTER_DARK`, pinned by tests/index-html-palette.test.ts); a preset chosen in
+         Settings is installed later in <head> and wins on order. -->
+    <style>
+      html.dark:root {
+        --primary: #00cc92;
+        --primary-foreground: #04140f;
+        --secondary: #18212b;
+        --secondary-foreground: #e6edf3;
+        --destructive: #f06a72;
+        --destructive-foreground: #0a0e13;
+        --success: #3fe0ae;
+        --success-foreground: #04140f;
+        --warning: #f0b54a;
+        --warning-foreground: #1a1204;
+        --info: #6aa1ff;
+        --info-foreground: #06101f;
+        --background: #0a0e13;
+        --foreground: #e6edf3;
+        --border: #1d2630;
+        --input: #273240;
+        --ring: #3fe0ae;
+        --muted: #121922;
+        --muted-foreground: #8593a1;
+        --accent: #18212b;
+        --accent-foreground: #e6edf3;
+        --card: #10161d;
+        --card-foreground: #e6edf3;
+        --popover: #121922;
+        --popover-foreground: #e6edf3;
+      }
+    </style>
   </head>
   <body class="bg-background text-foreground antialiased min-h-screen">
     <div id="root"></div>

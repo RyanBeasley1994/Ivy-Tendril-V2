@@ -124,5 +124,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "gerade eben"
+  },
+  "harnesses": {
+    "title": "Harnesses in Auswahllisten",
+    "hint": "Wähle, welche Coding-Agenten beim Erstellen eines Plans oder bei den Agenten einer Mission erscheinen. Der Standard-Agent wird immer angezeigt.",
+    "default": "Standard"
   }
 }

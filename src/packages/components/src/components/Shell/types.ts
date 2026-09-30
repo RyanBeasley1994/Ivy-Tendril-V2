@@ -14,6 +14,8 @@ export interface ShellNavItemDto {
   icon?: string;
   badge?: string;
   isActive?: boolean;
+  /** A caption shared by a run of adjacent items; the nav draws it once, above the first of them. */
+  group?: string;
 }
 
 export interface ShellBadgeDto {

@@ -1,0 +1,118 @@
+{
+  "page": {
+    "title": "Misiones",
+    "subtitle": "Objetivos que un orquestador de IA divide en hitos, ejecuta, evalúa y entrega como un único pull request.",
+    "new": "Nueva misión"
+  },
+  "empty": {
+    "title": "Aún no hay misiones",
+    "description": "Entrega a Tendril una funcionalidad completa. El orquestador planifica hitos, ejecuta cada uno, lo evalúa según sus criterios de aceptación y valida el resultado.",
+    "steps": {
+      "plan": {
+        "title": "Planificar",
+        "body": "El planificador investiga el objetivo y escribe hitos con criterios de aceptación."
+      },
+      "approve": {
+        "title": "Aprobar",
+        "body": "Revisas los hitos una vez. Es la única parada."
+      },
+      "run": {
+        "title": "Ejecutar y evaluar",
+        "body": "Los ejecutores implementan cada hito; el juez acepta, reintenta o replanifica."
+      },
+      "ship": {
+        "title": "Validar y entregar",
+        "body": "El validador ejecuta todas las verificaciones en la rama y pasa a revisión como un PR."
+      }
+    }
+  },
+  "list": {
+    "title": "Misiones",
+    "progress": "{{passed}}/{{total}} hitos"
+  },
+  "stats": {
+    "progress": "Progreso",
+    "replans": "{{count}} de {{max}} replanificaciones usadas",
+    "cost": "Gasto",
+    "costCap": "de {{cap}} de presupuesto",
+    "noCap": "Sin límite de presupuesto",
+    "step": "Paso actual",
+    "attempts": "Intentos por hito",
+    "attemptsHint": "Se pausa para ti tras esta cantidad"
+  },
+  "actions": {
+    "approve": "Aprobar hitos",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "cancel": "Cancelar",
+    "openPlan": "Abrir plan"
+  },
+  "banner": {
+    "paused": "En pausa: {{reason}}",
+    "approve": "Revisa los hitos. Una vez aprobados, la misión avanza sola hasta estar lista para revisión.",
+    "planning": "El planificador investiga el objetivo y escribe los hitos…",
+    "review": "Validada. El plan de integración está en revisión; crea allí su pull request."
+  },
+  "milestones": {
+    "title": "Hitos",
+    "none": "Los hitos aparecen aquí cuando el planificador los escribe.",
+    "attempt": "intento {{attempt}}/{{max}}",
+    "feedback": "Juez: {{feedback}}",
+    "commits_one": "{{count}} commit",
+    "commits_other": "{{count}} commits"
+  },
+  "agents": {
+    "title": "Agentes",
+    "hint": "El harness con el que se ejecuta cada rol. Los cambios se aplican desde el siguiente trabajo.",
+    "default": "Agente predeterminado",
+    "roles": {
+      "planner": "Planificador",
+      "worker": "Ejecutor",
+      "judge": "Juez",
+      "validator": "Validador"
+    },
+    "describe": {
+      "planner": "Investiga el objetivo y escribe los hitos",
+      "worker": "Implementa cada hito (ExecutePlan / RetryPlan)",
+      "judge": "Revisa cada hito según sus criterios",
+      "validator": "Ejecuta todas las verificaciones y comprueba el objetivo"
+    }
+  },
+  "goal": {
+    "title": "Objetivo"
+  },
+  "log": {
+    "title": "Actividad"
+  },
+  "state": {
+    "Planning": "Planificando",
+    "AwaitingApproval": "Esperando aprobación",
+    "Running": "En curso",
+    "Validating": "Validando",
+    "Review": "En revisión",
+    "Completed": "Completada",
+    "Paused": "En pausa",
+    "Cancelled": "Cancelada"
+  },
+  "milestoneState": {
+    "Pending": "Pendiente",
+    "Executing": "Ejecutando",
+    "Judging": "Evaluando",
+    "Passed": "Aprobado",
+    "Skipped": "Omitido"
+  },
+  "step": {
+    "Plan": "Planificación",
+    "Execute": "Ejecución",
+    "Retry": "Reintento",
+    "Judge": "Evaluación",
+    "Final": "Validación"
+  },
+  "create": {
+    "needsProject": "Elige un proyecto para la misión: se ejecuta en sus repositorios desde el primer paso."
+  },
+  "machines": {
+    "local": "Este equipo",
+    "startedElsewhere": "Iniciado en {{machine}}. Se ejecuta allí; cambia de servidor para seguirlo."
+  }
+}

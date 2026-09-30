@@ -283,6 +283,10 @@ pub struct AppState {
     pub plans_dir: PathBuf,
     pub db_path: PathBuf,
     pub job_manager: Arc<JobManager>,
+    /// Runs missions: starts each step's job and applies the orchestrator's decisions. Driven by job
+    /// events and a timer from the master daemon (see `spawn_mission_driver`), and by every mission
+    /// route after its write.
+    pub mission_driver: Arc<tendril_core::missions::driver::MissionDriver>,
     /// Serves plan wireframe previews. Holds esbuild watchers for the plan currently being viewed
     /// and stops them when another plan is opened, so browsing plans does not accumulate builds.
     pub wireframe_host: Arc<tendril_wireframe::hosting::WireframeHost>,
@@ -418,6 +422,14 @@ impl AppState {
             ))
             .expect("the wireframe payload is embedded at build time"),
         );
+        let mission_config_path = config_path.clone();
+        let mission_driver = Arc::new(tendril_core::missions::driver::MissionDriver::new(
+            tendril_core::missions::service::MissionPaths::new(&tendril_home, &plans_dir),
+            job_manager.clone(),
+            Arc::new(move || {
+                tendril_core::config::load_config(&mission_config_path).unwrap_or_default()
+            }),
+        ));
         let chat_manager = Arc::new(ChatExecutionManager::new(tendril_home.clone()));
         let (ws_tx, _) = broadcast::channel(500);
         let ring_buffer = Arc::new(EventRingBuffer::default());
@@ -486,6 +498,7 @@ impl AppState {
             plans_dir,
             db_path,
             job_manager,
+            mission_driver,
             wireframe_host,
             chat_manager,
             ws_tx,

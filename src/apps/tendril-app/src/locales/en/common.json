@@ -66,7 +66,9 @@
     "reviewAction": "Review Action",
     "agent": "Agent",
     "plan": "Plan {{id}}",
-    "job": "Job {{id}}"
+    "job": "Job {{id}}",
+    "insights": "Insights",
+    "missions": "Missions"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Plans",
       "review": "Review",
       "recommendations": "Recommendations",
-      "jobs": "Jobs"
+      "jobs": "Jobs",
+      "insights": "Insights",
+      "missions": "Missions"
+    },
+    "navGroup": {
+      "overview": "Overview",
+      "work": "Work",
+      "observe": "Observe"
     },
     "chat": "Chat",
     "inbox": "Inbox",
@@ -93,6 +102,16 @@
       "help": "Help",
       "documentation": "Documentation",
       "reportIssue": "Report Issue"
+    },
+    "status": {
+      "online": "Service online",
+      "reconnecting": "Reconnecting…",
+      "offline": "Service offline"
+    },
+    "usage": {
+      "title": "{{agent}} · {{window}} limit",
+      "used": "{{percent}} used",
+      "resets": "Resets in {{countdown}}"
     }
   },
   "shortcuts": {
@@ -183,7 +202,8 @@
     },
     "ownership": {
       "adoptedExternal": "AdoptedExternal",
-      "managed": "Managed"
+      "managed": "Managed",
+      "remote": "Remote"
     }
   },
   "serviceStatus": {
@@ -250,5 +270,55 @@
     "reviewActionFailed": "Review action {{endpoint}} failed ({{status}}): {{detail}}",
     "subscribeFailed": "Failed to subscribe to {{url}}: HTTP {{status}}",
     "agentTerminalFailed": "Agent terminal {{endpoint}} failed: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Search plans",
+    "agentSession": "Agent session",
+    "inbox": "Open inbox",
+    "agentsWorking_one": "{{count}} agent working",
+    "agentsWorking_other": "{{count}} agents working",
+    "back": "Back",
+    "forward": "Forward"
+  },
+  "pageSubtitles": {
+    "jobs": "Every agent run: live, queued and finished",
+    "recommendations": "Follow-ups your completed plans suggested",
+    "inbox": "Issues and proposals to turn into plans",
+    "pullRequests": "Pull requests opened by your plans"
+  },
+  "palette": {
+    "title": "Command palette",
+    "placeholder": "Type a command, plan or page…",
+    "newPlan": "New plan",
+    "newPlanFrom": "New plan: “{{text}}”",
+    "newChat": "New chat",
+    "stopAll": "Stop all jobs",
+    "jobsActive_one": "{{count}} job active",
+    "jobsActive_other": "{{count}} jobs active",
+    "shortcuts": "Keyboard shortcuts",
+    "searchAll": "Search all plans",
+    "searchAllFor": "Search all plans for “{{text}}”",
+    "searchAllHint": "Includes completed, skipped and iced plans",
+    "attention": {
+      "review": "ready for review",
+      "failed": "failed",
+      "stalled": "stalled",
+      "draft": "draft"
+    },
+    "pages": {
+      "dashboard": "Command center"
+    },
+    "groups": {
+      "actions": "Actions",
+      "attention": "Needs you",
+      "jobs": "Running",
+      "plans": "Plans",
+      "goto": "Go to"
+    },
+    "keys": {
+      "navigate": "navigate",
+      "run": "run",
+      "close": "close"
+    }
   }
 }

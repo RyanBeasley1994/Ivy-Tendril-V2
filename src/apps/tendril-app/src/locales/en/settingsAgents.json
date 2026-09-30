@@ -124,5 +124,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "just now"
+  },
+  "harnesses": {
+    "title": "Harnesses in pickers",
+    "hint": "Choose which coding agents appear when you create a plan or pick a mission's agents. The default agent always shows.",
+    "default": "Default"
   }
 }

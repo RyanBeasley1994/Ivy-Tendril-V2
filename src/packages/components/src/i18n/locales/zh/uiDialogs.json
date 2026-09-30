@@ -320,7 +320,23 @@
     "submit": "创建",
     "placeholder": "输入需求描述…",
     "emptyDescription": "请输入新计划的描述。",
-    "continueInChat": "与 {{agent}} 聊天"
+    "continueInChat": "与 {{agent}} 聊天",
+    "missionTitle": "创建新使命",
+    "modeLabel": "创建内容",
+    "modePlan": "计划",
+    "modeMission": "使命",
+    "modeMissionHint": "编排器将任务拆分为里程碑，逐个执行并评审，验证整体结果，最后提交一个拉取请求。里程碑只需您批准一次。",
+    "harness": "执行代理",
+    "defaultAgent": "默认（{{agent}}）",
+    "submitMission": "开始使命",
+    "roles": {
+      "planner": "规划者",
+      "worker": "执行者",
+      "judge": "评审者",
+      "validator": "验证者"
+    },
+    "machineLabel": "创建位置",
+    "machineUnavailable": "该处没有运行 Tendril 服务"
   },
   "recommendationNote": {
     "submit": "提交",

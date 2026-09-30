@@ -408,7 +408,7 @@ async fn a_job_blocked_by_its_dependency_never_starts_and_says_why() {
     )
     .await;
 
-    let started = cmd_start_job(json!({ "type": "ExecutePlan", "folderPath": folder_path }))
+    let started = cmd_start_job(json!({ "type": "ExecutePlan", "folderPath": folder_path }), None)
         .await
         .expect("starting a blocked job is not itself an error");
 
@@ -464,7 +464,7 @@ async fn a_job_that_fails_before_starting_reports_a_real_reason() {
     )
     .await;
 
-    let started = cmd_start_job(json!({ "type": "ExecutePlan", "folderPath": folder_path }))
+    let started = cmd_start_job(json!({ "type": "ExecutePlan", "folderPath": folder_path }), None)
         .await
         .expect("the job starts; it fails afterwards");
     let job = wait_for_terminal_job(&started.job_id).await;

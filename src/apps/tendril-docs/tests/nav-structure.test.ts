@@ -73,14 +73,15 @@ describe("buildNavTree", () => {
     expect(gettingStarted.sections).toEqual([]);
   });
 
-  it("lists the three Concepts pages in order", () => {
+  it("lists the four Concepts pages in order", () => {
     const concepts = tree[1];
     expect(concepts.pages.map((page) => page.contentPath)).toEqual([
       "02_Concepts/01_Plans.md",
       "02_Concepts/02_Promptwares.md",
       "02_Concepts/03_Lifecycle.md",
+      "02_Concepts/04_Missions.md",
     ]);
-    expect(concepts.pages).toHaveLength(3);
+    expect(concepts.pages).toHaveLength(4);
     expect(concepts.sections).toEqual([]);
   });
 

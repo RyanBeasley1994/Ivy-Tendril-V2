@@ -66,7 +66,9 @@
     "reviewAction": "समीक्षा क्रिया",
     "agent": "एजेंट",
     "plan": "योजना {{id}}",
-    "job": "जॉब {{id}}"
+    "job": "जॉब {{id}}",
+    "insights": "इनसाइट्स",
+    "missions": "मिशन"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "योजनाएं",
       "review": "समीक्षा",
       "recommendations": "सिफ़ारिशें",
-      "jobs": "जॉब्स"
+      "jobs": "जॉब्स",
+      "insights": "इनसाइट्स",
+      "missions": "मिशन"
+    },
+    "navGroup": {
+      "overview": "अवलोकन",
+      "work": "कार्य",
+      "observe": "निगरानी"
     },
     "chat": "चैट",
     "inbox": "इनबॉक्स",
@@ -93,6 +102,16 @@
       "help": "सहायता",
       "documentation": "दस्तावेज़ीकरण",
       "reportIssue": "इश्यू रिपोर्ट करें"
+    },
+    "status": {
+      "online": "सेवा ऑनलाइन",
+      "reconnecting": "फिर से जुड़ रहा है…",
+      "offline": "सेवा ऑफ़लाइन"
+    },
+    "usage": {
+      "title": "{{agent}} · {{window}} सीमा",
+      "used": "{{percent}} उपयोग",
+      "resets": "{{countdown}} में रीसेट"
     }
   },
   "shortcuts": {
@@ -183,7 +202,8 @@
     },
     "ownership": {
       "adoptedExternal": "अपनाया गया बाहरी",
-      "managed": "प्रबंधित"
+      "managed": "प्रबंधित",
+      "remote": "रिमोट"
     }
   },
   "serviceStatus": {
@@ -250,5 +270,16 @@
     "reviewActionFailed": "समीक्षा क्रिया {{endpoint}} विफल रही ({{status}}): {{detail}}",
     "subscribeFailed": "{{url}} की सदस्यता नहीं ली जा सकी: HTTP {{status}}",
     "agentTerminalFailed": "एजेंट टर्मिनल {{endpoint}} विफल रहा: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "प्लान खोजें",
+    "agentSession": "एजेंट सत्र",
+    "inbox": "इनबॉक्स खोलें"
+  },
+  "pageSubtitles": {
+    "jobs": "हर एजेंट रन: चालू, कतार में और पूरे",
+    "recommendations": "पूरे हुए प्लान से सुझाए गए अगले काम",
+    "inbox": "प्लान में बदलने के लिए इश्यू और प्रस्ताव",
+    "pullRequests": "आपके प्लान द्वारा खोले गए पुल रिक्वेस्ट"
   }
 }

@@ -25,6 +25,7 @@ pub const STANDARD_PROMPTWARES: &[&str] = &[
     "AddProject",
     "SyncRepo",
     "UpdateProject",
+    "OrchestrateMission",
 ];
 
 /// Locates the shipped `src/promptwares` directory. `TENDRIL_PROMPTWARES` wins when it points at a

@@ -133,5 +133,20 @@
     "noVerifications": "Aucune vérification n'a été configurée. Ajoutez-en depuis les paramètres du projet.",
     "noReviewActions": "Aucune action de revue n'a été configurée. Ajoutez-en depuis les paramètres du projet.",
     "harnessEmpty": "Le projet est enregistré. Si l'agent de configuration est toujours en cours d'exécution, ses résultats apparaîtront ici une fois qu'il aura terminé : rouvrez le projet depuis la ligne Projets pour les voir."
+  },
+  "folderBrowser": {
+    "title": "Choisir un dossier de dépôt",
+    "description": "Dossiers de la machine qui exécute Tendril. Les dépôts sont signalés ; double-cliquez pour en choisir un.",
+    "up": "Remonter d'un niveau",
+    "home": "Dossier personnel",
+    "pathLabel": "Chemin du dossier",
+    "showHidden": "Afficher les dossiers masqués",
+    "hideHidden": "Masquer les dossiers masqués",
+    "empty": "Aucun sous-dossier ici.",
+    "gitRepo": "Dépôt Git",
+    "truncated": "Seuls les 2000 premiers dossiers sont affichés. Saisissez un chemin pour aller plus loin.",
+    "cancel": "Annuler",
+    "select": "Utiliser ce dossier",
+    "selectRepo": "Utiliser ce dépôt"
   }
 }

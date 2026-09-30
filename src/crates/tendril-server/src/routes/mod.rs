@@ -6,10 +6,12 @@ pub mod chat;
 pub mod config;
 pub mod costs;
 pub mod dashboard;
+pub mod filesystem;
 pub mod health;
 pub mod inbox;
 pub mod jobs;
 pub mod local_file;
+pub mod missions;
 pub mod models;
 pub mod newsletter;
 pub mod onboarding;
@@ -169,6 +171,46 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         // Inbox. Static segments before `:id`, so `check` and `proposals` can never be read as a
         // proposal id.
+        .route(
+            "/api/config/branch-preview",
+            post(config::branch_preview_handler),
+        )
+        // Missions
+        .route(
+            "/api/missions",
+            get(missions::list_missions_handler).post(missions::create_mission_handler),
+        )
+        .route("/api/missions/:id", get(missions::get_mission_handler))
+        .route(
+            "/api/missions/:id/approve",
+            post(missions::approve_mission_handler),
+        )
+        .route("/api/missions/:id/pause", post(missions::pause_mission_handler))
+        .route(
+            "/api/missions/:id/resume",
+            post(missions::resume_mission_handler),
+        )
+        .route(
+            "/api/missions/:id/cancel",
+            post(missions::cancel_mission_handler),
+        )
+        .route(
+            "/api/missions/:id/complete",
+            post(missions::complete_mission_handler),
+        )
+        .route(
+            "/api/missions/:id/reconcile",
+            post(missions::reconcile_mission_handler),
+        )
+        .route(
+            "/api/missions/:id/budget",
+            put(missions::budget_mission_handler),
+        )
+        .route("/api/missions/:id/agents", put(missions::set_agents_handler))
+        .route(
+            "/api/missions/:id/milestones",
+            put(missions::set_milestones_handler),
+        )
         .route("/api/inbox", post(inbox::post_inbox))
         .route("/api/inbox/check", post(inbox::post_inbox_check))
         .route("/api/inbox/proposals", get(inbox::list_proposals_handler))
@@ -456,6 +498,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
                 .post(tunnel::install_cloudflared)
                 .delete(tunnel::cancel_cloudflared_install),
         )
+        // Folder browser for picking a repository on the daemon's host; see `filesystem`.
+        .route("/api/fs/directories", get(filesystem::list_directories))
         // Models
         .route("/api/models", get(models::list_models))
         .route("/api/models/status", get(models::models_status))

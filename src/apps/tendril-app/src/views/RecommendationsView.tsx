@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../components/page/Page";
 import { Check, CircleCheck, ExternalLink, Github, RefreshCw, X } from "lucide-react";
 import type { ShellBadgeDto } from "@ivy-interactive/components/tendril";
 import { Button } from "@ivy-interactive/components/ui";
@@ -159,6 +160,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   projects = [],
 }) => {
   const { t } = useTranslation("review");
+  const { t: tc } = useTranslation("common");
   const labels = useEnumLabels();
   const [recommendations, setRecommendations] = useState<CrossPlanRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -321,7 +323,8 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       try {
         const res = await bridge.startJob({
           type: "CreatePlan",
-          prompt: description,
+          // `CreatePlanArgs.description`: the daemon rejects any other spelling with a 422.
+          description,
           project: rec.project,
         });
         if (res && onJobStarted) onJobStarted(res);
@@ -375,6 +378,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   return (
     <div data-testid="recommendations-view" className="space-y-4">
+      <PageHeader
+        title={tc("appTitles.recommendations")}
+        subtitle={tc("pageSubtitles.recommendations")}
+      />
       {actionError && (
         <ErrorBanner onDismiss={() => setActionError(null)}>{actionError}</ErrorBanner>
       )}

@@ -352,7 +352,23 @@
     "submit": "Créer",
     "placeholder": "Saisissez la description de la tâche…",
     "emptyDescription": "Saisissez une description pour le nouveau plan.",
-    "continueInChat": "Discuter avec {{agent}}"
+    "continueInChat": "Discuter avec {{agent}}",
+    "missionTitle": "Créer une mission",
+    "modeLabel": "Que créer",
+    "modePlan": "Plan",
+    "modeMission": "Mission",
+    "modeMissionHint": "Un orchestrateur découpe la tâche en jalons, exécute et évalue chacun, valide l'ensemble et livre une seule pull request. Vous approuvez les jalons une fois.",
+    "harness": "Harness",
+    "defaultAgent": "Par défaut ({{agent}})",
+    "submitMission": "Lancer la mission",
+    "roles": {
+      "planner": "Planificateur",
+      "worker": "Exécutant",
+      "judge": "Juge",
+      "validator": "Validateur"
+    },
+    "machineLabel": "Créer sur",
+    "machineUnavailable": "Aucun service Tendril n'y tourne"
   },
   "recommendationNote": {
     "submit": "Envoyer",

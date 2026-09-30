@@ -612,3 +612,22 @@
 .civ-thumbnail-card-previewed .civ-thumbnail-card-remove {
   color: var(--foreground);
 }
+
+/* One line, always: the left row (attach + any picker) gives way before the submit button does. */
+.civ-control-bar {
+  gap: 8px;
+}
+
+.civ-control-bar > .civ-attachment-row {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.civ-right-actions {
+  flex-shrink: 0;
+}
+
+.civ-submit-btn.civ-submit-btn-labeled {
+  white-space: nowrap;
+}

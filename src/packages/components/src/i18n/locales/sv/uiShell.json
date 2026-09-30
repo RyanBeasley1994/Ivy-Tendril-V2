@@ -203,7 +203,43 @@
     },
     "jobs": {
       "title": "Aktiva jobb",
-      "empty": "Inga jobb körs"
+      "empty": "Inga jobb körs",
+      "columns": {
+        "plan": "Plan",
+        "phase": "Fas",
+        "tokens": "Tokens",
+        "time": "Tid"
+      },
+      "stalled": "Fastnat"
+    },
+    "composer": {
+      "placeholder": "Beskriv vad Tendril ska bygga härnäst…",
+      "submit": "Skapa plan",
+      "ariaLabel": "Beskriv en ny plan"
+    },
+    "attention": {
+      "title": "Behöver uppmärksamhet",
+      "empty": "Inget behöver dig just nu",
+      "count": "{{count}} öppna"
+    },
+    "tokens": {
+      "title": "Tokens / dag",
+      "window": "senaste {{weeks}} veckorna",
+      "today": "idag",
+      "average": "snitt {{value}}",
+      "peak": "topp {{value}}",
+      "less": "mindre",
+      "more": "mer",
+      "cell": "{{date}}: {{value}} tokens",
+      "empty": "Ingen tokenanvändning registrerad än",
+      "loading": "Läser in tokenanvändning",
+      "share": "Andel per agent"
+    },
+    "newPlan": "Ny plan",
+    "flow": {
+      "title": "Planflöde",
+      "live": "Live",
+      "caption": "Bandets bredd visar planer per steg"
     }
   },
   "trendChart": {

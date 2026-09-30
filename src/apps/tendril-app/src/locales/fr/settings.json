@@ -18,7 +18,8 @@
     "security": "Sécurité et tunnels",
     "advanced": "Avancé",
     "newsletter": "Newsletter",
-    "fallback": "Configuration"
+    "fallback": "Configuration",
+    "git": "Git et branches"
   },
   "nav": {
     "ariaLabel": "Sections de configuration",
@@ -360,5 +361,56 @@
     "emailLabel": "Adresse e-mail",
     "subscribing": "Abonnement…",
     "subscribe": "S'abonner"
+  },
+  "remoteServer": {
+    "title": "Serveur distant",
+    "hint": "Utilisez Tendril sur une autre machine, comme un VPS, plutôt que sur celle-ci. Le serveur doit avoir un mot de passe (protection de session).",
+    "urlLabel": "Adresse du serveur",
+    "urlPlaceholder": "203.0.113.7 ou https://mon-serveur.example.com",
+    "urlHint": "Une IP ou un nom d'hôte utilise le port 5010. Ajoutez https:// pour un tunnel ou un proxy inverse.",
+    "usernameLabel": "Nom d'utilisateur",
+    "defaultUser": "admin",
+    "passwordLabel": "Mot de passe",
+    "connect": "Se connecter",
+    "disconnect": "Se déconnecter et utiliser cette machine",
+    "connectedAs": "Connecté en tant que {{username}}",
+    "notAuthenticated": "Non connecté : {{error}}",
+    "restarting": "Redémarrage de Tendril…"
+  },
+  "git": {
+    "title": "Git et branches",
+    "hint": "Comment Tendril nomme les branches des plans et des missions, et comment les agents committent.",
+    "prefixLabel": "Préfixe de branche",
+    "prefixHint": "La valeur de {prefix}. Par défaut : tendril/.",
+    "templateLabel": "Branche de plan",
+    "templateHint": "Plans et jalons de mission. Par défaut : {prefix}{folder}.",
+    "missionTemplateLabel": "Branche de mission",
+    "missionTemplateHint": "La branche d'intégration d'une mission, où arrivent tous les jalons et d'où part sa pull request.",
+    "previewTitle": "Aperçu",
+    "previewUnavailable": "Aperçu indisponible : le service est injoignable.",
+    "preview": {
+      "plan": "Plan",
+      "milestone": "Jalon",
+      "mission": "Mission"
+    },
+    "unknownTokens": "Jetons inconnus : {{tokens}}",
+    "tokensTitle": "Jetons",
+    "tokens": {
+      "prefix": "le préfixe de branche",
+      "folder": "dossier du plan, ex. 00042-AddLogin",
+      "id": "id du plan, ex. 00042",
+      "title": "titre du plan, ex. AddLogin",
+      "slug": "titre en kebab-case, ex. add-login",
+      "project": "projet, kebab-case",
+      "level": "niveau, ex. feature",
+      "date": "aujourd'hui, AAAAMMJJ",
+      "mission": "id de mission (missions seulement)",
+      "milestone": "id de jalon, ex. m2 (jalons seulement)"
+    },
+    "stableNote": "La branche d'un plan est fixée à la création de son premier worktree : les changements s'appliquent aux nouveaux plans, les plans en cours gardent leur branche.",
+    "signLabel": "Signer les commits des agents",
+    "signHint": "Désactivez si votre signature exige votre présence (clé SSH 1Password, pinentry GPG) : les agents sans interface ne peuvent pas signer et leurs commits échouent. Seuls les commits des agents sont concernés ; votre configuration git n'est pas modifiée.",
+    "save": "Enregistrer",
+    "saved": "Réglages des branches enregistrés"
   }
 }

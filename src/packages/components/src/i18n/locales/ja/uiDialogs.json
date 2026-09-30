@@ -320,7 +320,23 @@
     "submit": "作成",
     "placeholder": "タスクの説明を入力…",
     "emptyDescription": "新規計画の説明を入力してください。",
-    "continueInChat": "{{agent}} とチャット"
+    "continueInChat": "{{agent}} とチャット",
+    "missionTitle": "新しいミッションを作成",
+    "modeLabel": "作成するもの",
+    "modePlan": "プラン",
+    "modeMission": "ミッション",
+    "modeMissionHint": "オーケストレーターがタスクをマイルストーンに分割し、各マイルストーンを実行・評価し、全体を検証して 1 つのプルリクエストにまとめます。マイルストーンの承認は一度だけです。",
+    "harness": "ハーネス",
+    "defaultAgent": "既定 ({{agent}})",
+    "submitMission": "ミッションを開始",
+    "roles": {
+      "planner": "プランナー",
+      "worker": "ワーカー",
+      "judge": "ジャッジ",
+      "validator": "バリデーター"
+    },
+    "machineLabel": "作成先",
+    "machineUnavailable": "そこでは Tendril が起動していません"
   },
   "recommendationNote": {
     "submit": "送信",

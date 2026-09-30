@@ -17,6 +17,8 @@ Project repos, verifications, and context are in the **Projects** section of you
 
 The launcher sets the working directory to the project's primary repo.
 
+**Mission milestones:** When the firmware header has a **MissionBranch**, this plan is one milestone of a mission. Its base branch (`RepoConfigs`) is that local mission branch, which already holds every earlier milestone — there is no `origin/<MissionBranch>`, so compare against the local branch (`git diff <MissionBranch>...HEAD`, `git log <MissionBranch>..HEAD`). Build on the earlier milestones' work rather than redoing it. Never push and never open a pull request: the mission's orchestrator judges this milestone, lands it on the mission branch, and the whole mission ships as one pull request at the end.
+
 **Note:** Plans are often executed multiple times. For example, a reviewer may not be satisfied with the first execution and sends the plan back to Draft with comments (via UpdatePlan). When re-executing, the worktree branch from the previous run may already exist — handle this gracefully (delete old worktree first, or create with a new branch suffix). Check for existing artifacts and verification reports from prior runs.
 
 **Resume-vs-redo on re-execution:** Before deleting anything, run an integrity check on the prior run. If `plan.yaml` has commits populated and all verifications `Pass`, every `Pass` verification has a report, `Artifacts/summary.md` exists, the worktree is clean with HEAD matching the last recorded commit, and the expected code changes are present in the files — then **resume** (log it and exit successfully) rather than redoing work. Redoing creates new commit hashes and breaks downstream CreatePr references. Only fall back to the full re-execution flow if any of those checks fail.
@@ -209,7 +211,7 @@ tendril plan add-worktree <TendrilPlanId> <RepoPath> [--base <resolved-base-bran
 Pass `--base` only if the `RepoConfigs` firmware header sets a `baseBranch` for this repo; omit it
 to let the command auto-detect the default branch. This single command replaces the entire manual
 `git fetch` / stale-worktree-removal / `git worktree add` sequence: it computes the
-`tendril/<planFolderName>` branch name and `Worktrees/<repo-folder-name>` path internally, removes
+plan's branch name (the `PlanBranch` firmware header, from the configured naming template) and `Worktrees/<repo-folder-name>` path internally, removes
 any stale worktree and branch from a prior execution before creating the new one, fetches `origin`,
 resolves the base branch, and verifies the `.git` file exists afterward. **Do not hand-roll any of
 these git steps yourself** — this is the exact failure class (e.g. a Windows locale bug in
@@ -232,7 +234,7 @@ exit 1
 ```
 
 3. **PR-override flow (exception, `USE_PR_OVERRIDE=true`).** `add-worktree` cannot be used here: it
-   always creates a fresh `tendril/<planFolderName>` branch, whereas this case must reuse/reset the
+   always creates a fresh `PlanBranch` branch, whereas this case must reuse/reset the
    PR's own head branch (`$PR_HEAD`, derived in step 1) so commits land on the existing PR instead of
    force-cutting a new branch over its history. Hand-roll it:
 

@@ -1,0 +1,118 @@
+{
+  "page": {
+    "title": "Missions",
+    "subtitle": "Des objectifs qu'un orchestrateur IA découpe en jalons, exécute, évalue et livre en une seule pull request.",
+    "new": "Nouvelle mission"
+  },
+  "empty": {
+    "title": "Aucune mission",
+    "description": "Confiez une fonctionnalité entière à Tendril. L'orchestrateur planifie des jalons, exécute chacun, l'évalue selon ses critères d'acceptation et valide le résultat.",
+    "steps": {
+      "plan": {
+        "title": "Planifier",
+        "body": "Le planificateur étudie l'objectif et écrit des jalons avec critères d'acceptation."
+      },
+      "approve": {
+        "title": "Approuver",
+        "body": "Vous relisez les jalons une fois. C'est le seul arrêt."
+      },
+      "run": {
+        "title": "Exécuter et évaluer",
+        "body": "Les exécutants réalisent chaque jalon ; le juge accepte, relance ou replanifie."
+      },
+      "ship": {
+        "title": "Valider et livrer",
+        "body": "Le validateur lance toutes les vérifications sur la branche, puis tout part en revue en une PR."
+      }
+    }
+  },
+  "list": {
+    "title": "Missions",
+    "progress": "{{passed}}/{{total}} jalons"
+  },
+  "stats": {
+    "progress": "Avancement",
+    "replans": "{{count}} replanifications sur {{max}}",
+    "cost": "Dépense",
+    "costCap": "sur {{cap}} de budget",
+    "noCap": "Pas de plafond",
+    "step": "Étape en cours",
+    "attempts": "Tentatives par jalon",
+    "attemptsHint": "Pause pour vous au-delà"
+  },
+  "actions": {
+    "approve": "Approuver les jalons",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "cancel": "Annuler",
+    "openPlan": "Ouvrir le plan"
+  },
+  "banner": {
+    "paused": "En pause : {{reason}}",
+    "approve": "Relisez les jalons ci-dessous. Une fois approuvée, la mission avance seule jusqu'à la revue.",
+    "planning": "Le planificateur étudie l'objectif et rédige les jalons…",
+    "review": "Validée. Le plan d'intégration est en revue ; créez-y sa pull request."
+  },
+  "milestones": {
+    "title": "Jalons",
+    "none": "Les jalons apparaissent ici une fois rédigés par le planificateur.",
+    "attempt": "tentative {{attempt}}/{{max}}",
+    "feedback": "Juge : {{feedback}}",
+    "commits_one": "{{count}} commit",
+    "commits_other": "{{count}} commits"
+  },
+  "agents": {
+    "title": "Agents",
+    "hint": "Le harness de chaque rôle. Les changements s'appliquent au prochain job.",
+    "default": "Agent par défaut",
+    "roles": {
+      "planner": "Planificateur",
+      "worker": "Exécutant",
+      "judge": "Juge",
+      "validator": "Validateur"
+    },
+    "describe": {
+      "planner": "Étudie l'objectif et rédige les jalons",
+      "worker": "Réalise chaque jalon (ExecutePlan / RetryPlan)",
+      "judge": "Évalue chaque jalon selon ses critères",
+      "validator": "Lance toutes les vérifications et contrôle l'objectif"
+    }
+  },
+  "goal": {
+    "title": "Objectif"
+  },
+  "log": {
+    "title": "Activité"
+  },
+  "state": {
+    "Planning": "Planification",
+    "AwaitingApproval": "En attente d'approbation",
+    "Running": "En cours",
+    "Validating": "Validation",
+    "Review": "En revue",
+    "Completed": "Terminée",
+    "Paused": "En pause",
+    "Cancelled": "Annulée"
+  },
+  "milestoneState": {
+    "Pending": "En attente",
+    "Executing": "En exécution",
+    "Judging": "En évaluation",
+    "Passed": "Validé",
+    "Skipped": "Ignoré"
+  },
+  "step": {
+    "Plan": "Planification",
+    "Execute": "Exécution",
+    "Retry": "Nouvelle tentative",
+    "Judge": "Évaluation",
+    "Final": "Validation"
+  },
+  "create": {
+    "needsProject": "Choisissez un projet pour la mission : elle s'exécute dans ses dépôts dès la première étape."
+  },
+  "machines": {
+    "local": "Cette machine",
+    "startedElsewhere": "Lancé sur {{machine}}. Il s'y exécute ; changez de serveur pour le suivre."
+  }
+}

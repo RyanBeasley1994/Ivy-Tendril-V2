@@ -352,7 +352,23 @@
     "submit": "Crear",
     "placeholder": "Introduce la descripción de la tarea...",
     "emptyDescription": "Introduce una descripción para el nuevo plan.",
-    "continueInChat": "Chatear con {{agent}}"
+    "continueInChat": "Chatear con {{agent}}",
+    "missionTitle": "Crear nueva misión",
+    "modeLabel": "Qué crear",
+    "modePlan": "Plan",
+    "modeMission": "Misión",
+    "modeMissionHint": "Un orquestador divide la tarea en hitos, ejecuta y evalúa cada uno, valida el conjunto y entrega un único pull request. Apruebas los hitos una sola vez.",
+    "harness": "Harness",
+    "defaultAgent": "Predeterminado ({{agent}})",
+    "submitMission": "Iniciar misión",
+    "roles": {
+      "planner": "Planificador",
+      "worker": "Ejecutor",
+      "judge": "Juez",
+      "validator": "Validador"
+    },
+    "machineLabel": "Crear en",
+    "machineUnavailable": "No hay ningún servicio de Tendril en ejecución allí"
   },
   "recommendationNote": {
     "submit": "Enviar",

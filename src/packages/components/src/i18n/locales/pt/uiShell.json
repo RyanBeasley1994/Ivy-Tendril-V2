@@ -206,7 +206,43 @@
     },
     "jobs": {
       "title": "Tarefas Ativas",
-      "empty": "Nenhuma tarefa em execução"
+      "empty": "Nenhuma tarefa em execução",
+      "columns": {
+        "plan": "Plano",
+        "phase": "Fase",
+        "tokens": "Tokens",
+        "time": "Tempo"
+      },
+      "stalled": "Parado"
+    },
+    "composer": {
+      "placeholder": "Descreva o que o Tendril deve construir a seguir…",
+      "submit": "Criar plano",
+      "ariaLabel": "Descreva um novo plano"
+    },
+    "attention": {
+      "title": "Requer atenção",
+      "empty": "Nada precisa de você agora",
+      "count": "{{count}} abertos"
+    },
+    "tokens": {
+      "title": "Tokens / dia",
+      "window": "últimas {{weeks}} semanas",
+      "today": "hoje",
+      "average": "média {{value}}",
+      "peak": "pico {{value}}",
+      "less": "menos",
+      "more": "mais",
+      "cell": "{{date}}: {{value}} tokens",
+      "empty": "Nenhum uso de tokens registrado ainda",
+      "loading": "Carregando uso de tokens",
+      "share": "Participação por agente"
+    },
+    "newPlan": "Novo plano",
+    "flow": {
+      "title": "Fluxo de planos",
+      "live": "Ao vivo",
+      "caption": "A largura mostra os planos em cada etapa"
     }
   },
   "trendChart": {

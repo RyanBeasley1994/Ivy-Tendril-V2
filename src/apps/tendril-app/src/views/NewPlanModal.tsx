@@ -3,16 +3,30 @@ import {
   CreatePlanDialog,
   DirtyRepoDialog,
   AUTO_PROJECT,
+  type CreatePlanSubmitOptions,
   type CreatePlanUpload,
+  type MissionAgentChoice,
   type SyncRepoPolicy,
 } from "@ivy-interactive/components/dialogs";
-import type { ProjectSummary, RepoStatus, StartJobArgs, StartJobResponse } from "../types/api";
+import type {
+  Machine,
+  MachineTarget,
+  Mission,
+  MissionAgents,
+  ProjectSummary,
+  RepoStatus,
+  StartJobArgs,
+  StartJobResponse,
+  TendrilConfig,
+} from "../types/api";
+import { useTranslation } from "../i18n";
 import { describeBridgeError } from "../types/api";
 import { bridge } from "../api/bridge";
 import { jobsStore } from "../state/jobsStore";
+import { notificationsStore } from "../state/notificationsStore";
 import { uiStore } from "../state/uiStore";
 import { NEW_CHAT_TITLE } from "../state/chatLauncher";
-import { CODING_AGENTS } from "./settings/codingAgents";
+import { CODING_AGENTS, visibleAgents } from "./settings/codingAgents";
 import { newUploadSessionId } from "./dialogs/useDialogAttachments";
 
 interface NewPlanModalProps {
@@ -20,12 +34,19 @@ interface NewPlanModalProps {
   onClose: () => void;
   projects: ProjectSummary[];
   onJobStarted?: (res: StartJobResponse) => void;
+  /**
+   * A mission was created from the dialog's Mission mode. Given, the dialog offers the Plan / Mission
+   * switch; omitted, it creates plans only.
+   */
+  onMissionCreated?: (mission: Mission) => void;
   /** Opens project settings, for the picker's "+ Add New Project" entry. Omitted, the entry is not offered. */
   onAddProject?: () => void;
   initialTitle?: string;
   initialDescription?: string;
   initialProject?: string;
   initialSourceUrl?: string;
+  /** Which mode the dialog opens in, when missions are offered. */
+  initialMode?: "plan" | "mission";
 }
 
 /**
@@ -45,6 +66,27 @@ export function buildCreatePlanAgentPrompt(project: string, description: string)
 function agentLabelFor(agentId: string | undefined): string {
   const id = (agentId ?? "").trim() || "claude";
   return CODING_AGENTS.find((agent) => agent.id === id)?.label ?? id;
+}
+
+/**
+ * A mission's title, from the task: its first line, cut at a word boundary. The goal keeps the whole
+ * text, so nothing is lost; the title only has to name the mission in a list.
+ */
+export function missionTitleFrom(description: string, max = 72): string {
+  const firstLine = description.trim().split(/\r?\n/)[0]?.trim() ?? "";
+  if (firstLine.length <= max) return firstLine;
+  const cut = firstLine.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
+/** The dialog's per-role picks as the daemon takes them: an empty pick means "the default agent". */
+export function toMissionAgents(choice: MissionAgentChoice): MissionAgents {
+  const agents: MissionAgents = {};
+  for (const role of ["planner", "worker", "judge", "validator"] as const) {
+    if (choice[role]) agents[role] = { agent: choice[role] };
+  }
+  return agents;
 }
 
 const combine = (title: string, description: string): string =>
@@ -73,23 +115,33 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
   onClose,
   projects,
   onJobStarted,
+  onMissionCreated,
   onAddProject,
   initialTitle = "",
   initialDescription = "",
   initialProject = "",
   initialSourceUrl = "",
+  initialMode = "plan",
 }) => {
+  const { t } = useTranslation("missions");
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirtyRepos, setDirtyRepos] = useState<RepoStatus[] | null>(null);
   const [pending, setPending] = useState<StartJobArgs | null>(null);
   const [agentLabel, setAgentLabel] = useState<string | undefined>(undefined);
+  /** The config as last read, for the harnesses Settings hides from the pickers. */
+  const [config, setConfig] = useState<TendrilConfig | null>(null);
   /**
    * What was submitted, so the dialog comes back with it when the dirty-repo step hands control back
    * after a failed dispatch: the dialog is unmounted while `DirtyRepoDialog` shows, and would
    * otherwise re-seed from the caller's prefill.
    */
   const [draft, setDraft] = useState<{ description: string; project: string } | null>(null);
+  /** The machines to choose between; empty (no picker) unless the app is connected to a remote. */
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machine, setMachine] = useState<MachineTarget>("remote");
+  /** This machine's projects, fetched when it is picked: the caller's list is the remote's. */
+  const [localProjects, setLocalProjects] = useState<ProjectSummary[] | null>(null);
   const uploadSessionId = useRef(newUploadSessionId());
   const uploaded = useRef(false);
 
@@ -102,11 +154,23 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
     setDirtyRepos(null);
     setPending(null);
     setDraft(null);
+    setMachine("remote");
+    setLocalProjects(null);
     let cancelled = false;
+    void Promise.resolve()
+      .then(() => bridge.listMachines())
+      .then((list) => {
+        if (!cancelled) setMachines(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!cancelled) setMachines([]);
+      });
     void Promise.resolve()
       .then(() => bridge.getConfig())
       .then((config) => {
-        if (!cancelled) setAgentLabel(agentLabelFor(config?.codingAgent));
+        if (cancelled) return;
+        setAgentLabel(agentLabelFor(config?.codingAgent));
+        setConfig(config ?? null);
       })
       .catch(() => {
         if (!cancelled) setAgentLabel(agentLabelFor(undefined));
@@ -115,6 +179,28 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
       cancelled = true;
     };
   }, [isOpen]);
+
+  const remoteHost = machines.find((m) => m.id === "remote")?.host ?? "";
+  /** Only sent when the operator picked this machine while connected to a remote. */
+  const target: MachineTarget | undefined =
+    machines.length > 1 && machine === "local" ? "local" : undefined;
+  const elsewhere = target === "local";
+  const machineLabel = machine === "local" ? t("machines.local") : remoteHost;
+  const shownProjects = elsewhere ? (localProjects ?? []) : projects;
+
+  const handleMachineChange = (next: string) => {
+    const picked: MachineTarget = next === "local" ? "local" : "remote";
+    setMachine(picked);
+    if (picked === "local" && localProjects === null) {
+      void bridge
+        .listProjects("local")
+        .then((list) => setLocalProjects(Array.isArray(list) ? list : []))
+        .catch((err) => {
+          setLocalProjects([]);
+          setError(describeBridgeError(err));
+        });
+    }
+  };
 
   const finish = () => {
     setIsBusy(false);
@@ -128,11 +214,22 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
     setIsBusy(true);
     setError(null);
     try {
-      const res = await jobsStore.startJob({
-        ...args,
-        ...(waitForJobs.length > 0 ? { waitForJobs } : {}),
-      });
-      onJobStarted?.(res);
+      const res = await jobsStore.startJob(
+        {
+          ...args,
+          ...(waitForJobs.length > 0 ? { waitForJobs } : {}),
+        },
+        target,
+      );
+      if (elsewhere) {
+        // The job lives on the other daemon; opening it here would look it up on the wrong one.
+        notificationsStore.notifySuccess(
+          res.jobId,
+          t("machines.startedElsewhere", { machine: machineLabel }),
+        );
+      } else {
+        onJobStarted?.(res);
+      }
       finish();
     } catch (err) {
       // Back to the dialog, carrying the failure, with the operator's text still in it.
@@ -142,7 +239,11 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
     }
   };
 
-  const handleSubmit = async (description: string, project: string) => {
+  const handleSubmit = async (
+    description: string,
+    project: string,
+    options?: CreatePlanSubmitOptions,
+  ) => {
     if (isBusy) return;
     setDraft({ description, project });
     const args: StartJobArgs = {
@@ -150,6 +251,7 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
       project,
       description,
       priority: 0,
+      ...(options?.agent ? { agent: options.agent } : {}),
       sourceUrl: initialSourceUrl.trim() || undefined,
       ...(uploaded.current ? { uploadSessionId: uploadSessionId.current } : {}),
     };
@@ -159,7 +261,7 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
       setError(null);
       let dirty: RepoStatus[] = [];
       try {
-        const status = await bridge.getProjectRepoStatus(project);
+        const status = await bridge.getProjectRepoStatus(project, target);
         dirty = Array.isArray(status) ? status.filter((repo) => repo.isDirty) : [];
       } catch {
         // Unknown is not dirty: the guard never blocks plan creation on an unreadable repo.
@@ -174,6 +276,49 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
     await launch(args);
   };
 
+  /**
+   * Mission mode: the daemon creates the mission and its integration plan and starts the planner in
+   * the same request. A mission needs a real project - it runs in that project's repos from the first
+   * step - so "Auto" is refused here rather than by the daemon.
+   */
+  const handleSubmitMission = async (
+    description: string,
+    project: string,
+    choice: MissionAgentChoice,
+  ) => {
+    if (isBusy) return;
+    setDraft({ description, project });
+    if (!project || project === AUTO_PROJECT) {
+      setError(t("create.needsProject"));
+      return;
+    }
+    setIsBusy(true);
+    setError(null);
+    try {
+      const mission = await bridge.createMission(
+        {
+          title: missionTitleFrom(description),
+          goal: description,
+          project,
+          agents: toMissionAgents(choice),
+        },
+        target,
+      );
+      if (elsewhere) {
+        notificationsStore.notifySuccess(
+          mission.title,
+          t("machines.startedElsewhere", { machine: machineLabel }),
+        );
+      } else {
+        onMissionCreated?.(mission);
+      }
+      finish();
+    } catch (err) {
+      setIsBusy(false);
+      setError(describeBridgeError(err));
+    }
+  };
+
   /** V1 `LaunchWithSync`: a SyncRepo per dirty repo, and CreatePlan waiting behind all of them. */
   const handleSyncRepos = async (policy: SyncRepoPolicy) => {
     if (!pending || !dirtyRepos) return;
@@ -181,12 +326,15 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
     const syncJobIds: string[] = [];
     try {
       for (const repo of dirtyRepos) {
-        const res = await jobsStore.startJob({
-          type: "SyncRepo",
-          repoPath: repo.path,
-          baseBranch: repo.baseBranch ?? "main",
-          untrackedChangesPolicy: policy,
-        });
+        const res = await jobsStore.startJob(
+          {
+            type: "SyncRepo",
+            repoPath: repo.path,
+            baseBranch: repo.baseBranch ?? "main",
+            untrackedChangesPolicy: policy,
+          },
+          target,
+        );
         syncJobIds.push(res.jobId);
       }
     } catch (err) {
@@ -247,10 +395,21 @@ export const NewPlanModal: React.FC<NewPlanModalProps> = ({
     <CreatePlanDialog
       isOpen={isOpen}
       onClose={onClose}
-      projects={projects.map((p) => p.name)}
+      projects={shownProjects.map((p) => p.name)}
       initialProject={draft?.project ?? initialProject}
       initialDescription={draft?.description ?? combine(initialTitle, initialDescription)}
       onSubmit={handleSubmit}
+      onSubmitMission={onMissionCreated ? handleSubmitMission : undefined}
+      initialMode={initialMode}
+      machines={machines.map((m) => ({
+        value: m.id,
+        label: m.id === "local" ? t("machines.local") : m.host,
+        disabled: !m.available,
+      }))}
+      selectedMachine={machine}
+      onMachineChange={handleMachineChange}
+      agentOptions={visibleAgents(config).map((agent) => ({ value: agent.id, label: agent.label }))}
+      defaultAgentLabel={agentLabel}
       onAddProject={onAddProject}
       agentLabel={agentLabel}
       onContinueInChat={handleContinueInChat}

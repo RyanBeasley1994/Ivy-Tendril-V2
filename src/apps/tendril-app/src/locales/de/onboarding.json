@@ -132,5 +132,20 @@
     "noVerifications": "Es wurden keine Verifikationen konfiguriert. Fügen Sie sie in den Projekteinstellungen hinzu.",
     "noReviewActions": "Es wurden keine Review-Aktionen konfiguriert. Fügen Sie sie in den Projekteinstellungen hinzu.",
     "harnessEmpty": "Das Projekt ist registriert. Falls der Einrichtungs-Agent noch läuft, erscheinen seine Ergebnisse hier, sobald er fertig ist – öffnen Sie das Projekt erneut in der Zeile „Projekte“, um sie zu sehen."
+  },
+  "folderBrowser": {
+    "title": "Repository-Ordner auswählen",
+    "description": "Ordner auf dem Rechner, auf dem Tendril läuft. Repositorys sind markiert; zum Auswählen doppelklicken.",
+    "up": "Eine Ebene nach oben",
+    "home": "Home-Ordner",
+    "pathLabel": "Ordnerpfad",
+    "showHidden": "Versteckte Ordner anzeigen",
+    "hideHidden": "Versteckte Ordner ausblenden",
+    "empty": "Keine Unterordner vorhanden.",
+    "gitRepo": "Git-Repository",
+    "truncated": "Nur die ersten 2000 Ordner werden angezeigt. Gib einen Pfad ein, um weiterzugehen.",
+    "cancel": "Abbrechen",
+    "select": "Diesen Ordner verwenden",
+    "selectRepo": "Dieses Repository verwenden"
   }
 }

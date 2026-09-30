@@ -331,6 +331,22 @@
   --shadow-xl: none;
   --shadow-2xl: none;
 
+  /* Rounder boxes and fields in dark, the mode the app ships in, so every card and input matches
+     the dashboard's 12-14px panels. Light keeps its radii, and with them its visual baselines. */
+  --radius-boxes: 0.75rem;
+  --radius-fields: 0.5rem;
+
+  /* The command-center scale: denser than the light library defaults, the way the mockups were drawn
+     at 1440px - 13px body text, Tailwind's own 4px spacing unit, 32px rows. Every rem-based utility
+     and every component reading these tokens tightens together, so no screen is left at the old size. */
+  --spacing: 0.25rem;
+  --text-base: 0.9375rem;
+  --text-sm: 0.8125rem;
+  --text-sm-tight: 0.78125rem;
+  --control-height: 30px;
+  --control-height-sm: 26px;
+  --row-height: 32px;
+
   /* Misc framework tokens */
   --toolbox: #edeaf1;
   --sidebar-background: #18181b;
@@ -355,16 +371,16 @@
   --focus-ring-color: var(--ring);
 
   /* Badge solid-tint steps */
-  --ivy-green-tint-bg: color-mix(in srgb, var(--ivy-green) 20%, var(--background));
-  --ivy-green-tint-fg: color-mix(in srgb, var(--ivy-green) 60%, var(--foreground));
-  --destructive-tint-bg: color-mix(in srgb, var(--destructive) 20%, var(--background));
-  --destructive-tint-fg: color-mix(in srgb, var(--destructive) 60%, var(--foreground));
-  --success-tint-bg: color-mix(in srgb, var(--success) 20%, var(--background));
-  --success-tint-fg: color-mix(in srgb, var(--success) 60%, var(--foreground));
-  --warning-tint-bg: color-mix(in srgb, var(--warning) 20%, var(--background));
-  --warning-tint-fg: color-mix(in srgb, var(--warning) 60%, var(--foreground));
-  --info-tint-bg: color-mix(in srgb, var(--info) 20%, var(--background));
-  --info-tint-fg: color-mix(in srgb, var(--info) 60%, var(--foreground));
+  --ivy-green-tint-bg: color-mix(in srgb, var(--ivy-green) 13%, transparent);
+  --ivy-green-tint-fg: color-mix(in srgb, var(--ivy-green) 85%, var(--foreground));
+  --destructive-tint-bg: color-mix(in srgb, var(--destructive) 13%, transparent);
+  --destructive-tint-fg: color-mix(in srgb, var(--destructive) 85%, var(--foreground));
+  --success-tint-bg: color-mix(in srgb, var(--success) 13%, transparent);
+  --success-tint-fg: color-mix(in srgb, var(--success) 85%, var(--foreground));
+  --warning-tint-bg: color-mix(in srgb, var(--warning) 13%, transparent);
+  --warning-tint-fg: color-mix(in srgb, var(--warning) 85%, var(--foreground));
+  --info-tint-bg: color-mix(in srgb, var(--info) 13%, transparent);
+  --info-tint-fg: color-mix(in srgb, var(--info) 85%, var(--foreground));
 
   /* Elevation */
   --shadow-popover: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);

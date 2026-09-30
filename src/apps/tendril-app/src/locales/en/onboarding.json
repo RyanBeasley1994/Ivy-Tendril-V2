@@ -132,5 +132,20 @@
     "noVerifications": "No verifications were configured. Add them from the project's settings.",
     "noReviewActions": "No review actions were configured. Add them from the project's settings.",
     "harnessEmpty": "The project is registered. If the setup agent is still running, its results appear here once it finishes - reopen the project from the Projects row to see them."
+  },
+  "folderBrowser": {
+    "title": "Choose a repository folder",
+    "description": "Folders on the machine running Tendril. Repositories are marked; double-click one to pick it.",
+    "up": "Up one level",
+    "home": "Home folder",
+    "pathLabel": "Folder path",
+    "showHidden": "Show hidden folders",
+    "hideHidden": "Hide hidden folders",
+    "empty": "No subfolders here.",
+    "gitRepo": "Git repository",
+    "truncated": "Only the first 2000 folders are shown. Type a path to go further.",
+    "cancel": "Cancel",
+    "select": "Use this folder",
+    "selectRepo": "Use this repository"
   }
 }

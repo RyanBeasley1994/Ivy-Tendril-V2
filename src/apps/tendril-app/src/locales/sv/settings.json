@@ -18,7 +18,8 @@
     "security": "Säkerhet och tunnling",
     "advanced": "Avancerat",
     "newsletter": "Nyhetsbrev",
-    "fallback": "Konfiguration"
+    "fallback": "Konfiguration",
+    "git": "Git och grenar"
   },
   "nav": {
     "ariaLabel": "Konfigurationsavsnitt",
@@ -358,5 +359,56 @@
     "emailLabel": "E-postadress",
     "subscribing": "Registrerar prenumeration…",
     "subscribe": "Prenumerera"
+  },
+  "remoteServer": {
+    "title": "Fjärrserver",
+    "hint": "Använd Tendril på en annan dator, till exempel en VPS, i stället för den här. Servern måste ha ett lösenord (sessionsskydd).",
+    "urlLabel": "Serveradress",
+    "urlPlaceholder": "203.0.113.7 eller https://min-server.example.com",
+    "urlHint": "En IP eller ett värdnamn använder port 5010. Ange https:// för en tunnel eller omvänd proxy.",
+    "usernameLabel": "Användarnamn",
+    "defaultUser": "admin",
+    "passwordLabel": "Lösenord",
+    "connect": "Anslut",
+    "disconnect": "Koppla från och använd den här datorn",
+    "connectedAs": "Ansluten som {{username}}",
+    "notAuthenticated": "Inte inloggad: {{error}}",
+    "restarting": "Startar om Tendril…"
+  },
+  "git": {
+    "title": "Git och grenar",
+    "hint": "Hur Tendril namnger grenarna för planer och uppdrag, och hur agenter committar.",
+    "prefixLabel": "Grenprefix",
+    "prefixHint": "Vad {prefix} blir. Standard: tendril/.",
+    "templateLabel": "Plangren",
+    "templateHint": "Planer och uppdragsmilstolpar. Standard: {prefix}{folder}.",
+    "missionTemplateLabel": "Uppdragsgren",
+    "missionTemplateHint": "Ett uppdrags integrationsgren, där alla milstolpar hamnar och varifrån dess pull request skapas.",
+    "previewTitle": "Förhandsvisning",
+    "previewUnavailable": "Ingen förhandsvisning: tjänsten går inte att nå.",
+    "preview": {
+      "plan": "Plan",
+      "milestone": "Milstolpe",
+      "mission": "Uppdrag"
+    },
+    "unknownTokens": "Okända platshållare: {{tokens}}",
+    "tokensTitle": "Platshållare",
+    "tokens": {
+      "prefix": "grenprefixet",
+      "folder": "planmapp, t.ex. 00042-AddLogin",
+      "id": "plan-id, t.ex. 00042",
+      "title": "plantitel, t.ex. AddLogin",
+      "slug": "titel i kebab-case, t.ex. add-login",
+      "project": "projekt, kebab-case",
+      "level": "nivå, t.ex. feature",
+      "date": "i dag, ÅÅÅÅMMDD",
+      "mission": "uppdrags-id (endast uppdrag)",
+      "milestone": "milstolps-id, t.ex. m2 (endast milstolpar)"
+    },
+    "stableNote": "En plans gren bestäms första gången den får ett worktree, så ändringar gäller nya planer; pågående planer behåller sin gren.",
+    "signLabel": "Signera commits från agenter",
+    "signHint": "Stäng av om din signering kräver att du är närvarande (1Password-SSH-nyckel, GPG-pinentry): agenter utan gränssnitt kan inte signera och deras commits misslyckas. Påverkar bara agenternas commits; din git-konfiguration ändras inte.",
+    "save": "Spara",
+    "saved": "Greninställningar sparade"
   }
 }

@@ -5,6 +5,7 @@ pub mod config;
 pub mod dashboard;
 pub mod github;
 pub mod inbox;
+pub mod missions;
 pub mod jobs;
 pub mod local_file;
 pub mod plan_files;
@@ -12,6 +13,7 @@ pub mod plans;
 pub mod project_assets;
 pub mod promptwares;
 pub mod pull_requests;
+pub mod remote;
 pub mod state;
 pub mod tables;
 pub mod tunnel;
@@ -37,6 +39,59 @@ pub fn get_client_from_master() -> Result<TendrilClient, BridgeError> {
     })?;
     let base_url = format!("{}://{}:{}", master.scheme, master.host, master.port);
     Ok(TendrilClient::new(base_url, Some(master.secret)))
+}
+
+/// Which daemon an action is aimed at, from the create-plan machine picker: `"local"` is this
+/// machine's daemon even while the app is connected to a remote one; anything else (or nothing) is
+/// the daemon the app is connected to.
+pub fn get_client_for_target(target: Option<&str>) -> Result<TendrilClient, BridgeError> {
+    if target.map(str::trim) != Some("local") || crate::service::remote::master_override().is_none() {
+        return get_client_from_master();
+    }
+    let master = crate::daemon::read_local_master(&resolve_tendril_home()).map_err(|e| {
+        BridgeError::with_details(
+            "LOCAL_DISCONNECTED",
+            "Tendril is not running on this machine: start it with `tendril run` to create plans here",
+            e,
+        )
+    })?;
+    let base_url = format!("{}://{}:{}", master.scheme, master.host, master.port);
+    Ok(TendrilClient::new(base_url, Some(master.secret)))
+}
+
+/// One machine the create-plan picker can aim at.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MachineDto {
+    /// `remote` or `local`, what `target` takes.
+    pub id: String,
+    /// The remote's host, or empty for this machine (the frontend names it).
+    pub host: String,
+    /// A daemon is there to take the job.
+    pub available: bool,
+}
+
+/// The machines a new plan can be created on. Empty unless the app is connected to a remote server:
+/// with no remote there is only one machine, and the picker is not shown.
+#[tauri::command]
+pub async fn cmd_list_machines() -> Result<Vec<MachineDto>, BridgeError> {
+    let Some(remote) = crate::service::remote::master_override() else {
+        return Ok(Vec::new());
+    };
+    let status = crate::service::remote::status();
+    let local = crate::daemon::read_local_master(&resolve_tendril_home()).is_ok();
+    Ok(vec![
+        MachineDto {
+            id: "remote".into(),
+            host: remote.host,
+            available: status.authenticated,
+        },
+        MachineDto {
+            id: "local".into(),
+            host: String::new(),
+            available: local,
+        },
+    ])
 }
 
 #[tauri::command]

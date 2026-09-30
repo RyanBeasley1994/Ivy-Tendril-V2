@@ -8,8 +8,12 @@ use crate::models::{
 use crate::service::review_action_bridge::{self, StartedReviewAction};
 
 #[tauri::command]
-pub async fn cmd_list_projects() -> Result<Vec<ProjectSummaryDto>, BridgeError> {
-    get_client_from_master()?.list_projects().await
+pub async fn cmd_list_projects(
+    target: Option<String>,
+) -> Result<Vec<ProjectSummaryDto>, BridgeError> {
+    super::get_client_for_target(target.as_deref())?
+        .list_projects()
+        .await
 }
 
 #[tauri::command]
@@ -63,6 +67,17 @@ pub async fn cmd_get_config_text() -> Result<serde_json::Value, BridgeError> {
 #[tauri::command]
 pub async fn cmd_put_config_text(text: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?.put_config_text(&text).await
+}
+
+/// Lists the subdirectories of a folder on the daemon's host, for the repository folder browser.
+#[tauri::command]
+pub async fn cmd_list_directories(
+    path: Option<String>,
+    show_hidden: Option<bool>,
+) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .list_directories(path.as_deref(), show_hidden.unwrap_or(false))
+        .await
 }
 
 #[tauri::command]
@@ -250,8 +265,9 @@ pub async fn cmd_close_review_action(session_id: String) -> Result<bool, BridgeE
 #[tauri::command]
 pub async fn cmd_get_project_repo_status(
     project_name: String,
+    target: Option<String>,
 ) -> Result<Vec<crate::models::RepoStatusDto>, BridgeError> {
-    get_client_from_master()?
+    super::get_client_for_target(target.as_deref())?
         .get_project_repo_status(&project_name)
         .await
 }

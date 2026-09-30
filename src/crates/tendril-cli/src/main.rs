@@ -27,6 +27,12 @@ enum Commands {
     #[command(subcommand, about = "Manage jobs")]
     Job(commands::job::JobCommands),
 
+    #[command(
+        subcommand,
+        about = "Manage missions: goals an AI orchestrator breaks into milestones and runs"
+    )]
+    Mission(commands::mission::MissionCommands),
+
     #[command(subcommand, about = "Manage chat sessions and execution")]
     Chat(commands::chat::ChatCommands),
 
@@ -153,6 +159,20 @@ SECRET to reuse an existing pepper; omit it to generate a new 32-byte one."
     },
 
     #[command(
+        name = "set-password",
+        about = "Turn on password protection, or change its password, for remote access",
+        long_about = "Sets the session password in config.yaml, which is what the desktop app's \
+Remote Server connection and the full-access tunnel log in with.\n\nPrompts for the new password \
+with echo off, or reads it from the first line of stdin when stdin is not a terminal. Changing an \
+existing password needs the current one: pass --current or answer the prompt."
+    )]
+    SetPassword {
+        /// The existing password, required when one is already set.
+        #[arg(long)]
+        current: Option<String>,
+    },
+
+    #[command(
         name = "agent-instructions",
         about = "Print the instructions for a coding agent in a chat session",
         long_about = "Prints the instructions given to a coding agent running in an interactive \
@@ -246,6 +266,9 @@ async fn dispatch(
     match command {
         Commands::Plan(cmd) => commands::plan::handle_plan_command(cmd, tendril_home).await?,
         Commands::Job(cmd) => commands::job::handle_job_command(cmd, tendril_home).await?,
+        Commands::Mission(cmd) => {
+            commands::mission::handle_mission_command(cmd, tendril_home).await?
+        }
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,
         Commands::Project(cmd) => {
             commands::project::handle_project_command(cmd, tendril_home).await?
@@ -292,6 +315,9 @@ async fn dispatch(
         }
         Commands::HashPassword { password, secret } => {
             commands::hash_password::handle_hash_password(&password, secret.as_deref())?
+        }
+        Commands::SetPassword { current } => {
+            commands::set_password::handle_set_password(tendril_home, current)?
         }
         Commands::AgentInstructions => {
             commands::agent_instructions::handle_agent_instructions(tendril_home)?

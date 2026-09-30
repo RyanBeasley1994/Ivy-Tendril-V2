@@ -1337,3 +1337,190 @@
   color: color-mix(in srgb, var(--success) 60%, var(--foreground));
   opacity: 1;
 }
+
+/* ---------- Nav group labels ---------- */
+
+/* An uppercase caption over a run of nav rows that share a `group`. On the rail there is no room for
+   words, so it collapses to a hairline that still separates the runs. */
+.tsh-nav-group {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 8px var(--tsh-row-pad-x) 0;
+  flex-shrink: 0;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  overflow: hidden;
+}
+
+.tsh-nav-items > .tsh-nav-group:first-child {
+  padding-top: 0;
+  height: 18px;
+}
+
+.tsh-root[data-collapsed="true"] .tsh-nav-group {
+  height: 13px;
+  padding: 6px 12px;
+  font-size: 0;
+}
+
+.tsh-root[data-collapsed="true"] .tsh-nav-group::after {
+  content: "";
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ---------- Command center (dark) ---------- */
+
+/* The app renders dark-only, and this is its look: a sidebar one step between the page and a card, a
+   darker content frame the cards sit on, one Ivy-green accent for "you are here", and mono figures.
+   Scoped to `.dark` so the light library baselines are unchanged. */
+.dark .tsh-root,
+.dark .tsh-section,
+.dark .tsh-rail-menu,
+.dark .tsh-item-menu,
+.dark .tsh-rail-tooltip {
+  --tsh-bg: color-mix(in srgb, var(--background) 55%, var(--card));
+  --tsh-shell-chrome: color-mix(in srgb, var(--background) 55%, var(--card));
+  --tsh-surface: var(--background);
+  --tsh-popover: var(--popover);
+  --tsh-row-active: color-mix(in srgb, var(--foreground) 5%, var(--tsh-bg));
+  --tsh-row-selected: color-mix(in srgb, var(--primary) 12%, var(--tsh-bg));
+  --tsh-row-selected-ring: color-mix(in srgb, var(--primary) 28%, transparent);
+  --tsh-badge-bg: color-mix(in srgb, var(--foreground) 7%, var(--tsh-bg));
+  --tsh-badge-bg-active: color-mix(in srgb, var(--foreground) 12%, var(--tsh-bg));
+}
+
+.dark .tsh-sidebar {
+  border-right: var(--border-width) solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.dark .tsh-main {
+  padding: 10px 10px 10px 10px;
+}
+
+.dark .tsh-container {
+  border-color: color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 14px;
+}
+
+.dark .tsh-frame {
+  border-radius: 0 0 14px 14px;
+}
+
+.dark .tsh-nav-item,
+.dark .tsh-agent,
+.dark .tsh-settings,
+.dark .tsh-section-search-button,
+.dark .tsh-rail-search {
+  color: color-mix(in srgb, var(--foreground) 70%, var(--muted-foreground));
+}
+
+.dark .tsh-nav-item:hover,
+.dark .tsh-agent:hover,
+.dark .tsh-settings:hover,
+.dark .tsh-section-search-button:hover,
+.dark .tsh-rail-search:hover {
+  color: var(--foreground);
+}
+
+.dark .tsh-nav-item[data-active="true"],
+.dark .tsh-settings[data-active="true"],
+.dark .tsh-agent[data-active="true"] {
+  background: var(--tsh-row-selected);
+  box-shadow: inset 0 0 0 1px var(--tsh-row-selected-ring);
+  color: var(--foreground);
+}
+
+.dark .tsh-nav-item[data-active="true"] .tsh-nav-icon,
+.dark .tsh-agent[data-active="true"] .tsh-agent-icon {
+  color: var(--primary);
+}
+
+.dark .tsh-nav-item,
+.dark .tsh-agent,
+.dark .tsh-settings,
+.dark .tsh-section-search-button,
+.dark .tsh-rail-search {
+  min-height: 30px;
+  height: auto;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.dark .tsh-root .tsh-nav-badge,
+.dark .tsh-root .tsh-agent-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
+.dark .tsh-root .tsh-nav-item[data-active="true"] .tsh-nav-badge {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.dark .tsh-newplan {
+  height: 32px;
+  border-radius: 9px;
+  font-weight: var(--font-weight-semibold);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent),
+    0 6px 18px -8px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+.dark .tsh-newplan-label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.dark .tsh-section-title {
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.dark .tsh-section-item {
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.dark .tsh-section-item[data-selected="true"] {
+  background: color-mix(in srgb, var(--foreground) 4%, var(--tsh-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 90%, var(--foreground) 10%);
+}
+
+.dark .tsh-section-item-title {
+  font-size: var(--text-sm-tight);
+}
+
+.dark .tsh-section-item-tag {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-normal);
+  color: var(--muted-foreground);
+}
+
+.dark .tsh-rail-item[data-selected="true"] {
+  background: var(--tsh-row-selected);
+  color: var(--foreground);
+}
+
+.dark .tsh-tabs {
+  height: 38px;
+}
+
+.dark .tsh-tab[data-active="true"] {
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+  box-shadow: inset 0 2px 0 var(--primary);
+}
+
+.dark .tsh-divider,
+.dark .tsh-nav-divider::after {
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}

@@ -368,7 +368,23 @@
     "submit": "Создать",
     "placeholder": "Введите описание задачи…",
     "emptyDescription": "Введите описание нового плана.",
-    "continueInChat": "Чат с {{agent}}"
+    "continueInChat": "Чат с {{agent}}",
+    "missionTitle": "Создать миссию",
+    "modeLabel": "Что создать",
+    "modePlan": "План",
+    "modeMission": "Миссия",
+    "modeMissionHint": "Оркестратор разбивает задачу на этапы, выполняет и оценивает каждый, проверяет результат целиком и создаёт один pull request. Этапы вы утверждаете один раз.",
+    "harness": "Агент",
+    "defaultAgent": "По умолчанию ({{agent}})",
+    "submitMission": "Запустить миссию",
+    "roles": {
+      "planner": "Планировщик",
+      "worker": "Исполнитель",
+      "judge": "Судья",
+      "validator": "Валидатор"
+    },
+    "machineLabel": "Создать на",
+    "machineUnavailable": "Там не запущен сервис Tendril"
   },
   "recommendationNote": {
     "submit": "Отправить",

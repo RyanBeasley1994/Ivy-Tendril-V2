@@ -200,7 +200,43 @@
     },
     "jobs": {
       "title": "アクティブなジョブ",
-      "empty": "実行中のジョブはありません"
+      "empty": "実行中のジョブはありません",
+      "columns": {
+        "plan": "プラン",
+        "phase": "フェーズ",
+        "tokens": "トークン",
+        "time": "時間"
+      },
+      "stalled": "停止中"
+    },
+    "composer": {
+      "placeholder": "Tendril に次に作ってほしいものを説明…",
+      "submit": "プランを作成",
+      "ariaLabel": "新しいプランを説明"
+    },
+    "attention": {
+      "title": "要対応",
+      "empty": "今は対応が必要なものはありません",
+      "count": "{{count}} 件"
+    },
+    "tokens": {
+      "title": "トークン / 日",
+      "window": "過去 {{weeks}} 週間",
+      "today": "今日",
+      "average": "平均 {{value}}",
+      "peak": "最大 {{value}}",
+      "less": "少",
+      "more": "多",
+      "cell": "{{date}}: {{value}} トークン",
+      "empty": "トークン使用量の記録はまだありません",
+      "loading": "トークン使用量を読み込み中",
+      "share": "エージェント別の割合"
+    },
+    "newPlan": "新しいプラン",
+    "flow": {
+      "title": "プランフロー",
+      "live": "ライブ",
+      "caption": "帯の太さは各段階のプラン数を示します"
     }
   },
   "trendChart": {

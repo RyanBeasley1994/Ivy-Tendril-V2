@@ -41,6 +41,10 @@ pub struct TendrilSettings {
     #[serde(rename = "maxConcurrentJobs", default = "default_max_concurrent_jobs")]
     pub max_concurrent_jobs: i32,
 
+    /// Branch naming. Absent, branches are named `tendril/<plan folder>` as they always were.
+    #[serde(default, skip_serializing_if = "crate::git::branch_naming::GitSettings::is_default")]
+    pub git: crate::git::branch_naming::GitSettings,
+
     #[serde(default)]
     pub projects: Vec<ProjectConfig>,
 
@@ -360,6 +364,7 @@ impl Default for TendrilSettings {
             git_timeout: default_git_timeout(),
             daemon_request_timeout: default_daemon_request_timeout(),
             max_concurrent_jobs: default_max_concurrent_jobs(),
+            git: Default::default(),
             projects: Vec::new(),
             verifications: Vec::new(),
             plan_template: String::new(),

@@ -200,7 +200,43 @@
     },
     "jobs": {
       "title": "活动任务",
-      "empty": "没有运行中的任务"
+      "empty": "没有运行中的任务",
+      "columns": {
+        "plan": "计划",
+        "phase": "阶段",
+        "tokens": "Token",
+        "time": "时间"
+      },
+      "stalled": "已停滞"
+    },
+    "composer": {
+      "placeholder": "描述 Tendril 接下来要构建的内容…",
+      "submit": "创建计划",
+      "ariaLabel": "描述新计划"
+    },
+    "attention": {
+      "title": "需要关注",
+      "empty": "目前没有需要你处理的事项",
+      "count": "{{count}} 项待处理"
+    },
+    "tokens": {
+      "title": "每日 Token",
+      "window": "最近 {{weeks}} 周",
+      "today": "今天",
+      "average": "平均 {{value}}",
+      "peak": "峰值 {{value}}",
+      "less": "少",
+      "more": "多",
+      "cell": "{{date}}：{{value}} 个 token",
+      "empty": "尚无 token 使用记录",
+      "loading": "正在加载 token 使用量",
+      "share": "按智能体占比"
+    },
+    "newPlan": "新建计划",
+    "flow": {
+      "title": "计划流",
+      "live": "实时",
+      "caption": "带宽表示每个阶段的计划数"
     }
   },
   "trendChart": {

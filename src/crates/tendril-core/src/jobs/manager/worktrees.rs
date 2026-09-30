@@ -62,10 +62,23 @@ pub async fn prepare_plan_worktrees(
 
     let project_config = find_project(settings, &resolve_project(job, settings));
 
+    // Fixes the plan's branch name from the configured template before the first worktree is cut,
+    // so every later reader (the promptware's `add-worktree`, CreatePr, the reaper) agrees on it.
+    if let Err(e) = crate::git::branch_naming::assign_branch_name(&plan_folder, &settings.git) {
+        tracing::warn!("Job {}: could not record the plan's branch name: {}", job.id, e);
+    }
+
+    // A mission milestone is cut from the mission branch, so it builds on every milestone before it.
+    let mission_base = crate::missions::model::mission_link(&plan)
+        .filter(|l| l.role == crate::missions::model::MissionRole::Milestone)
+        .and_then(|l| l.base_branch);
+
     for repo_path in &plan.repos {
-        let base = project_config
-            .and_then(|c| find_repo_ref(c, repo_path))
-            .and_then(|r| r.base_branch.clone());
+        let base = mission_base.clone().or_else(|| {
+            project_config
+                .and_then(|c| find_repo_ref(c, repo_path))
+                .and_then(|r| r.base_branch.clone())
+        });
 
         let repo = PathBuf::from(repo_path);
         let name = repo_name(repo_path).to_string();

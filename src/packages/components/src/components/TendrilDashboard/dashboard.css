@@ -14,9 +14,18 @@
 
   /* Grey intensity ramp shared by the activity grid and the PR bars.
      Mixing from the foreground keeps it legible in both themes. */
+  --tdb-ramp-0: color-mix(in srgb, var(--foreground) 6%, transparent);
   --tdb-ramp-1: color-mix(in srgb, var(--foreground) 10%, transparent);
   --tdb-ramp-2: color-mix(in srgb, var(--foreground) 26%, transparent);
   --tdb-ramp-3: var(--foreground-muted);
+  --tdb-ramp-4: var(--foreground);
+
+  /* Accent hues for icon tiles, share slices and status dots, in a fixed order. */
+  --tdb-tone-0: var(--primary);
+  --tdb-tone-1: var(--info);
+  --tdb-tone-2: var(--violet);
+  --tdb-tone-3: var(--warning);
+  --tdb-tone-4: var(--foreground-muted);
 
   /* KPI card tints. All four derive from the host theme's --primary so
      alternate themes (neon, retro, cupcake...) recolor the cards
@@ -40,14 +49,30 @@
   overflow-x: hidden;
 }
 
+/* The command-center look the app ships in: cards are the palette's `--card` on the page background,
+   outlined rather than tinted; the KPI tiles are all the same card and are told apart by a coloured
+   icon tile instead of a primary wash; and the intensity ramps run through the primary, so activity
+   and token density read as "more Tendril" rather than as brighter grey. */
 .dark .tdb-root {
-  --tdb-block-bg: color-mix(in srgb, var(--foreground) 4%, var(--background));
-  --tdb-block-border: color-mix(in srgb, var(--foreground) 10%, var(--background));
-  /* Dark mode needs lower mixes so saturated theme colors stay muted. */
-  --tdb-kpi-1: color-mix(in srgb, var(--primary) 22%, var(--tdb-block-bg));
-  --tdb-kpi-2: color-mix(in srgb, var(--primary) 10%, var(--tdb-block-bg));
-  --tdb-kpi-3: color-mix(in srgb, var(--primary) 16%, var(--tdb-block-bg));
-  --tdb-kpi-4: color-mix(in srgb, var(--primary) 6%, var(--tdb-block-bg));
+  --tdb-block-bg: var(--card);
+  --tdb-block-border: var(--border);
+  --tdb-muted: var(--muted-foreground);
+  --tdb-faint: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+  --tdb-pill-bg: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --tdb-ramp-0: color-mix(in srgb, var(--foreground) 7%, var(--card));
+  --tdb-ramp-1: color-mix(in srgb, var(--primary) 28%, var(--card));
+  --tdb-ramp-2: color-mix(in srgb, var(--primary) 52%, var(--card));
+  --tdb-ramp-3: color-mix(in srgb, var(--primary) 76%, var(--card));
+  --tdb-ramp-4: var(--primary);
+  --tdb-kpi-1: var(--card);
+  --tdb-kpi-2: var(--card);
+  --tdb-kpi-3: var(--card);
+  --tdb-kpi-4: var(--card);
+  --tdb-tone-0: var(--primary);
+  --tdb-tone-1: var(--info);
+  --tdb-tone-2: var(--violet);
+  --tdb-tone-3: var(--warning);
+  --tdb-tone-4: color-mix(in srgb, var(--muted-foreground) 60%, var(--card));
 }
 
 .tdb-root * {
@@ -256,7 +281,59 @@ button.tdb-kpi:focus-visible {
 
 .tdb-kpi-label {
   font-size: var(--text-sm);
-  margin-bottom: 10px;
+}
+
+/* Icon tile and label on one line; the figures and the sparkline share the foot, pushed apart. */
+.tdb-kpi-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tdb-kpi-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  color: var(--tdb-kpi-tone, var(--tdb-tone-0));
+  background: color-mix(in srgb, var(--tdb-kpi-tone, var(--tdb-tone-0)) 14%, transparent);
+}
+
+.tdb-kpi[data-tone="0"] {
+  --tdb-kpi-tone: var(--tdb-tone-0);
+}
+.tdb-kpi[data-tone="1"] {
+  --tdb-kpi-tone: var(--tdb-tone-1);
+}
+.tdb-kpi[data-tone="2"] {
+  --tdb-kpi-tone: var(--tdb-tone-2);
+}
+.tdb-kpi[data-tone="3"] {
+  --tdb-kpi-tone: var(--tdb-tone-3);
+}
+
+.tdb-kpi-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tdb-kpi-figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tdb-kpi-spark {
+  flex-shrink: 0;
+  color: var(--tdb-kpi-tone, var(--tdb-tone-0));
 }
 
 /* The value and its delta share this row, and at the narrow end of the KPI grid they do not both
@@ -288,8 +365,9 @@ button.tdb-kpi:focus-visible {
    No `overflow: hidden` and no `text-overflow: ellipsis` here, deliberately: an ellipsized cost is
    indistinguishable from a smaller cost. */
 .tdb-kpi-value {
-  font-size: 30px;
-  line-height: 36px;
+  font-size: var(--tdb-kpi-value-size, 30px);
+  line-height: var(--tdb-kpi-value-leading, 36px);
+  letter-spacing: var(--tdb-kpi-value-tracking, normal);
   font-weight: var(--font-weight-semibold);
   min-width: 0;
   white-space: normal;
@@ -304,16 +382,21 @@ button.tdb-kpi:focus-visible {
 }
 
 .tdb-kpi-delta {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--text-xs);
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs-tight);
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
+  background: var(--tdb-pill-bg);
 }
 
 .tdb-kpi-delta svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 /* The basis behind a value, muted so it reads as a footnote to the number
@@ -574,7 +657,7 @@ button.tdb-kpi:focus-visible {
 }
 
 .tdb-activity-cell[data-level="0"] {
-  background: color-mix(in srgb, var(--tdb-fg) 6%, transparent);
+  background: var(--tdb-ramp-0);
 }
 .tdb-activity-cell[data-level="1"] {
   background: var(--tdb-ramp-1);
@@ -586,7 +669,7 @@ button.tdb-kpi:focus-visible {
   background: var(--tdb-ramp-3);
 }
 .tdb-activity-cell[data-level="4"] {
-  background: var(--foreground);
+  background: var(--tdb-ramp-4);
 }
 
 .tdb-activity-labels {
@@ -696,7 +779,7 @@ button.tdb-kpi:focus-visible {
   background: var(--tdb-ramp-3);
 }
 .tdb-bar[data-level="4"] {
-  background: var(--foreground);
+  background: var(--tdb-ramp-4);
 }
 
 .tdb-bar-label {
@@ -717,6 +800,10 @@ button.tdb-kpi:focus-visible {
 
 .tdb-jobs {
   min-height: 276px;
+  padding: 20px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .tdb-jobs-list {
@@ -897,18 +984,21 @@ button.tdb-kpi:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Single column: keep the factory right after the main stack, then the
-     side cards, then Active Jobs last. */
-  .tdb-factory {
+  /* Single column: the main stack, then the side cards, then Live Jobs and Tokens. */
+  .tdb-col-side {
     order: 2;
   }
 
-  .tdb-col-side {
+  .tdb-jobs {
     order: 3;
   }
 
-  .tdb-jobs {
+  .tdb-tokens {
     order: 4;
+  }
+
+  .tdb-grid-filler {
+    display: none;
   }
 
   .tdb-update-slot:empty {
@@ -930,4 +1020,900 @@ button.tdb-kpi:focus-visible {
   .tdb-kpis {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---------- Status line, count pills ---------- */
+
+.tdb-status-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: var(--text-sm-tight);
+  color: var(--tdb-muted);
+}
+
+.tdb-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 22%, transparent);
+}
+
+.tdb-count-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs-tight);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--tdb-muted);
+  background: var(--tdb-pill-bg);
+  white-space: nowrap;
+}
+
+.tdb-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- Composer ---------- */
+
+.tdb-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 10px 0 16px;
+  border-radius: var(--radius-2xl);
+  background: var(--tdb-block-bg);
+  border: var(--border-width) solid var(--tdb-block-border);
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+
+.tdb-composer:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--tdb-block-border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.tdb-composer-icon {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.tdb-composer-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--tdb-fg);
+}
+
+.tdb-composer-input::placeholder {
+  color: var(--tdb-muted);
+}
+
+.tdb-composer-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+
+.tdb-composer-submit:hover {
+  background: color-mix(in srgb, var(--primary) 85%, var(--foreground));
+}
+
+.tdb-composer-submit:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---------- Needs attention ---------- */
+
+.tdb-attention {
+  padding: 20px 20px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tdb-attention-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.tdb-attention-row {
+  --tdb-att: var(--info);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-top: var(--border-width) solid var(--tdb-block-border);
+}
+
+.tdb-attention-row[data-kind="review"] {
+  --tdb-att: var(--success);
+}
+.tdb-attention-row[data-kind="failed"] {
+  --tdb-att: var(--destructive);
+}
+.tdb-attention-row[data-kind="stalled"] {
+  --tdb-att: var(--warning);
+}
+
+.tdb-attention-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  color: var(--tdb-att);
+  background: color-mix(in srgb, var(--tdb-att) 14%, transparent);
+}
+
+.tdb-attention-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tdb-attention-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  font-size: var(--text-sm-tight);
+  font-weight: var(--font-weight-medium);
+}
+
+.tdb-attention-status {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  color: color-mix(in srgb, var(--tdb-att) 80%, var(--tdb-fg));
+  background: color-mix(in srgb, var(--tdb-att) 14%, transparent);
+  white-space: nowrap;
+}
+
+.tdb-attention-detail {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-tight);
+  color: var(--tdb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tdb-attention-action {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: var(--border-width) solid var(--input);
+  background: color-mix(in srgb, var(--foreground) 4%, var(--tdb-block-bg));
+  color: var(--tdb-fg);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+
+.tdb-attention-action:hover {
+  background: color-mix(in srgb, var(--foreground) 9%, var(--tdb-block-bg));
+}
+
+.tdb-attention-action[data-primary="true"] {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.tdb-attention-action[data-primary="true"]:hover {
+  background: var(--primary);
+  opacity: var(--opacity-hover);
+}
+
+.tdb-attention-action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.tdb-attention-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 0 14px;
+  font-size: var(--text-sm-tight);
+  color: var(--tdb-muted);
+}
+
+.tdb-attention-empty svg {
+  color: var(--success);
+}
+
+/* ---------- Live jobs table ---------- */
+
+.tdb-job-head,
+.tdb-job-row[data-detailed="true"] {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) minmax(64px, 110px) 64px 56px;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.tdb-job-head {
+  margin-top: 14px;
+  padding: 0 10px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tdb-faint);
+}
+
+.tdb-job-head + .tdb-jobs-list {
+  margin-top: 0;
+}
+
+.tdb-job-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tdb-job-row[data-detailed="true"] {
+  border-radius: 8px;
+}
+
+.tdb-job-row[data-stalled="true"] {
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
+.tdb-job-phase {
+  justify-self: start;
+  max-width: 100%;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--primary) 75%, var(--tdb-fg));
+  background: color-mix(in srgb, var(--primary) 13%, transparent);
+}
+
+.tdb-job-phase:empty {
+  display: none;
+}
+
+.tdb-job-row[data-stalled="true"] .tdb-job-phase {
+  color: color-mix(in srgb, var(--warning) 80%, var(--tdb-fg));
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+}
+
+.tdb-job-tokens,
+.tdb-job-elapsed {
+  font-size: var(--text-xs);
+  color: var(--tdb-muted);
+}
+
+/* ---------- Tokens per day ---------- */
+
+.tdb-tokens {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tdb-tokens-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tdb-tokens-figures {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.tdb-tokens-total {
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.tdb-tokens-window {
+  font-size: var(--text-xs);
+  color: var(--tdb-muted);
+}
+
+.tdb-tokens-stats {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--tdb-muted);
+  white-space: nowrap;
+}
+
+.tdb-heat {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tdb-heat-days {
+  display: grid;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 11px;
+  color: var(--tdb-faint);
+}
+
+.tdb-heat-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 11px);
+  grid-auto-flow: column;
+  grid-auto-columns: 11px;
+  gap: 3px;
+}
+
+.tdb-heat-cell {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--tdb-ramp-0);
+}
+
+.tdb-heat-cell[data-pad="true"] {
+  visibility: hidden;
+}
+.tdb-heat-cell[data-level="1"] {
+  background: var(--tdb-ramp-1);
+}
+.tdb-heat-cell[data-level="2"] {
+  background: var(--tdb-ramp-2);
+}
+.tdb-heat-cell[data-level="3"] {
+  background: var(--tdb-ramp-3);
+}
+.tdb-heat-cell[data-level="4"] {
+  background: var(--tdb-ramp-4);
+}
+
+.tdb-heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--tdb-faint);
+}
+
+.tdb-heat-legend .tdb-heat-cell {
+  width: 9px;
+  height: 9px;
+}
+
+.tdb-share {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.tdb-share-bar {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tdb-share-bar > span,
+.tdb-share-swatch {
+  background: var(--tdb-tone-0);
+}
+
+.tdb-share-bar > span[data-tone="1"],
+.tdb-share-swatch[data-tone="1"] {
+  background: var(--tdb-tone-1);
+}
+.tdb-share-bar > span[data-tone="2"],
+.tdb-share-swatch[data-tone="2"] {
+  background: var(--tdb-tone-2);
+}
+.tdb-share-bar > span[data-tone="3"],
+.tdb-share-swatch[data-tone="3"] {
+  background: var(--tdb-tone-3);
+}
+.tdb-share-bar > span[data-tone="4"],
+.tdb-share-swatch[data-tone="4"] {
+  background: var(--tdb-tone-4);
+}
+
+.tdb-share-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xs);
+  color: var(--tdb-muted);
+}
+
+.tdb-share-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tdb-share-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.tdb-share-pct {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--tdb-faint);
+}
+
+/* ---------- Command center (dark) ---------- */
+
+.dark .tdb-inner {
+  padding: 20px 20px 28px;
+}
+
+.dark .tdb-grid {
+  gap: 16px;
+  padding: 0;
+}
+
+.dark .tdb-col {
+  gap: 16px;
+}
+
+.dark .tdb-block,
+.dark .tdb-kpi {
+  border: var(--border-width) solid var(--tdb-block-border);
+  border-radius: 14px;
+}
+
+.dark .tdb-block-title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.dark .tdb-date {
+  margin-bottom: 6px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+}
+
+.dark .tdb-greeting {
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--tdb-fg);
+}
+
+.dark .tdb-headline {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  font-weight: var(--font-weight-normal);
+  color: var(--tdb-muted);
+}
+
+.dark .tdb-update-slot {
+  height: auto;
+  min-height: 0;
+}
+
+.dark .tdb-update-slot:empty {
+  display: none;
+}
+
+.dark .tdb-status {
+  min-height: 0;
+  padding: 6px 8px;
+}
+
+.dark .tdb-status-item {
+  padding: 8px 10px;
+  border-radius: 9px;
+}
+
+.dark .tdb-status-item svg {
+  color: var(--tdb-status-tone, var(--tdb-muted));
+}
+
+.dark .tdb-status-item[data-tone="active"] {
+  --tdb-status-tone: var(--primary);
+}
+.dark .tdb-status-item[data-tone="review"] {
+  --tdb-status-tone: var(--warning);
+}
+.dark .tdb-status-item[data-tone="done"] {
+  --tdb-status-tone: var(--info);
+}
+.dark .tdb-status-item[data-tone="failed"] {
+  --tdb-status-tone: var(--destructive);
+}
+
+.dark .tdb-status-count {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+}
+
+.dark .tdb-status-sep {
+  background: var(--tdb-block-border);
+}
+
+.dark .tdb-kpis {
+  gap: 14px;
+}
+
+.dark .tdb-kpi {
+  padding: 14px;
+  min-height: 0;
+}
+
+.dark .tdb-kpi-label {
+  font-size: var(--text-sm-tight);
+  color: var(--tdb-muted);
+}
+
+.dark .tdb-kpi {
+  --tdb-kpi-value-size: 22px;
+  --tdb-kpi-value-leading: 26px;
+  --tdb-kpi-value-tracking: -0.02em;
+}
+
+.dark .tdb-kpi-delta[data-direction="up"] {
+  color: color-mix(in srgb, var(--success) 85%, var(--tdb-fg));
+  background: color-mix(in srgb, var(--success) 13%, transparent);
+}
+
+.dark .tdb-kpi-delta[data-direction="down"] {
+  color: color-mix(in srgb, var(--info) 85%, var(--tdb-fg));
+  background: color-mix(in srgb, var(--info) 14%, transparent);
+}
+
+.dark button.tdb-kpi:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--tdb-kpi-tone) 40%, var(--tdb-block-border));
+  box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--tdb-kpi-tone) 45%, transparent);
+}
+
+.dark .tdb-trend,
+.dark .tdb-factory,
+.dark .tdb-side-block {
+  padding: 20px;
+}
+
+.dark .tdb-tab[data-active="true"] {
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+}
+
+.dark .tdb-trend-line {
+  stroke: var(--primary);
+  stroke-width: 1.75;
+}
+
+.dark .tdb-legend-dot {
+  background: var(--primary);
+}
+
+.dark .tdb-chart-tooltip {
+  border-color: var(--input);
+  box-shadow: var(--shadow-popover);
+}
+
+.dark .tdb-job-tag {
+  font-family: var(--font-mono);
+}
+
+/* ---------- Command-center layout ---------- */
+
+.tcc {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 1480px;
+  padding: 18px 20px 24px;
+}
+
+.tcc-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.tcc-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tcc-greeting {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--tdb-fg);
+}
+
+.tcc-head .tdb-status-text {
+  margin-top: 0;
+}
+
+.tdb-status-text[data-ok="false"] .tdb-live-dot {
+  background: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 22%, transparent);
+}
+
+.tcc-primary {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 9px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font: inherit;
+  font-size: var(--text-sm-tight);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--primary) 70%, transparent);
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+
+.tcc-primary:hover {
+  background: color-mix(in srgb, var(--primary) 85%, var(--foreground));
+}
+
+.tcc-primary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.tcc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.tcc .tdb-attention,
+.tcc .tdb-jobs,
+.tcc .tdb-tokens {
+  min-height: 0;
+}
+
+.tcc-flow-card {
+  padding: 18px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tcc-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  color: color-mix(in srgb, var(--success) 85%, var(--tdb-fg));
+  background: color-mix(in srgb, var(--success) 13%, transparent);
+}
+
+.tcc-live-pill .tdb-live-dot {
+  width: 5px;
+  height: 5px;
+  box-shadow: none;
+}
+
+.tcc-caption {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--tdb-muted);
+}
+
+.tcc-flow-card .tdb-side-head {
+  justify-content: flex-start;
+}
+
+/* ---------- Plan flow ---------- */
+
+.tdb-flow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.tdb-flow-stages {
+  display: grid;
+}
+
+.tdb-flow-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: var(--tdb-muted);
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+
+.tdb-flow-stage:hover {
+  background: var(--tdb-pill-bg);
+  color: var(--tdb-fg);
+}
+
+.tdb-flow-stage:focus-visible,
+.tdb-flow-failed:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.tdb-flow-stage-label {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.tdb-flow-stage-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--tdb-fg);
+}
+
+.tdb-flow-stage[data-active="false"] .tdb-flow-stage-count {
+  color: var(--tdb-faint);
+}
+
+.tdb-flow-svg {
+  display: block;
+  width: 100%;
+  height: 128px;
+}
+
+.tdb-flow-pillar {
+  fill: color-mix(in srgb, var(--foreground) 4%, var(--card));
+  stroke: var(--input);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.tdb-flow-node {
+  fill: var(--card);
+  stroke: var(--tdb-faint);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.tdb-flow-node[data-active="true"] {
+  fill: var(--primary);
+  stroke: color-mix(in srgb, var(--primary) 70%, var(--foreground));
+}
+
+.tdb-flow-branch {
+  fill: none;
+  stroke: var(--warning);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.tdb-flow-failed {
+  position: absolute;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border: var(--border-width) solid color-mix(in srgb, var(--warning) 40%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--warning) 12%, var(--card));
+  color: color-mix(in srgb, var(--warning) 85%, var(--tdb-fg));
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.tdb-flow-failed .tdb-flow-stage-count {
+  font-size: var(--text-xs);
+  color: inherit;
+}
+
+@container tdb (max-width: 820px) {
+  .tcc-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container tdb (max-width: 640px) {
+  .tdb-flow-stage-label {
+    font-size: var(--text-2xs);
+  }
+
+  .tcc-caption {
+    display: none;
+  }
+}
+
+/* A dashboard chart hosted inside another page's panel (Insights): the chart keeps the dashboard's
+   variables and look, but not its page chrome - no background, no own scroll, no fixed height. */
+.tdb-root.tcc-embedded {
+  height: auto;
+  overflow: visible;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }

@@ -25,7 +25,8 @@
       "gitAtRisk_one": "Git ({{n}}) · {{count}} at risk",
       "gitAtRisk_other": "Git ({{n}}) · {{count}} at risk",
       "gitAtRiskUncounted_one": "Git · {{count}} at risk",
-      "gitAtRiskUncounted_other": "Git · {{count}} at risk"
+      "gitAtRiskUncounted_other": "Git · {{count}} at risk",
+      "trace": "Trace ({{n}})"
     },
     "questions": {
       "label": "Questions",
@@ -59,6 +60,15 @@
     "discussDraft": {
       "outcome": "I want to discuss the outcome of this plan before completing it. Summarize what was done and point out anything worth a closer look.",
       "plan": "I want to discuss this plan before executing it. Summarize it and point out anything you would change."
+    },
+    "trace": {
+      "title": "Runs",
+      "summary": "{{runs}} runs · {{time}} · {{tokens}} tok · {{cost}}",
+      "empty": "This plan has not run yet",
+      "run": "Run",
+      "time": "Time",
+      "tokens": "Tok",
+      "cost": "Cost"
     }
   },
   "actions": {
@@ -268,5 +278,29 @@
   "share": {
     "linkCopiedTitle": "Link Copied",
     "linkCopied": "Plan share link copied to clipboard"
+  },
+  "overview": {
+    "title": "Plans",
+    "subtitle": "{{queue}} queued · {{active}} running · {{review}} in review · plans run by missions live in Missions",
+    "new": "New plan",
+    "search": "Search plans",
+    "noMatch": "No plans match your search",
+    "emptyFilter": "Nothing here right now",
+    "filter": {
+      "queue": "Queue",
+      "active": "Running",
+      "review": "Review",
+      "done": "Done",
+      "all": "All"
+    },
+    "columns": {
+      "id": "ID",
+      "plan": "Plan",
+      "project": "Project",
+      "level": "Level",
+      "state": "State",
+      "checks": "Checks",
+      "updated": "Updated"
+    }
   }
 }

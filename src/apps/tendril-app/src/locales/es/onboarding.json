@@ -133,5 +133,20 @@
     "noVerifications": "No se configuró ninguna verificación. Añádelas desde los ajustes del proyecto.",
     "noReviewActions": "No se configuró ninguna acción de revisión. Añádelas desde los ajustes del proyecto.",
     "harnessEmpty": "El proyecto está registrado. Si el agente de configuración sigue en ejecución, sus resultados aparecerán aquí cuando termine - vuelve a abrir el proyecto desde su fila en Proyectos para verlos."
+  },
+  "folderBrowser": {
+    "title": "Elegir una carpeta de repositorio",
+    "description": "Carpetas del equipo donde se ejecuta Tendril. Los repositorios están marcados; haz doble clic en uno para elegirlo.",
+    "up": "Subir un nivel",
+    "home": "Carpeta personal",
+    "pathLabel": "Ruta de la carpeta",
+    "showHidden": "Mostrar carpetas ocultas",
+    "hideHidden": "Ocultar carpetas ocultas",
+    "empty": "No hay subcarpetas aquí.",
+    "gitRepo": "Repositorio Git",
+    "truncated": "Solo se muestran las primeras 2000 carpetas. Escribe una ruta para ir más allá.",
+    "cancel": "Cancelar",
+    "select": "Usar esta carpeta",
+    "selectRepo": "Usar este repositorio"
   }
 }

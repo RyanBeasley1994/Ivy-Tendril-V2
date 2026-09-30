@@ -23,6 +23,7 @@ export {
 } from "./lib/theme";
 export {
   applyThemePreset,
+  COMMAND_CENTER_DARK,
   getThemePreset,
   themePresetCss,
   DEFAULT_THEME_PRESET_ID,

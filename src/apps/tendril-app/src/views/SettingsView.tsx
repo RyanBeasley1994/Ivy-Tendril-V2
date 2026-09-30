@@ -59,8 +59,11 @@ const ConfigEditorView = React.lazy(() =>
 );
 import { AppearanceSection } from "./settings/AppearanceSection";
 import { CodingAgentSection } from "./settings/CodingAgentSection";
+import { HarnessVisibilitySection } from "./settings/HarnessVisibilitySection";
+import { GitBranchSection } from "./settings/GitBranchSection";
 import { LevelsSection } from "./settings/LevelsSection";
 import { SecurityTunnelingSection } from "./settings/SecurityTunnelingSection";
+import { RemoteServerSection } from "./settings/RemoteServerSection";
 
 interface SettingsViewProps {
   serviceInfo: ServiceInfo | null;
@@ -984,6 +987,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onSaveRaw={saveRawKey}
                   />
 
+                  <HarnessVisibilitySection config={config} onSaveRaw={saveRawKey} />
+
                   {/* No V1 counterpart: V2 resolves models itself, and the catalogue governs which model
                     the agent above is launched with, so it sits inside that row rather than as its own. */}
                   <ModelCatalogCard />
@@ -1069,6 +1074,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               {on(SettingsTag.Levels) && <LevelsSection levels={levels} onSaveRaw={saveRawKey} />}
 
+              {on(SettingsTag.Git) && <GitBranchSection config={config} onSaveRaw={saveRawKey} />}
+
               {on(SettingsTag.Notifications) && (
                 <SettingsSection
                   title={t("notifications.title")}
@@ -1120,7 +1127,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               )}
 
               {securitySelected && !isEditingConfig && !isAddingProject && (
-                <SecurityTunnelingSection />
+                <>
+                  <RemoteServerSection />
+                  <SecurityTunnelingSection />
+                </>
               )}
 
               {on(SettingsTag.Advanced) && (

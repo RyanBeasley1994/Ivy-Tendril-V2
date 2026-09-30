@@ -66,7 +66,9 @@
     "reviewAction": "Ação de Revisão",
     "agent": "Agente",
     "plan": "Plano {{id}}",
-    "job": "Tarefa {{id}}"
+    "job": "Tarefa {{id}}",
+    "insights": "Insights",
+    "missions": "Missões"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Planos",
       "review": "Revisão",
       "recommendations": "Recomendações",
-      "jobs": "Tarefas"
+      "jobs": "Tarefas",
+      "insights": "Insights",
+      "missions": "Missões"
+    },
+    "navGroup": {
+      "overview": "Visão geral",
+      "work": "Trabalho",
+      "observe": "Observar"
     },
     "chat": "Chat",
     "inbox": "Caixa de Entrada",
@@ -93,6 +102,16 @@
       "help": "Ajuda",
       "documentation": "Documentação",
       "reportIssue": "Relatar Problema"
+    },
+    "status": {
+      "online": "Serviço online",
+      "reconnecting": "Reconectando…",
+      "offline": "Serviço offline"
+    },
+    "usage": {
+      "title": "{{agent}} · limite de {{window}}",
+      "used": "{{percent}} usado",
+      "resets": "Reinicia em {{countdown}}"
     }
   },
   "shortcuts": {
@@ -185,7 +204,8 @@
     },
     "ownership": {
       "adoptedExternal": "Externo Adotado",
-      "managed": "Gerenciado"
+      "managed": "Gerenciado",
+      "remote": "Remoto"
     }
   },
   "serviceStatus": {
@@ -252,5 +272,16 @@
     "reviewActionFailed": "A ação de revisão {{endpoint}} falhou ({{status}}): {{detail}}",
     "subscribeFailed": "Falha ao assinar {{url}}: HTTP {{status}}",
     "agentTerminalFailed": "Falha no terminal do agente {{endpoint}}: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Pesquisar planos",
+    "agentSession": "Sessão de agente",
+    "inbox": "Abrir caixa de entrada"
+  },
+  "pageSubtitles": {
+    "jobs": "Toda execução de agente: ao vivo, na fila e concluída",
+    "recommendations": "Continuações sugeridas pelos planos concluídos",
+    "inbox": "Issues e propostas para virar planos",
+    "pullRequests": "Pull requests abertos pelos seus planos"
   }
 }

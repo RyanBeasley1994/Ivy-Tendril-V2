@@ -1,7 +1,6 @@
 import React from "react";
 import { Button, IconButton } from "@ivy-interactive/components/ui";
 import { FolderOpen, Plus, X } from "lucide-react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "../../i18n";
 import {
   classifyRepoPath,
@@ -12,6 +11,7 @@ import {
   normalizeRepoPath,
   sanitizeProjectName,
 } from "./validation";
+import { useRepoFolderPicker } from "./useRepoFolderPicker";
 
 export interface FirstProjectStepProps {
   projectName: string;
@@ -98,18 +98,18 @@ export function FirstProjectStep({
       : null;
 
   /**
-   * V1's Browse button fills the input rather than adding straight away, so the path can still be
-   * edited before it is added.
+   * Adds the picked folder straight away. V1's Browse only filled the input, which left the operator
+   * holding a path in the box, a disabled Next, and no hint that Add Repository was the missing step.
    */
+  const { browse: pickFolder, dialog: folderDialog } = useRepoFolderPicker();
   const browse = async () => {
     setAddError(null);
     try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: t("firstProject.browseTitle"),
-      });
-      if (typeof selected === "string" && selected) setRepoInput(selected);
+      const draft = repoInput.trim();
+      const selected = await pickFolder(
+        draft && classifyRepoPath(draft) === "local" ? draft : undefined,
+      );
+      if (selected) addRepo(selected);
     } catch (err) {
       // The native picker is unavailable outside the Tauri shell; typing a path still works.
       setAddError(
@@ -122,6 +122,7 @@ export function FirstProjectStep({
 
   return (
     <div className="space-y-4" data-testid="onboarding-step-project">
+      {folderDialog}
       <h3 className="text-base font-semibold text-foreground">{t("firstProject.title")}</h3>
       <p className="text-sm text-muted-foreground">{t("firstProject.description")}</p>
 

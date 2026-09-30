@@ -103,3 +103,18 @@ pub async fn put_config_text_handler(
         ),
     }
 }
+
+/// `POST /api/config/branch-preview` — what plan, milestone and mission branches would be called
+/// under the `git:` settings in the body, before they are saved.
+pub async fn branch_preview_handler(
+    State(state): State<Arc<AppState>>,
+    Json(git): Json<tendril_core::git::branch_naming::GitSettings>,
+) -> impl IntoResponse {
+    let settings = state.settings_snapshot().settings.clone();
+    let project = settings
+        .projects
+        .first()
+        .map(|p| p.name.clone())
+        .unwrap_or_else(|| "MyApp".to_string());
+    Json(tendril_core::git::branch_naming::preview_branch_names(&git, &project))
+}

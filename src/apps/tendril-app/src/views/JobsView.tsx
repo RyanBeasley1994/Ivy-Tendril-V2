@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader } from "../components/page/Page";
 import { EllipsisVertical, Pause, Trash } from "lucide-react";
 import { ClearJobsDialog, DeleteJobDialog } from "@ivy-interactive/components/dialogs";
 import {
@@ -156,6 +157,7 @@ export const JobsView: React.FC<JobsViewProps> = ({
   onStopAll,
 }) => {
   const { t } = useTranslation("jobs");
+  const { t: tc } = useTranslation("common");
   const labels = useEnumLabels();
 
   /**
@@ -536,6 +538,7 @@ export const JobsView: React.FC<JobsViewProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3" data-testid="jobs-view">
+      <PageHeader title={tc("appTitles.jobs")} subtitle={tc("pageSubtitles.jobs")} />
       {tableError && (
         <ErrorBanner data-testid="jobs-table-error">
           {t("table.queryError", { error: tableError })}

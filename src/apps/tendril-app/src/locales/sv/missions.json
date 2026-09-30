@@ -1,0 +1,118 @@
+{
+  "page": {
+    "title": "Uppdrag",
+    "subtitle": "Mål som en AI-orkestrerare delar upp i milstolpar, kör, bedömer och levererar som en pull request.",
+    "new": "Nytt uppdrag"
+  },
+  "empty": {
+    "title": "Inga uppdrag än",
+    "description": "Ge Tendril en hel funktion. Orkestreraren planerar milstolpar, kör varje, bedömer den mot sina acceptanskriterier och validerar resultatet.",
+    "steps": {
+      "plan": {
+        "title": "Planera",
+        "body": "Planeraren undersöker målet och skriver milstolpar med acceptanskriterier."
+      },
+      "approve": {
+        "title": "Godkänn",
+        "body": "Du granskar milstolparna en gång. Det är det enda stoppet."
+      },
+      "run": {
+        "title": "Kör & bedöm",
+        "body": "Utförare genomför varje milstolpe; granskaren godkänner, försöker igen eller planerar om."
+      },
+      "ship": {
+        "title": "Validera & leverera",
+        "body": "Valideraren kör alla verifieringar på grenen, sedan går allt till granskning som en PR."
+      }
+    }
+  },
+  "list": {
+    "title": "Uppdrag",
+    "progress": "{{passed}}/{{total}} milstolpar"
+  },
+  "stats": {
+    "progress": "Framsteg",
+    "replans": "{{count}} av {{max}} omplaneringar använda",
+    "cost": "Kostnad",
+    "costCap": "av {{cap}} budget",
+    "noCap": "Inget budgettak",
+    "step": "Aktuellt steg",
+    "attempts": "Försök per milstolpe",
+    "attemptsHint": "Pausar för dig efter så många"
+  },
+  "actions": {
+    "approve": "Godkänn milstolpar",
+    "pause": "Pausa",
+    "resume": "Återuppta",
+    "cancel": "Avbryt",
+    "openPlan": "Öppna plan"
+  },
+  "banner": {
+    "paused": "Pausat: {{reason}}",
+    "approve": "Granska milstolparna nedan. När du godkänt kör uppdraget självt tills det är redo för granskning.",
+    "planning": "Planeraren undersöker målet och skriver milstolpar…",
+    "review": "Validerat. Integrationsplanen är i granskning; skapa dess pull request där."
+  },
+  "milestones": {
+    "title": "Milstolpar",
+    "none": "Milstolpar visas här när planeraren har skrivit dem.",
+    "attempt": "försök {{attempt}}/{{max}}",
+    "feedback": "Granskare: {{feedback}}",
+    "commits_one": "{{count}} commit",
+    "commits_other": "{{count}} commits"
+  },
+  "agents": {
+    "title": "Agenter",
+    "hint": "Den harness varje roll körs på. Ändringar gäller från nästa jobb.",
+    "default": "Standardagent",
+    "roles": {
+      "planner": "Planerare",
+      "worker": "Utförare",
+      "judge": "Granskare",
+      "validator": "Validerare"
+    },
+    "describe": {
+      "planner": "Undersöker målet och skriver milstolparna",
+      "worker": "Genomför varje milstolpe (ExecutePlan / RetryPlan)",
+      "judge": "Granskar varje milstolpe mot sina kriterier",
+      "validator": "Kör alla verifieringar och kontrollerar målet"
+    }
+  },
+  "goal": {
+    "title": "Mål"
+  },
+  "log": {
+    "title": "Aktivitet"
+  },
+  "state": {
+    "Planning": "Planerar",
+    "AwaitingApproval": "Väntar på godkännande",
+    "Running": "Pågår",
+    "Validating": "Validerar",
+    "Review": "I granskning",
+    "Completed": "Klart",
+    "Paused": "Pausat",
+    "Cancelled": "Avbrutet"
+  },
+  "milestoneState": {
+    "Pending": "Väntar",
+    "Executing": "Körs",
+    "Judging": "Granskas",
+    "Passed": "Godkänd",
+    "Skipped": "Överhoppad"
+  },
+  "step": {
+    "Plan": "Planering",
+    "Execute": "Utförande",
+    "Retry": "Nytt försök",
+    "Judge": "Granskning",
+    "Final": "Validering"
+  },
+  "create": {
+    "needsProject": "Välj ett projekt för uppdraget: det körs i projektets repon från första steget."
+  },
+  "machines": {
+    "local": "Den här datorn",
+    "startedElsewhere": "Startat på {{machine}}. Det körs där; byt server för att följa det."
+  }
+}

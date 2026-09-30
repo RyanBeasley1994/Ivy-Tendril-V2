@@ -226,3 +226,15 @@
     background: transparent;
   }
 }
+
+/* Command center (dark): column labels as small mono capitals, the way the dashboard's Live Jobs
+   table labels its columns. Outside `@layer base` so it outranks the cells' utility classes, and on
+   the label row only: the filter row's inputs keep their own type. */
+.dark .ivy-data-table thead tr:first-child th {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}

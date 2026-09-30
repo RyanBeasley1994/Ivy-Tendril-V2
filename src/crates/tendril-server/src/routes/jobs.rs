@@ -265,6 +265,15 @@ pub struct StartJobRequest {
     /// inherit the plan's own chat session.
     #[serde(rename = "chatSessionId", default)]
     pub chat_session_id: Option<String>,
+    /// The coding agent (harness) to run this job on, in place of the configured `codingAgent`.
+    #[serde(default)]
+    pub agent: Option<String>,
+    /// The model to run with, in place of the one the agent's profile picks.
+    #[serde(default)]
+    pub model: Option<String>,
+    /// The effort to run with, in place of the one the agent's profile picks.
+    #[serde(default)]
+    pub effort: Option<String>,
 }
 
 /// `?force=true` is the operator's override of the duplicate gates, for the job types that carry no
@@ -318,6 +327,10 @@ pub async fn start_job(
             .chat_session_id
             .map(|id| id.trim().to_string())
             .filter(|id| !id.is_empty()),
+        agent: req.agent,
+        model: req.model,
+        effort: req.effort,
+        ..Default::default()
     };
 
     match state.job_manager.start_job_with(req.args, opts).await {

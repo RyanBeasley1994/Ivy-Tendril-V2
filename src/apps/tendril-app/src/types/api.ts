@@ -223,7 +223,7 @@ export interface ServiceInfo {
   pid?: number;
   capabilities: string[];
   message: string;
-  ownership?: "AdoptedExternal" | "Managed";
+  ownership?: "AdoptedExternal" | "Managed" | "Remote";
   statusBadge?: string;
   crashCount?: number;
 }
@@ -375,6 +375,26 @@ export type OnboardingReason =
   | "Completed"
   | "Dismissed";
 
+/** One subdirectory in a {@link DirectoryListing}. */
+export interface DirectoryEntry {
+  name: string;
+  path: string;
+  /** Holds a `.git` directory, or the `.git` file a worktree has. */
+  isGitRepo: boolean;
+}
+
+/** `GET /api/fs/directories`: a folder on the daemon's host, for the repository folder browser. */
+export interface DirectoryListing {
+  path: string;
+  parent: string | null;
+  home: string | null;
+  isGitRepo: boolean;
+  entries: DirectoryEntry[];
+  truncated: boolean;
+  /** `/` on Unix; the mounted drive letters on Windows. */
+  roots: string[];
+}
+
 export interface OnboardingStatus {
   needed: boolean;
   reason: OnboardingReason;
@@ -454,6 +474,8 @@ export interface VersionInfo {
 
 export interface StartJobArgs {
   type: string;
+  /** The coding agent (harness) to run the job on, in place of the configured default. */
+  agent?: string;
   project?: string;
   description?: string;
   folderPath?: string;
@@ -838,4 +860,145 @@ export interface AgentCostBreakdown {
   cost: number;
   tokens: number;
   planCount: number;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Missions: a goal an AI orchestrator breaks into milestones, runs, judges and validates. The shapes
+// are `tendril_core::missions::model`'s, as `/api/missions` serves them.
+// ---------------------------------------------------------------------------------------------
+
+export type MissionState =
+  | "Planning"
+  | "AwaitingApproval"
+  | "Running"
+  | "Validating"
+  | "Review"
+  | "Completed"
+  | "Paused"
+  | "Cancelled";
+
+export type MilestoneState = "Pending" | "Executing" | "Judging" | "Passed" | "Skipped";
+
+export type MissionStep = "Plan" | "Execute" | "Retry" | "Judge" | "Final";
+
+/** The harness one role runs on. Unset model/effort fall back to the agent's profile. */
+export interface RoleAgent {
+  agent: string;
+  model?: string;
+  effort?: string;
+}
+
+/** The harness per role; a role left out runs on the configured default agent. */
+export interface MissionAgents {
+  planner?: RoleAgent;
+  worker?: RoleAgent;
+  judge?: RoleAgent;
+  validator?: RoleAgent;
+}
+
+export type MissionRoleName = keyof MissionAgents;
+
+export interface Milestone {
+  id: string;
+  title: string;
+  objective: string;
+  spec: string;
+  acceptance: string[];
+  state: MilestoneState;
+  /** The plan folder name, once the milestone has started. */
+  plan?: string;
+  attempts: number;
+  feedback?: string;
+  summary?: string;
+  commits?: string[];
+  cost: number;
+}
+
+export interface MissionJobRef {
+  jobId: string;
+  step: MissionStep;
+  milestone?: string;
+  /** The harness the job was started on, as `agent · model · effort`. */
+  agent?: string;
+}
+
+export interface MissionLogEntry {
+  at: string;
+  milestone?: string;
+  message: string;
+}
+
+export interface MissionBudget {
+  maxAttempts: number;
+  maxReplans: number;
+  maxCost?: number;
+}
+
+export interface Mission {
+  id: string;
+  folderName: string;
+  folderPath: string;
+  title: string;
+  goal: string;
+  project: string;
+  state: MissionState;
+  pausedFrom?: MissionState;
+  pauseReason?: string;
+  created: string;
+  updated: string;
+  approvedAt?: string;
+  integrationPlan?: string;
+  /** The integration plan's current state; only on single-mission responses. */
+  integrationPlanState?: string | null;
+  branch?: string;
+  milestones: Milestone[];
+  currentJob?: MissionJobRef;
+  jobs?: MissionJobRef[];
+  budget: MissionBudget;
+  agents?: MissionAgents;
+  replans: number;
+  cost: number;
+  summary?: string;
+  log?: MissionLogEntry[];
+}
+
+export interface CreateMissionRequest {
+  title: string;
+  goal: string;
+  project: string;
+  maxAttempts?: number;
+  maxReplans?: number;
+  maxCost?: number;
+  agents?: MissionAgents;
+}
+
+export type MissionAction = "approve" | "pause" | "resume" | "cancel" | "complete" | "reconcile";
+
+/** Which daemon an action goes to: the connected one (`remote`) or this machine's (`local`). */
+export type MachineTarget = "remote" | "local";
+
+/** One machine the create-plan picker offers, while the app is connected to a remote server. */
+export interface Machine {
+  id: MachineTarget;
+  /** The remote's host; empty for this machine. */
+  host: string;
+  /** A daemon is running there. */
+  available: boolean;
+}
+
+/** `git:` in `config.yaml`: branch naming. A missing field uses the daemon's default. */
+export interface GitSettings {
+  branchPrefix?: string;
+  branchTemplate?: string;
+  missionBranchTemplate?: string;
+  /** `false`: agents commit unsigned (for signers that need a person present). Absent: git config. */
+  signCommits?: boolean;
+}
+
+/** What each kind of branch would be called under a `GitSettings`, rendered by the daemon. */
+export interface BranchPreview {
+  plan: string;
+  milestone: string;
+  mission: string;
+  unknownTokens: string[];
 }

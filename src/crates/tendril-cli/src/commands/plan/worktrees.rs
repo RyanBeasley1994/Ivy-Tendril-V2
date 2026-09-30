@@ -51,8 +51,18 @@ pub(super) fn cleanup(args: PlanCleanupArgs, plans_dir: PathBuf) -> anyhow::Resu
 }
 
 /// `plan add-worktree <id> <repo>`.
-pub(super) fn add(args: PlanAddWorktreeArgs, plans_dir: PathBuf) -> anyhow::Result<()> {
+pub(super) fn add(
+    args: PlanAddWorktreeArgs,
+    plans_dir: PathBuf,
+    tendril_home: &std::path::Path,
+) -> anyhow::Result<()> {
     let folder = resolve_plan_folder(&args.plan_id, &plans_dir)?;
+    // The daemon records the branch before the agent starts; this covers a plan whose first worktree
+    // is made from a shell. Unreadable config means default naming, never a failed command.
+    let git_settings = tendril_core::config::load_config(&tendril_core::config::get_config_path(tendril_home))
+        .map(|s| s.git)
+        .unwrap_or_default();
+    tendril_core::git::branch_naming::assign_branch_name(&folder, &git_settings)?;
     let repo_path = PathBuf::from(&args.repo);
     let creation = add_worktree(
         &repo_path,

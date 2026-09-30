@@ -1,0 +1,117 @@
+{
+  "page": {
+    "title": "ミッション",
+    "subtitle": "AI オーケストレーターがマイルストーンに分割し、実行・評価して 1 つのプルリクエストにまとめる目標。",
+    "new": "新しいミッション"
+  },
+  "empty": {
+    "title": "ミッションはまだありません",
+    "description": "機能をまるごと Tendril に任せましょう。オーケストレーターがマイルストーンを計画し、各マイルストーンを実行して受け入れ基準で評価し、結果を検証します。",
+    "steps": {
+      "plan": {
+        "title": "計画",
+        "body": "プランナーが目標を調査し、受け入れ基準付きのマイルストーンを書きます。"
+      },
+      "approve": {
+        "title": "承認",
+        "body": "マイルストーンを一度確認します。止まるのはここだけです。"
+      },
+      "run": {
+        "title": "実行と評価",
+        "body": "ワーカーが各マイルストーンを実装し、ジャッジが承認・再試行・再計画します。"
+      },
+      "ship": {
+        "title": "検証と出荷",
+        "body": "バリデーターがブランチで全検証を実行し、1 つの PR としてレビューへ回します。"
+      }
+    }
+  },
+  "list": {
+    "title": "ミッション",
+    "progress": "{{passed}}/{{total}} マイルストーン"
+  },
+  "stats": {
+    "progress": "進捗",
+    "replans": "再計画 {{count}}/{{max}} 回",
+    "cost": "コスト",
+    "costCap": "予算 {{cap}} 中",
+    "noCap": "予算上限なし",
+    "step": "現在のステップ",
+    "attempts": "マイルストーンごとの試行回数",
+    "attemptsHint": "この回数を超えると一時停止します"
+  },
+  "actions": {
+    "approve": "マイルストーンを承認",
+    "pause": "一時停止",
+    "resume": "再開",
+    "cancel": "キャンセル",
+    "openPlan": "プランを開く"
+  },
+  "banner": {
+    "paused": "一時停止中: {{reason}}",
+    "approve": "下のマイルストーンを確認してください。承認後はレビュー準備ができるまで自動で進みます。",
+    "planning": "プランナーが目標を調査し、マイルストーンを書いています…",
+    "review": "検証済みです。統合プランはレビュー中です。そこからプルリクエストを作成してください。"
+  },
+  "milestones": {
+    "title": "マイルストーン",
+    "none": "プランナーが書き終えるとここに表示されます。",
+    "attempt": "試行 {{attempt}}/{{max}}",
+    "feedback": "ジャッジ: {{feedback}}",
+    "commits_other": "{{count}} コミット"
+  },
+  "agents": {
+    "title": "エージェント",
+    "hint": "各ロールが使うハーネス。変更は次のジョブから適用されます。",
+    "default": "既定のエージェント",
+    "roles": {
+      "planner": "プランナー",
+      "worker": "ワーカー",
+      "judge": "ジャッジ",
+      "validator": "バリデーター"
+    },
+    "describe": {
+      "planner": "目標を調査しマイルストーンを書く",
+      "worker": "各マイルストーンを実装 (ExecutePlan / RetryPlan)",
+      "judge": "各マイルストーンを基準で評価",
+      "validator": "全検証を実行し目標を確認"
+    }
+  },
+  "goal": {
+    "title": "目標"
+  },
+  "log": {
+    "title": "アクティビティ"
+  },
+  "state": {
+    "Planning": "計画中",
+    "AwaitingApproval": "承認待ち",
+    "Running": "実行中",
+    "Validating": "検証中",
+    "Review": "レビュー中",
+    "Completed": "完了",
+    "Paused": "一時停止",
+    "Cancelled": "キャンセル済み"
+  },
+  "milestoneState": {
+    "Pending": "待機中",
+    "Executing": "実行中",
+    "Judging": "評価中",
+    "Passed": "合格",
+    "Skipped": "スキップ"
+  },
+  "step": {
+    "Plan": "計画",
+    "Execute": "実行",
+    "Retry": "再試行",
+    "Judge": "評価",
+    "Final": "検証"
+  },
+  "create": {
+    "needsProject": "ミッションにはプロジェクトを選んでください。最初のステップからそのリポジトリで実行されます。"
+  },
+  "machines": {
+    "local": "このマシン",
+    "startedElsewhere": "{{machine}} で開始しました。そちらで実行されます。追跡するにはサーバーを切り替えてください。"
+  }
+}

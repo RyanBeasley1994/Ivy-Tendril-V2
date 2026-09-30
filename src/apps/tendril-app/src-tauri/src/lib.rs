@@ -12,6 +12,7 @@ pub use commands::config::*;
 pub use commands::dashboard::*;
 pub use commands::github::*;
 pub use commands::inbox::*;
+pub use commands::missions::*;
 pub use commands::jobs::*;
 pub use commands::local_file::*;
 pub use commands::plan_files::*;
@@ -19,6 +20,7 @@ pub use commands::plans::*;
 pub use commands::project_assets::*;
 pub use commands::promptwares::*;
 pub use commands::pull_requests::*;
+pub use commands::remote::*;
 pub use commands::state::*;
 pub use commands::tables::*;
 pub use commands::tunnel::*;
@@ -42,6 +44,10 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(ui_store)
         .setup(|app| {
+            // Before anything reads `.master`: a saved remote connection replaces it for the whole
+            // session. See `service::remote`.
+            service::remote::init_at_startup(&daemon::resolve_tendril_home());
+
             // Connect the WebSocket bridge, which re-emits daemon events to the frontend as
             // `plan-event` / `job-event` / `chat-event`. Without this the UI only ever sees state it
             // fetched itself.
@@ -194,6 +200,10 @@ pub fn run() {
             cmd_get_config_text,
             cmd_put_config_text,
             cmd_get_promptware_program,
+            cmd_list_directories,
+            cmd_get_remote_connection,
+            cmd_connect_remote,
+            cmd_disconnect_remote,
             cmd_get_onboarding_status,
             cmd_complete_onboarding,
             cmd_dismiss_onboarding,
@@ -266,6 +276,15 @@ pub fn run() {
             cmd_list_inbox_proposals,
             cmd_accept_inbox_proposal,
             cmd_dismiss_inbox_proposal,
+            cmd_list_missions,
+            cmd_list_machines,
+            cmd_get_mission,
+            cmd_create_mission,
+            cmd_mission_action,
+            cmd_set_mission_budget,
+            cmd_set_mission_agents,
+            cmd_preview_branch_names,
+            cmd_set_mission_milestones,
             cmd_list_pull_requests,
             cmd_sync_pull_requests,
             cmd_get_dashboard_activity,

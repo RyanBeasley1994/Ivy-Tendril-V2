@@ -34,6 +34,16 @@ import {
 } from "lucide-react";
 import type { ServiceInfo, VersionInfo } from "../types/api";
 import { OfflineBanner } from "../components/OfflineBanner";
+// Lazy for the same budget, behind a placeholder of its own height so the page never shifts when
+// it arrives.
+const ShellTopBar = React.lazy(() =>
+  import("./shell/ShellTopBar").then((m) => ({ default: m.ShellTopBar })),
+);
+// Lazy: the usage card reads the agent's provider through the settings modules, which the shell's
+// eager chunk has no other reason to carry (`code-splitting.test.tsx` holds it to a budget).
+const SidebarStatus = React.lazy(() =>
+  import("./shell/SidebarStatus").then((m) => ({ default: m.SidebarStatus })),
+);
 import { ServiceStatusBanner } from "../components/service";
 import { UpdateNotice } from "../components/UpdateNotice";
 import { getUpdateCommand } from "../utils/updateCommand";
@@ -83,7 +93,7 @@ export const PAGE_TAB_ID = "$page";
  * (`JobsView`'s `fillHeight` table: a `shrink-0` toolbar over a `flex-1 min-h-0` body) and keep its
  * `position: sticky` header working. A page-level scroll container would break both.
  */
-export const CONTENT_PADDED_CLASS = "flex-1 overflow-y-auto p-4";
+export const CONTENT_PADDED_CLASS = "flex-1 overflow-y-auto px-5 pb-6 pt-4";
 
 /** The full-bleed content container: no padding, and the app owns every scroll inside it. */
 export const CONTENT_FULL_BLEED_CLASS = "flex min-h-0 flex-1 flex-col overflow-hidden";
@@ -119,6 +129,8 @@ const pageIcon = (navId: string): string | undefined => {
       return "Lightbulb";
     case "jobs":
       return "Activity";
+    case "missions":
+      return "Rocket";
     case "pull-requests":
       return "GitPullRequest";
     case "icebox":
@@ -162,17 +174,44 @@ export const buildNavItems = (
   const badge = (count: number | undefined) =>
     count !== undefined && count > 0 ? String(count) : undefined;
 
+  const overview = t("sidebar.navGroup.overview");
+  const work = t("sidebar.navGroup.work");
+  const observe = t("sidebar.navGroup.observe");
+
+  // Grouped the way the command-center sidebar reads: where you land, what is in flight, and what
+  // it adds up to. Jobs sits beside Plans and Review because it is work, not analysis.
   return [
-    { id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "ChartBar" },
-    { id: "plans", label: t("sidebar.nav.plans"), icon: "Feather", badge: badge(badges.plans) },
-    { id: "review", label: t("sidebar.nav.review"), icon: "ThumbsUp", badge: badge(badges.review) },
+    { id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "LayoutGrid", group: overview },
+    {
+      id: "plans",
+      label: t("sidebar.nav.plans"),
+      icon: "Feather",
+      badge: badge(badges.plans),
+      group: work,
+    },
+    {
+      id: "review",
+      label: t("sidebar.nav.review"),
+      icon: "ThumbsUp",
+      badge: badge(badges.review),
+      group: work,
+    },
+    { id: "missions", label: t("sidebar.nav.missions"), icon: "Rocket", group: work },
+    {
+      id: "jobs",
+      label: t("sidebar.nav.jobs"),
+      icon: "Activity",
+      badge: badge(badges.jobs),
+      group: work,
+    },
     {
       id: "recommendations",
       label: t("sidebar.nav.recommendations"),
       icon: "Lightbulb",
       badge: badge(badges.recommendations),
+      group: observe,
     },
-    { id: "jobs", label: t("sidebar.nav.jobs"), icon: "Activity", badge: badge(badges.jobs) },
+    { id: "insights", label: t("sidebar.nav.insights"), icon: "ChartBar", group: observe },
   ].map((item) => ({ ...item, isActive: item.id === activeNav }));
 };
 
@@ -334,6 +373,8 @@ interface ShellLayoutProps {
   reviewCount?: number;
   recommendationsCount?: number;
   jobCount?: number;
+  /** Jobs in the Running state, for the top bar's live chip. */
+  runningJobCount?: number;
   chatCount?: number;
   onCheckForUpdates?: () => void;
   /**
@@ -402,6 +443,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   reviewCount,
   recommendationsCount,
   jobCount,
+  runningJobCount,
   chatCount,
   onCheckForUpdates,
   sidebarList = null,
@@ -535,6 +577,9 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   const pageTitle =
     list && pageNavId === list.appId ? pageTabTitle(pageAppTitle, list) : pageAppTitle;
 
+  // The top bar names the page by its nav row when it has one, so it reads "Work › Plans".
+  const pageNavItem = navItems.find((item) => item.id === pageNavId);
+
   const shellTabs: ShellTabDto[] = [
     { id: PAGE_TAB_ID, title: pageTitle, icon: pageIcon(pageNavId), closable: false },
     ...stripSessions.map((session) => ({ id: session.id, title: session.title })),
@@ -600,13 +645,19 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
         onReconnect={onReconnect}
       />
 
-      {/* Service Health & Ownership Status Banner */}
-      <ServiceStatusBanner
-        serviceInfo={serviceInfo}
-        onRestart={onRestartService}
-        onRepair={onRepairService}
-        onViewDiagnostics={onViewDiagnostics}
-      />
+      {/* The full service banner only when the daemon is not connected; a healthy one is the top
+          bar's service chip instead, so the window stays edge to edge. */}
+      {serviceInfo?.state !== "Connected" && (
+        <ServiceStatusBanner
+          serviceInfo={serviceInfo}
+          onRestart={onRestartService}
+          onRepair={onRepairService}
+          onViewDiagnostics={onViewDiagnostics}
+        />
+      )}
+
+      {/* The band above the sidebar's brand row, beside the macOS traffic lights, drags the window. */}
+      <div className="tauri-drag-strip" data-tauri-drag-region aria-hidden="true" />
 
       <div className="flex-1 overflow-hidden">
         <TendrilShell
@@ -694,6 +745,9 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                     handleListEvent(list, evt, args)
                   }
                 />
+                <React.Suspense fallback={null}>
+                  <SidebarStatus serviceInfo={serviceInfo} connectionStatus={connectionStatus} />
+                </React.Suspense>
               </>
             ),
             /* V1's footer is `[settingsMenu, inboxButton]`: the settings cog is a
@@ -737,13 +791,32 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                from the registry - is what keeps it checkable; a view that wants the frame's edges
                says so in `APP_DESCRIPTORS`, not with classes on its root `<div>`. */
             Content: (
-              <main
-                data-testid="shell-content"
-                data-full-bleed={isPageFullBleed}
-                className={isPageFullBleed ? CONTENT_FULL_BLEED_CLASS : CONTENT_PADDED_CLASS}
-              >
-                {children}
-              </main>
+              <>
+                <React.Suspense
+                  fallback={<div className="h-12 shrink-0 border-b border-border/80" aria-hidden="true" />}
+                >
+                  <ShellTopBar
+                    section={pageNavItem?.group}
+                    title={pageNavItem?.label ?? pageTitle}
+                    onSearch={onPlanSearch}
+                    onAgentSession={onNewChat ?? onOpenChat}
+                    onInbox={() => onSelectNav("inbox")}
+                    runningJobs={runningJobCount}
+                    onJobs={() => onSelectNav("jobs")}
+                    serviceInfo={serviceInfo}
+                    onRestartService={onRestartService}
+                    onRepairService={onRepairService}
+                    onViewDiagnostics={onViewDiagnostics}
+                  />
+                </React.Suspense>
+                <main
+                  data-testid="shell-content"
+                  data-full-bleed={isPageFullBleed}
+                  className={isPageFullBleed ? CONTENT_FULL_BLEED_CLASS : CONTENT_PADDED_CLASS}
+                >
+                  {children}
+                </main>
+              </>
             ),
             /* V1's `sessionContents`: every session pane stays mounted and only the active one is
                visible, so a review action's terminal keeps its buffer - and keeps running - while

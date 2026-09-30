@@ -18,7 +18,7 @@ import { i18n, Trans, useTranslation } from "../../i18n";
  * without mounting anything.
  */
 
-export type PlanDetailTab = "plan" | "details" | "diff" | "recommendations" | "git";
+export type PlanDetailTab = "plan" | "details" | "trace" | "diff" | "recommendations" | "git";
 
 /**
  * The actions `runAction` runs, by id. The id is what the page tracks as in flight and compares -

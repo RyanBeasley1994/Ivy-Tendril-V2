@@ -31,6 +31,8 @@ export interface PlanWorkspaceSlots {
   Questions?: React.ReactNode[];
   Toolbar?: React.ReactNode[];
   ProjectBadges?: React.ReactNode[];
+  /** A persistent panel at the head of the right column, above the chat (a review verdict). */
+  Aside?: React.ReactNode[];
 }
 
 export interface PlanWorkspaceProps {

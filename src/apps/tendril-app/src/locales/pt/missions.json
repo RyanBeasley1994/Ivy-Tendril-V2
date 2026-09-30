@@ -1,0 +1,118 @@
+{
+  "page": {
+    "title": "Missões",
+    "subtitle": "Objetivos que um orquestrador de IA divide em marcos, executa, avalia e entrega como um único pull request.",
+    "new": "Nova missão"
+  },
+  "empty": {
+    "title": "Nenhuma missão ainda",
+    "description": "Entregue uma funcionalidade inteira ao Tendril. O orquestrador planeja marcos, executa cada um, avalia pelos critérios de aceitação e valida o resultado.",
+    "steps": {
+      "plan": {
+        "title": "Planejar",
+        "body": "O planejador pesquisa o objetivo e escreve marcos com critérios de aceitação."
+      },
+      "approve": {
+        "title": "Aprovar",
+        "body": "Você revisa os marcos uma vez. É a única parada."
+      },
+      "run": {
+        "title": "Executar e avaliar",
+        "body": "Executores implementam cada marco; o juiz aceita, repete ou replaneja."
+      },
+      "ship": {
+        "title": "Validar e entregar",
+        "body": "O validador roda todas as verificações no branch e tudo vai para revisão como um PR."
+      }
+    }
+  },
+  "list": {
+    "title": "Missões",
+    "progress": "{{passed}}/{{total}} marcos"
+  },
+  "stats": {
+    "progress": "Progresso",
+    "replans": "{{count}} de {{max}} replanejamentos usados",
+    "cost": "Gasto",
+    "costCap": "de {{cap}} de orçamento",
+    "noCap": "Sem limite de orçamento",
+    "step": "Etapa atual",
+    "attempts": "Tentativas por marco",
+    "attemptsHint": "Pausa para você após esse número"
+  },
+  "actions": {
+    "approve": "Aprovar marcos",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "cancel": "Cancelar",
+    "openPlan": "Abrir plano"
+  },
+  "banner": {
+    "paused": "Pausada: {{reason}}",
+    "approve": "Revise os marcos abaixo. Depois de aprovada, a missão segue sozinha até ficar pronta para revisão.",
+    "planning": "O planejador está pesquisando o objetivo e escrevendo os marcos…",
+    "review": "Validada. O plano de integração está em revisão; crie o pull request por lá."
+  },
+  "milestones": {
+    "title": "Marcos",
+    "none": "Os marcos aparecem aqui quando o planejador os escreve.",
+    "attempt": "tentativa {{attempt}}/{{max}}",
+    "feedback": "Juiz: {{feedback}}",
+    "commits_one": "{{count}} commit",
+    "commits_other": "{{count}} commits"
+  },
+  "agents": {
+    "title": "Agentes",
+    "hint": "O harness de cada papel. Mudanças valem a partir do próximo job.",
+    "default": "Agente padrão",
+    "roles": {
+      "planner": "Planejador",
+      "worker": "Executor",
+      "judge": "Juiz",
+      "validator": "Validador"
+    },
+    "describe": {
+      "planner": "Pesquisa o objetivo e escreve os marcos",
+      "worker": "Implementa cada marco (ExecutePlan / RetryPlan)",
+      "judge": "Revisa cada marco pelos critérios",
+      "validator": "Roda todas as verificações e confere o objetivo"
+    }
+  },
+  "goal": {
+    "title": "Objetivo"
+  },
+  "log": {
+    "title": "Atividade"
+  },
+  "state": {
+    "Planning": "Planejando",
+    "AwaitingApproval": "Aguardando aprovação",
+    "Running": "Em execução",
+    "Validating": "Validando",
+    "Review": "Em revisão",
+    "Completed": "Concluída",
+    "Paused": "Pausada",
+    "Cancelled": "Cancelada"
+  },
+  "milestoneState": {
+    "Pending": "Pendente",
+    "Executing": "Executando",
+    "Judging": "Em avaliação",
+    "Passed": "Aprovado",
+    "Skipped": "Ignorado"
+  },
+  "step": {
+    "Plan": "Planejamento",
+    "Execute": "Execução",
+    "Retry": "Nova tentativa",
+    "Judge": "Avaliação",
+    "Final": "Validação"
+  },
+  "create": {
+    "needsProject": "Escolha um projeto para a missão: ela roda nos repositórios dele desde a primeira etapa."
+  },
+  "machines": {
+    "local": "Esta máquina",
+    "startedElsewhere": "Iniciado em {{machine}}. Ele roda lá; troque de servidor para acompanhar."
+  }
+}

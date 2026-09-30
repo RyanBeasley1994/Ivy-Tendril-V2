@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, FolderOpen, Plus, X } from "lucide-react";
 import { Button, Callout, Input, Spinner } from "@ivy-interactive/components/ui";
 import { jobsStore } from "../../state/jobsStore";
 import { describeBridgeError } from "../../types/api";
@@ -12,6 +12,7 @@ import {
   isValidRepoPath,
   normalizeRepoPath,
 } from "../onboarding/validation";
+import { useRepoFolderPicker } from "../onboarding/useRepoFolderPicker";
 
 /**
  * `Apps/Settings/Blades/AddProjectBladeView.cs`, which is what the "Add Project" sub-item under the
@@ -131,8 +132,8 @@ export const AddProjectView: React.FC<AddProjectViewProps> = ({
    * does not recognise, dedupe case-insensitively, then seed the name. Without the refusal a typo
    * like `tendril` reaches `POST /api/projects` as a repository path and is stored as one.
    */
-  const addRepo = () => {
-    const path = normalizeRepoPath(repoDraft);
+  const addRepo = (raw: string = repoDraft) => {
+    const path = normalizeRepoPath(raw);
     if (path === "") return;
     setRepoError(null);
 
@@ -150,6 +151,28 @@ export const AddProjectView: React.FC<AddProjectViewProps> = ({
       if (leaf !== "") setName(leaf);
     }
     setRepoDraft("");
+  };
+
+  const { browse: pickFolder, dialog: folderDialog } = useRepoFolderPicker();
+  /**
+   * Adds the picked folder straight away rather than filling the input, so choosing a repository is
+   * one action. Typing a path or URL still works for anything the picker cannot reach.
+   */
+  const browse = async () => {
+    setRepoError(null);
+    try {
+      const draft = repoDraft.trim();
+      const selected = await pickFolder(
+        draft && classifyRepoPath(draft) === "local" ? draft : undefined,
+      );
+      if (selected) addRepo(selected);
+    } catch (err) {
+      setRepoError(
+        t("firstProject.browseUnavailable", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
   };
 
   /**
@@ -215,6 +238,7 @@ export const AddProjectView: React.FC<AddProjectViewProps> = ({
             void create(false);
           }}
         >
+          {folderDialog}
           <div className="space-y-2">
             <p className="text-xs font-medium text-foreground">{t("repoPicker.label")}</p>
             {repos.map((path, index) => (
@@ -249,8 +273,17 @@ export const AddProjectView: React.FC<AddProjectViewProps> = ({
               <Button
                 type="button"
                 variant="outline"
+                onClick={() => void browse()}
+                data-testid="add-project-browse"
+              >
+                <FolderOpen className="size-4" aria-hidden />
+                {t("firstProject.browse")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 disabled={repoDraft.trim() === ""}
-                onClick={addRepo}
+                onClick={() => addRepo()}
               >
                 <Plus className="size-4" aria-hidden />
                 {t("repoPicker.add")}

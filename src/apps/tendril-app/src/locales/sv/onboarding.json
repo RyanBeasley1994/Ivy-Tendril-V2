@@ -132,5 +132,20 @@
     "noVerifications": "Inga verifieringar konfigurerades. Lägg till dem i projektets inställningar.",
     "noReviewActions": "Inga granskningsåtgärder konfigurerades. Lägg till dem i projektets inställningar.",
     "harnessEmpty": "Projektet är registrerat. Om konfigurationsagenten fortfarande körs visas resultaten här när den är klar – öppna projektet igen från dess rad under Projekt för att se dem."
+  },
+  "folderBrowser": {
+    "title": "Välj en repository-mapp",
+    "description": "Mappar på datorn som kör Tendril. Repositoryn är markerade; dubbelklicka för att välja ett.",
+    "up": "Upp en nivå",
+    "home": "Hemmapp",
+    "pathLabel": "Mappsökväg",
+    "showHidden": "Visa dolda mappar",
+    "hideHidden": "Dölj dolda mappar",
+    "empty": "Inga undermappar här.",
+    "gitRepo": "Git-repository",
+    "truncated": "Endast de första 2000 mapparna visas. Skriv en sökväg för att gå vidare.",
+    "cancel": "Avbryt",
+    "select": "Använd den här mappen",
+    "selectRepo": "Använd det här repositoryt"
   }
 }

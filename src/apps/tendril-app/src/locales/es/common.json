@@ -66,7 +66,9 @@
     "reviewAction": "Acción de revisión",
     "agent": "Agente",
     "plan": "Plan {{id}}",
-    "job": "Trabajo {{id}}"
+    "job": "Trabajo {{id}}",
+    "insights": "Análisis",
+    "missions": "Misiones"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Planes",
       "review": "Revisión",
       "recommendations": "Recomendaciones",
-      "jobs": "Trabajos"
+      "jobs": "Trabajos",
+      "insights": "Análisis",
+      "missions": "Misiones"
+    },
+    "navGroup": {
+      "overview": "Resumen",
+      "work": "Trabajo",
+      "observe": "Observar"
     },
     "chat": "Chat",
     "inbox": "Bandeja de entrada",
@@ -93,6 +102,16 @@
       "help": "Ayuda",
       "documentation": "Documentación",
       "reportIssue": "Informar de un problema"
+    },
+    "status": {
+      "online": "Servicio en línea",
+      "reconnecting": "Reconectando…",
+      "offline": "Servicio sin conexión"
+    },
+    "usage": {
+      "title": "{{agent}} · límite de {{window}}",
+      "used": "{{percent}} usado",
+      "resets": "Se restablece en {{countdown}}"
     }
   },
   "shortcuts": {
@@ -185,7 +204,8 @@
     },
     "ownership": {
       "adoptedExternal": "Externo adoptado",
-      "managed": "Gestionado"
+      "managed": "Gestionado",
+      "remote": "Remoto"
     }
   },
   "serviceStatus": {
@@ -252,5 +272,16 @@
     "reviewActionFailed": "La acción de revisión {{endpoint}} falló ({{status}}): {{detail}}",
     "subscribeFailed": "Error al suscribirse a {{url}}: HTTP {{status}}",
     "agentTerminalFailed": "La terminal del agente {{endpoint}} falló: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Buscar planes",
+    "agentSession": "Sesión de agente",
+    "inbox": "Abrir bandeja"
+  },
+  "pageSubtitles": {
+    "jobs": "Cada ejecución de agente: en curso, en cola y terminada",
+    "recommendations": "Seguimientos sugeridos por tus planes completados",
+    "inbox": "Issues y propuestas para convertir en planes",
+    "pullRequests": "Pull requests abiertos por tus planes"
   }
 }

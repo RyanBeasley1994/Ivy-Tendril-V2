@@ -101,11 +101,13 @@ api:
 
 ### Session Protection (Web UI)
 
-When hosting Tendril on a remote server or exposing it over a network, enable session protection in **Settings > Security & Tunneling** or configure credentials via environment variables:
+When hosting Tendril on a remote server or exposing it over a network, enable session protection in **Settings > Security & Tunneling**, or on a server without the desktop app run:
 
-- `TENDRIL_AUTH_USERNAME` — Login username (default: `admin`).
-- `TENDRIL_AUTH_PASSWORD` — Plaintext password to hash on startup.
-- `TENDRIL_AUTH_HASH_SECRET` — 32-byte base64 string (`openssl rand -base64 32` via [OpenSSL](https://www.openssl.org)) used as the [Argon2](https://en.wikipedia.org/wiki/Argon2) pepper secret.
+```bash
+tendril set-password
+```
+
+It prompts for the password with echo off (or reads it from stdin when piped) and writes the `auth:` block below. A running server picks the change up without a restart. `tendril hash-password` prints the same values if you would rather edit `config.yaml` yourself.
 
 In `config.yaml`, passwords are stored as Argon2 PHC hashes under the `auth:` block with optional rate limiting:
 
@@ -119,6 +121,15 @@ auth:
     baseDelaySeconds: 1.0
     maxDelaySeconds: 60.0
 ```
+
+### Connecting the Desktop App to a Remote Server
+
+The desktop app can use a Tendril server on another machine, such as a VPS, instead of the local one:
+
+1. On the server, set a password with `tendril set-password`, then start it listening beyond loopback: `tendril run --host 0.0.0.0` (port 5010 by default). Prefer HTTPS in front of it — a reverse proxy, or the full-access tunnel below — over a plain `http://` port open to the internet.
+2. In the desktop app, open **Settings > Security & Tunneling > Remote Server**, enter the server's address (`203.0.113.7`, `my-vps:5010`, or an `https://` URL) and the password, and click **Connect**. The app restarts onto the server.
+
+The folder browser behind **Browse** then lists folders on the server, since that is where repositories are checked out. **Disconnect** returns the app to the local server.
 
 ### Cloudflare Tunnels
 

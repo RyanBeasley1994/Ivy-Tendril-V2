@@ -34,6 +34,7 @@ import { VerificationReportSheet } from "./sheets/VerificationReportSheet";
 import { ArtifactFileSheet, ArtifactThumbnail } from "../components/ArtifactFileSheet";
 import { NoContentView } from "../components/NoContentView";
 import { VERIFICATION_BADGE_VARIANT } from "../utils/verificationStatus";
+import { VerdictPanel } from "./review/VerdictPanel";
 import { PlanChatPanel } from "../components/chat/PlanChatPanel";
 import { ProjectBadges } from "../components/ProjectBadges";
 import { TendrilProcessWallpaper } from "../components/TendrilProcessWallpaper";
@@ -1323,41 +1324,15 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
                badge in an auto-width column, the verification's name in the rest of the row, and "No
                verifications" when the plan has none. Clicking an outcome badge or verification name
                opens its detailed markdown report in a right-hand sheet (`VerificationReportSheet`). */
-            Verifications: [
-              verifications.length === 0 ? (
-                <p
-                  key="none"
-                  data-testid="no-verifications"
-                  className="text-sm text-muted-foreground"
-                >
-                  {t("verifications.none")}
-                </p>
-              ) : (
-                <div key="rows" className="grid grid-cols-[auto_1fr] items-center gap-2">
-                  {verifications.map((v) => (
-                    <React.Fragment key={v.name}>
-                      <Badge
-                        data-testid={`review-verification-${v.name}`}
-                        variant={VERIFICATION_BADGE_VARIANT[v.status]}
-                        className="cursor-pointer justify-self-start hover:opacity-80"
-                        onClick={() => setOpenVerification(v.name)}
-                        title={t("verifications.viewReport", { name: v.name })}
-                      >
-                        {verificationStatusLabel(t, v.status)}
-                      </Badge>
-                      <button
-                        type="button"
-                        data-testid={`review-verification-button-${v.name}`}
-                        onClick={() => setOpenVerification(v.name)}
-                        className="truncate text-left text-sm font-medium text-foreground transition-colors hover:text-primary hover:underline focus:outline-none"
-                        title={t("verifications.viewReport", { name: v.name })}
-                      >
-                        {v.name}
-                      </button>
-                    </React.Fragment>
-                  ))}
-                </div>
-              ),
+            /* The V2 verdict column: the checks and what the plan cost, pinned above the chat
+               instead of behind a hover popover in the tab strip. */
+            Aside: [
+              <VerdictPanel
+                key="verdict"
+                verifications={verifications}
+                jobs={(jobs ?? []).filter((job) => job.planId === selectedPlan.id)}
+                onOpenReport={setOpenVerification}
+              />,
             ],
             /**
              * `Review/ContentView.cs:328`: `isShareMode ? null : new PlanChatView(selectedPlan)` —

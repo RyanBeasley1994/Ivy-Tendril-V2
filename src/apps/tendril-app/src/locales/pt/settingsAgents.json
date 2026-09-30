@@ -125,5 +125,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "agora mesmo"
+  },
+  "harnesses": {
+    "title": "Harness nos seletores",
+    "hint": "Escolha quais agentes de código aparecem ao criar um plano ou escolher os agentes de uma missão. O agente padrão sempre aparece.",
+    "default": "Padrão"
   }
 }

@@ -131,5 +131,20 @@
     "noVerifications": "未配置任何验证。请在项目设置中添加。",
     "noReviewActions": "未配置任何审查操作。请在项目设置中添加。",
     "harnessEmpty": "项目已注册。如果项目配置智能体仍在运行，其结果将在完成后显示在这里，请从“项目”行重新打开该项目查看。"
+  },
+  "folderBrowser": {
+    "title": "选择仓库文件夹",
+    "description": "运行 Tendril 的机器上的文件夹。仓库已标记；双击即可选择。",
+    "up": "上一级",
+    "home": "主文件夹",
+    "pathLabel": "文件夹路径",
+    "showHidden": "显示隐藏文件夹",
+    "hideHidden": "隐藏隐藏文件夹",
+    "empty": "此处没有子文件夹。",
+    "gitRepo": "Git 仓库",
+    "truncated": "仅显示前 2000 个文件夹。输入路径可继续浏览。",
+    "cancel": "取消",
+    "select": "使用此文件夹",
+    "selectRepo": "使用此仓库"
   }
 }

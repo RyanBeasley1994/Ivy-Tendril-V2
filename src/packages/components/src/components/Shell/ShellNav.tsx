@@ -4,9 +4,11 @@ import {
   ChartBar,
   Feather,
   GitPullRequest,
+  LayoutGrid,
   Lightbulb,
   type LucideIcon,
   MessageSquare,
+  Rocket,
   Snowflake,
   ThumbsUp,
   Trash2,
@@ -27,6 +29,7 @@ interface ShellNavProps extends ShellWidgetProps {
    bundled; unknown names fall back to the label's initial. */
 const navIcons: Record<string, LucideIcon> = {
   ChartBar,
+  LayoutGrid,
   Feather,
   ThumbsUp,
   Lightbulb,
@@ -34,6 +37,7 @@ const navIcons: Record<string, LucideIcon> = {
   GitPullRequest,
   Snowflake,
   MessageSquare,
+  Rocket,
   Trash2,
 };
 
@@ -152,31 +156,38 @@ export const ShellNav: React.FC<ShellNavProps> = ({
         ref={itemsRef}
         style={showDivider && navHeight != null ? { maxHeight: navHeight } : undefined}
       >
-        {items.map((item) => (
-          <ShellTooltip key={item.id} content={item.label} enabled={collapsed} side="right">
-            <button
-              className="tsh-nav-item"
-              data-active={item.isActive === true}
-              data-menu-item={item.id}
-              onClick={() => select(item.id)}
-              aria-label={item.label}
-            >
-              <span className="tsh-row">
-                <span className="tsh-nav-item-main">
-                  <span className="tsh-nav-icon">
-                    <NavIcon icon={item.icon} label={item.label} />
+        {items.map((item, index) => (
+          <React.Fragment key={item.id}>
+            {item.group && item.group !== items[index - 1]?.group && (
+              <div className="tsh-nav-group" aria-hidden="true">
+                {item.group}
+              </div>
+            )}
+            <ShellTooltip content={item.label} enabled={collapsed} side="right">
+              <button
+                className="tsh-nav-item"
+                data-active={item.isActive === true}
+                data-menu-item={item.id}
+                onClick={() => select(item.id)}
+                aria-label={item.label}
+              >
+                <span className="tsh-row">
+                  <span className="tsh-nav-item-main">
+                    <span className="tsh-nav-icon">
+                      <NavIcon icon={item.icon} label={item.label} />
+                    </span>
+                    <span className="tsh-nav-label">{item.label}</span>
                   </span>
-                  <span className="tsh-nav-label">{item.label}</span>
+                  {item.badge && (
+                    <Badge numeric className="tsh-nav-badge">
+                      {/* The rail fits two digits beside the icon; larger counts cap at 99. */}
+                      {collapsed && item.badge.length > 2 ? "99" : item.badge}
+                    </Badge>
+                  )}
                 </span>
-                {item.badge && (
-                  <Badge numeric className="tsh-nav-badge">
-                    {/* The rail fits two digits beside the icon; larger counts cap at 99. */}
-                    {collapsed && item.badge.length > 2 ? "99" : item.badge}
-                  </Badge>
-                )}
-              </span>
-            </button>
-          </ShellTooltip>
+              </button>
+            </ShellTooltip>
+          </React.Fragment>
         ))}
       </div>
       {showDivider && (

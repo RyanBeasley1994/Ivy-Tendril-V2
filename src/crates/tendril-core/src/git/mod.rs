@@ -1,3 +1,4 @@
+pub mod branch_naming;
 pub mod clone;
 pub mod coauthor_hooks;
 pub mod git_tab;

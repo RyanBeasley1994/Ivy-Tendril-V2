@@ -336,7 +336,27 @@
     "submit": "Create",
     "placeholder": "Enter task description...",
     "emptyDescription": "Please enter a description for the new plan.",
-    "continueInChat": "Chat with {{agent}}"
+    "continueInChat": "Chat with {{agent}}",
+    "missionTitle": "Create New Mission",
+    "modeLabel": "What to create",
+    "modePlan": "Plan",
+    "modeMission": "Mission",
+    "modeMissionHint": "An orchestrator breaks the task into milestones, runs and judges each one, validates the whole, and ships one pull request. You approve the milestones once.",
+    "harness": "Harness",
+    "defaultAgent": "Default ({{agent}})",
+    "submitMission": "Start Mission",
+    "roles": {
+      "planner": "Planner",
+      "worker": "Worker",
+      "judge": "Judge",
+      "validator": "Validator"
+    },
+    "machineLabel": "Create on",
+    "machineUnavailable": "No Tendril daemon is running there",
+    "agents": "Agents",
+    "defaultShort": "Default",
+    "mixedAgents_one": "{{count}} agent",
+    "mixedAgents_other": "{{count}} agents"
   },
   "recommendationNote": {
     "submit": "Submit",

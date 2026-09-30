@@ -19,8 +19,13 @@ pub async fn cmd_get_job(id: String) -> Result<JobDetailDto, BridgeError> {
 }
 
 #[tauri::command]
-pub async fn cmd_start_job(args: serde_json::Value) -> Result<StartJobResponseDto, BridgeError> {
-    get_client_from_master()?.start_job(args).await
+pub async fn cmd_start_job(
+    args: serde_json::Value,
+    target: Option<String>,
+) -> Result<StartJobResponseDto, BridgeError> {
+    crate::commands::get_client_for_target(target.as_deref())?
+        .start_job(args)
+        .await
 }
 
 #[tauri::command]

@@ -6,6 +6,7 @@ import {
   FileText,
   Folder,
   FolderGit2,
+  GitBranch,
   ListOrdered,
   Lock,
   Mail,
@@ -28,6 +29,7 @@ export const SettingsTag = {
   Vault: "vault",
   Promptwares: "promptwares",
   Levels: "levels",
+  Git: "git",
   Notifications: "notifications",
   Security: "security",
   /** V1 keeps a separate tag that selects the same row and the same view as `security`. */
@@ -98,6 +100,7 @@ export function settingsSections(isBeta: boolean, t: TFunction<"settings">): Set
      */
     { label: t("sections.promptwares"), tag: SettingsTag.Promptwares, icon: Wand },
     { label: t("sections.levels"), tag: SettingsTag.Levels, icon: ListOrdered },
+    { label: t("sections.git"), tag: SettingsTag.Git, icon: GitBranch },
     { label: t("sections.notifications"), tag: SettingsTag.Notifications, icon: Bell },
     { label: t("sections.security"), tag: SettingsTag.Security, icon: Lock },
     { label: t("sections.advanced"), tag: SettingsTag.Advanced, icon: Cog },

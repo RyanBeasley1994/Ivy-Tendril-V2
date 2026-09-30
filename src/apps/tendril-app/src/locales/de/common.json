@@ -66,7 +66,9 @@
     "reviewAction": "Review-Aktion",
     "agent": "Agent",
     "plan": "Plan {{id}}",
-    "job": "Job {{id}}"
+    "job": "Job {{id}}",
+    "insights": "Einblicke",
+    "missions": "Missionen"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Pläne",
       "review": "Review",
       "recommendations": "Empfehlungen",
-      "jobs": "Jobs"
+      "jobs": "Jobs",
+      "insights": "Einblicke",
+      "missions": "Missionen"
+    },
+    "navGroup": {
+      "overview": "Übersicht",
+      "work": "Arbeit",
+      "observe": "Beobachten"
     },
     "chat": "Chat",
     "inbox": "Posteingang",
@@ -93,6 +102,16 @@
       "help": "Hilfe",
       "documentation": "Dokumentation",
       "reportIssue": "Problem melden"
+    },
+    "status": {
+      "online": "Dienst online",
+      "reconnecting": "Verbinde erneut…",
+      "offline": "Dienst offline"
+    },
+    "usage": {
+      "title": "{{agent}} · {{window}}-Limit",
+      "used": "{{percent}} verbraucht",
+      "resets": "Zurückgesetzt in {{countdown}}"
     }
   },
   "shortcuts": {
@@ -183,7 +202,8 @@
     },
     "ownership": {
       "adoptedExternal": "Extern übernommen",
-      "managed": "Verwaltet"
+      "managed": "Verwaltet",
+      "remote": "Remote"
     }
   },
   "serviceStatus": {
@@ -250,5 +270,16 @@
     "reviewActionFailed": "Review-Aktion {{endpoint}} fehlgeschlagen ({{status}}): {{detail}}",
     "subscribeFailed": "Abonnieren von {{url}} fehlgeschlagen: HTTP {{status}}",
     "agentTerminalFailed": "Agenten-Terminal {{endpoint}} fehlgeschlagen: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Pläne durchsuchen",
+    "agentSession": "Agent-Sitzung",
+    "inbox": "Posteingang öffnen"
+  },
+  "pageSubtitles": {
+    "jobs": "Jeder Agentenlauf: laufend, wartend und beendet",
+    "recommendations": "Folgeaufgaben, die abgeschlossene Pläne vorschlagen",
+    "inbox": "Issues und Vorschläge, aus denen Pläne werden",
+    "pullRequests": "Von deinen Plänen eröffnete Pull Requests"
   }
 }

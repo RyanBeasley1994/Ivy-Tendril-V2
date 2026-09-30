@@ -38,6 +38,27 @@ impl MasterDiscovery {
     }
 
     pub async fn check_service_health(&self) -> Result<ServiceHealthDto, String> {
+        if let Some(remote) = crate::service::remote::master_override() {
+            let probe =
+                probe_daemon_health(&remote.scheme, &remote.host, remote.port, &remote.secret)
+                    .await;
+            return Ok(match probe {
+                Ok((api_ver, caps)) => ServiceHealthDto {
+                    status: "Healthy".to_string(),
+                    is_healthy: true,
+                    port: Some(remote.port),
+                    api_version: Some(api_ver),
+                    capabilities: caps,
+                },
+                Err(state) => ServiceHealthDto {
+                    status: format!("{state:?}"),
+                    is_healthy: false,
+                    port: Some(remote.port),
+                    api_version: None,
+                    capabilities: Vec::new(),
+                },
+            });
+        }
         let path = self.master_path();
         if !path.exists() {
             return Err(format!("Master file not found at {}", path.display()));
@@ -99,6 +120,52 @@ impl MasterDiscovery {
 
     pub async fn get_service_info(&self) -> ServiceInfoDto {
         let tendril_home_str = self.tendril_home.to_string_lossy().to_string();
+
+        if let Some(remote) = crate::service::remote::master_override() {
+            let probe =
+                probe_daemon_health(&remote.scheme, &remote.host, remote.port, &remote.secret)
+                    .await;
+            let (state, badge, api_version, capabilities, message) = match probe {
+                Ok((api, caps)) => (
+                    "Connected",
+                    "Connected (Remote)",
+                    Some(api),
+                    caps,
+                    format!("Connected to remote server {}", remote.host),
+                ),
+                Err(DaemonConnectionState::Unauthenticated) => (
+                    "Unauthenticated",
+                    "Unauthenticated",
+                    None,
+                    Vec::new(),
+                    crate::service::remote::status()
+                        .error
+                        .unwrap_or_else(|| "The remote server refused the login".to_string()),
+                ),
+                Err(_) => (
+                    "Disconnected",
+                    "Disconnected",
+                    None,
+                    Vec::new(),
+                    format!("Remote server {} is not reachable", remote.host),
+                ),
+            };
+            return ServiceInfoDto {
+                state: state.to_string(),
+                tendril_home: tendril_home_str,
+                port: Some(remote.port),
+                host: Some(remote.host),
+                scheme: Some(remote.scheme),
+                version: None,
+                api_version,
+                pid: None,
+                capabilities,
+                message,
+                ownership: Some("Remote".to_string()),
+                status_badge: Some(badge.to_string()),
+                crash_count: None,
+            };
+        }
         let path = self.master_path();
 
         if !path.exists() {

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../components/page/Page";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   Check,
@@ -415,6 +416,7 @@ export const InboxView: React.FC<InboxViewProps> = ({
   onOpenChat,
 }) => {
   const { t } = useTranslation("inbox");
+  const { t: tc } = useTranslation("common");
   const format = useFormatters();
   const { language } = useLocale();
   const [selectedCategory, setSelectedCategory] = useState<InboxCategory>("my-issues");
@@ -1382,7 +1384,9 @@ export const InboxView: React.FC<InboxViewProps> = ({
        child of an absolutely-positioned pane), so `h-full` resolves, and `min-h-0` on this and every
        scrolling descendant is what lets them shrink below their content — a flex child's default
        `min-height: auto` is precisely how a bounded table turns into a page that scrolls. */
-    <div data-testid="inbox-view" className="flex h-full min-h-0 gap-4">
+    <div data-testid="inbox-view" className="flex h-full min-h-0 flex-col gap-4">
+      <PageHeader title={tc("appTitles.inbox")} subtitle={tc("pageSubtitles.inbox")} />
+    <div data-testid="inbox-body" className="flex min-h-0 flex-1 gap-4">
       {/* V1 composes the inbox as `new SidebarLayout(content, sidebar)`; `SidebarView` builds these
           rows. Categories are a rail, not a row of pills. */}
       <div
@@ -1932,6 +1936,7 @@ export const InboxView: React.FC<InboxViewProps> = ({
           void fetchIssues({ silent: true });
         }}
       />
+    </div>
     </div>
   );
 };

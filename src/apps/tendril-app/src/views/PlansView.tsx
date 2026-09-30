@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useShortcut, type ShellBadgeDto } from "@ivy-interactive/components/tendril";
 import type { Job, PlanSummary } from "../types/api";
 import { NoContentView } from "../components/NoContentView";
+import { PlansOverview } from "./plans/PlansOverview";
 import { TendrilProcessWallpaper } from "../components/TendrilProcessWallpaper";
 import { usePublishSidebarList, type ShellSidebarList } from "../state/sidebarListStore";
 import { isPlanId, resolvePlanSelection } from "../state/plansStore";
@@ -272,13 +273,10 @@ export const PlansView: React.FC<PlansViewProps> = ({
     previousQueue.current = listPlans;
   }, [listPlans, selectedId]);
 
-  useEffect(() => {
-    const target = defaultSelection?.id;
-    if (!target || autoOpenedId.current === target) return;
-    autoOpenedId.current = target;
-    setOpenedPlanId(target);
-    onSelectPlan(target);
-  }, [defaultSelection?.id, onSelectPlan]);
+  /* The V2 Plans page is a list of every plan, so arriving here no longer opens the newest draft on
+     its own (V1's `ResolveSelection` auto-open). The resolution still feeds the sidebar's selection. */
+  void defaultSelection;
+  void autoOpenedId;
 
   /* The level badges' colours, read from `config.yaml`'s `levels` the way V1's rows read them off
      `IConfigService`. Undefined until the read lands, which renders the neutral badge rather than a
@@ -306,14 +304,14 @@ export const PlansView: React.FC<PlansViewProps> = ({
   usePublishSidebarList(sidebarList);
 
   return (
-    <div className="h-full" data-testid="plans-view">
+    <div className="flex h-full min-h-0 flex-col" data-testid="plans-view">
       {/* `ContentView.BuildNoSelectionView`, which V1 keeps as two separate cases: an empty list is
           `NoContentView("No plans", "Plans you create will appear here")`, and a list with nothing
           selected is the one muted line pointing at the sidebar. The second is unreachable in a
           running app now that a non-empty list always resolves a selection — it is unreachable in V1
           for the same reason, and kept here for the same reason: it is what a list with a selection
           the host has not applied yet shows. */}
-      {listPlans.length === 0 ? (
+      {plans.length === 0 ? (
         /* Plans is a full-bleed app (V1's `.RemoveParentPadding()` on the workspace), so the shell
            gives this page no padding and the empty state has to inset itself. V1 reaches
            `NoContentView` *before* the workspace branch, so the empty case keeps the host's 16px and
@@ -336,12 +334,15 @@ export const PlansView: React.FC<PlansViewProps> = ({
           />
         </div>
       ) : (
-        <div
-          data-testid="plans-no-selection"
-          className="flex h-full items-center justify-center text-sm text-muted-foreground"
-        >
-          {t("plansView.noSelection")}
-        </div>
+        <PlansOverview
+          plans={plans}
+          jobs={jobs ?? []}
+          onSelectPlan={(planId) => {
+            setOpenedPlanId(planId);
+            onSelectPlan(planId);
+          }}
+          onNewPlan={onNewPlan}
+        />
       )}
     </div>
   );

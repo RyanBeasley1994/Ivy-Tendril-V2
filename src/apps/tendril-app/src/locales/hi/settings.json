@@ -18,7 +18,8 @@
     "security": "सुरक्षा और टनलिंग",
     "advanced": "उन्नत",
     "newsletter": "न्यूज़लेटर",
-    "fallback": "कॉन्फ़िगरेशन"
+    "fallback": "कॉन्फ़िगरेशन",
+    "git": "Git और ब्रांच"
   },
   "nav": {
     "ariaLabel": "कॉन्फ़िगरेशन अनुभाग",
@@ -358,5 +359,56 @@
     "emailLabel": "ईमेल पता",
     "subscribing": "सदस्यता ली जा रही है…",
     "subscribe": "सदस्यता लें"
+  },
+  "remoteServer": {
+    "title": "रिमोट सर्वर",
+    "hint": "इस मशीन के बजाय किसी दूसरी मशीन, जैसे VPS, पर Tendril उपयोग करें। सर्वर पर पासवर्ड सेट होना चाहिए (सत्र सुरक्षा)।",
+    "urlLabel": "सर्वर पता",
+    "urlPlaceholder": "203.0.113.7 या https://my-server.example.com",
+    "urlHint": "IP या होस्ट नाम पोर्ट 5010 उपयोग करता है। टनल या रिवर्स प्रॉक्सी के लिए https:// जोड़ें।",
+    "usernameLabel": "उपयोगकर्ता नाम",
+    "defaultUser": "admin",
+    "passwordLabel": "पासवर्ड",
+    "connect": "कनेक्ट करें",
+    "disconnect": "डिस्कनेक्ट करें और यह मशीन उपयोग करें",
+    "connectedAs": "{{username}} के रूप में कनेक्टेड",
+    "notAuthenticated": "लॉग इन नहीं: {{error}}",
+    "restarting": "Tendril फिर से शुरू हो रहा है…"
+  },
+  "git": {
+    "title": "Git और ब्रांच",
+    "hint": "Tendril प्लान और मिशन की ब्रांच का नाम कैसे रखता है, और एजेंट कैसे कमिट करते हैं।",
+    "prefixLabel": "ब्रांच प्रीफ़िक्स",
+    "prefixHint": "{prefix} का मान। डिफ़ॉल्ट tendril/।",
+    "templateLabel": "प्लान ब्रांच",
+    "templateHint": "प्लान और मिशन के माइलस्टोन। डिफ़ॉल्ट {prefix}{folder}।",
+    "missionTemplateLabel": "मिशन ब्रांच",
+    "missionTemplateHint": "मिशन की इंटीग्रेशन ब्रांच, जहाँ सभी माइलस्टोन आते हैं और जहाँ से उसका पुल रिक्वेस्ट बनता है।",
+    "previewTitle": "पूर्वावलोकन",
+    "previewUnavailable": "पूर्वावलोकन उपलब्ध नहीं: सेवा तक पहुँच नहीं।",
+    "preview": {
+      "plan": "प्लान",
+      "milestone": "माइलस्टोन",
+      "mission": "मिशन"
+    },
+    "unknownTokens": "अज्ञात टोकन: {{tokens}}",
+    "tokensTitle": "टोकन",
+    "tokens": {
+      "prefix": "ब्रांच प्रीफ़िक्स",
+      "folder": "प्लान फ़ोल्डर, जैसे 00042-AddLogin",
+      "id": "प्लान ID, जैसे 00042",
+      "title": "प्लान शीर्षक, जैसे AddLogin",
+      "slug": "kebab-case शीर्षक, जैसे add-login",
+      "project": "प्रोजेक्ट, kebab-case",
+      "level": "लेवल, जैसे feature",
+      "date": "आज, YYYYMMDD",
+      "mission": "मिशन ID (केवल मिशन)",
+      "milestone": "माइलस्टोन ID, जैसे m2 (केवल माइलस्टोन)"
+    },
+    "stableNote": "प्लान की ब्रांच उसके पहले worktree के समय तय हो जाती है, इसलिए बदलाव नए प्लान पर लागू होते हैं; चल रहे प्लान अपनी ब्रांच रखते हैं।",
+    "signLabel": "एजेंट के कमिट साइन करें",
+    "signHint": "अगर साइनिंग के लिए आपकी मौजूदगी चाहिए (1Password SSH कुंजी, GPG pinentry) तो बंद करें: बिना इंटरफ़ेस के एजेंट साइन नहीं कर सकते और उनके कमिट विफल होते हैं। केवल एजेंट के कमिट प्रभावित होते हैं; आपका git कॉन्फ़िग नहीं बदलता।",
+    "save": "सहेजें",
+    "saved": "ब्रांच सेटिंग्स सहेजी गईं"
   }
 }

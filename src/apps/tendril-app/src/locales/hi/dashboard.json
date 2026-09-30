@@ -5,7 +5,10 @@
       "afternoon": "शुभ दोपहर!",
       "evening": "शुभ संध्या!"
     },
-    "headline": "आज हम क्या बना रहे हैं?"
+    "headline": "आज हम क्या बना रहे हैं?",
+    "status": "{{running}} चल रहे · {{queued}} कतार में",
+    "systemsOk": "सभी सिस्टम चालू",
+    "systemsDown": "सेवा उपलब्ध नहीं"
   },
   "kpis": {
     "featuresShipped": {
@@ -71,5 +74,27 @@
       "thousand": "{{value}}k",
       "million": "{{value}}M"
     }
+  },
+  "insights": {
+    "title": "इनसाइट्स",
+    "subtitle": "हर एजेंट और प्रोजेक्ट के टोकन, खर्च और नतीजे",
+    "tokens30": "टोकन · 30 दिन",
+    "spendByAgent": "एजेंट के अनुसार खर्च",
+    "agents": "एजेंट",
+    "agent": "एजेंट",
+    "plans": "प्लान",
+    "tokensPerPlan": "टोकन / प्लान",
+    "tokens": "टोकन",
+    "cost": "लागत",
+    "trendTitle": "लागत और प्लान",
+    "noAgents": "अभी तक किसी एजेंट का उपयोग दर्ज नहीं",
+    "ofMonth": "इस महीने के खर्च का",
+    "gitActivity": "Git गतिविधि",
+    "pullRequests": "मर्ज किए गए पुल रिक्वेस्ट",
+    "rolling": "7-दिन का औसत",
+    "window": "पिछले 4 सप्ताह",
+    "week": "सप्ताह",
+    "month": "महीना",
+    "loading": "मेट्रिक्स लोड हो रहे हैं"
   }
 }

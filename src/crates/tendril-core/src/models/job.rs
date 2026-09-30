@@ -191,6 +191,22 @@ fn default_stash() -> String {
     "Stash".to_string()
 }
 
+/// One decision point of a mission's orchestrator. Plan-scoped on the mission's integration plan, so
+/// the job resolves the project, runs in its repo and lists under that plan like any other job.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrchestrateMissionArgs {
+    /// The integration plan's folder.
+    #[serde(rename = "folderPath")]
+    pub folder_path: String,
+    #[serde(rename = "missionFolder")]
+    pub mission_folder: String,
+    /// `Plan`, `Judge` or `Final`.
+    pub phase: String,
+    /// The milestone being judged, for `Judge`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub milestone: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddProjectArgs {
     #[serde(rename = "projectName")]
@@ -213,6 +229,7 @@ pub enum JobArgs {
     SetupProject(SetupProjectArgs),
     SyncRepo(SyncRepoArgs),
     AddProject(AddProjectArgs),
+    OrchestrateMission(OrchestrateMissionArgs),
 }
 
 impl JobArgs {
@@ -229,6 +246,7 @@ impl JobArgs {
             Self::SetupProject(_) => "SetupProject",
             Self::SyncRepo(_) => "SyncRepo",
             Self::AddProject(_) => "AddProject",
+            Self::OrchestrateMission(_) => "OrchestrateMission",
         }
     }
 
@@ -243,6 +261,7 @@ impl JobArgs {
             Self::CreateIssue(a) => Some(&a.folder_path),
             Self::SetupProject(a) => Some(&a.folder_path),
             Self::SyncRepo(a) => a.plan_folder_path.as_deref(),
+            Self::OrchestrateMission(a) => Some(&a.folder_path),
             _ => None,
         }
     }
@@ -264,6 +283,7 @@ impl JobArgs {
             Self::CreatePr(a) => a.folder_path = folder,
             Self::CreateIssue(a) => a.folder_path = folder,
             Self::SyncRepo(a) => a.plan_folder_path = Some(folder),
+            Self::OrchestrateMission(a) => a.folder_path = folder,
             Self::SetupProject(_) | Self::CreatePlan(_) | Self::AddProject(_) => {}
         }
     }
@@ -321,6 +341,14 @@ impl JobArgs {
                     None => format!("CreateIssue|{}", folder),
                 })
             }
+            // One decision point of one mission: the integration plan folder alone would stop a
+            // Judge from running while the Plan that preceded it is still settling.
+            Self::OrchestrateMission(a) => Some(format!(
+                "OrchestrateMission|{}|{}|{}",
+                a.mission_folder.trim_end_matches(['/', '\\']).trim(),
+                a.phase,
+                a.milestone.as_deref().unwrap_or("")
+            )),
             // Every plan-scoped type keys on its folder: one plan, one in-flight job of that type.
             // The type is part of the key, so an ExpandPlan and an ExecutePlan on the same plan do
             // not collide here. The folder is *not* lowercased — Linux paths are case-sensitive, and
@@ -363,7 +391,7 @@ impl JobArgs {
             Self::SyncRepo(a) => a.repo_path.as_str(),
             Self::AddProject(a) => a.project_name.as_str(),
             Self::SetupProject(a) => a.folder_path.as_str(),
-            Self::ExpandPlan(_) | Self::SplitPlan(_) => return None,
+            Self::ExpandPlan(_) | Self::SplitPlan(_) | Self::OrchestrateMission(_) => return None,
         };
         (!text.trim().is_empty()).then_some(text)
     }

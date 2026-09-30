@@ -124,5 +124,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "nyss"
+  },
+  "harnesses": {
+    "title": "Harness i väljare",
+    "hint": "Välj vilka kodagenter som visas när du skapar en plan eller väljer ett uppdrags agenter. Standardagenten visas alltid.",
+    "default": "Standard"
   }
 }

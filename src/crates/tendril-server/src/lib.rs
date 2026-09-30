@@ -206,6 +206,7 @@ pub async fn run_server(
         }
     });
 
+    spawn_mission_driver(state.clone());
     spawn_worktree_reaper(tendril_home.clone());
     spawn_cost_backfill(tendril_home.clone());
     tasks::spawn_version_check(state.clone());
@@ -334,6 +335,47 @@ where
 ///
 /// Holds a `Weak`, so the task cannot keep the guard — and therefore the claim — alive past
 /// `run_server`: when the guard drops, the next tick ends the task.
+/// How often every unfinished mission is reconciled, on top of the job events that drive it. The
+/// timer is the safety net: it catches an event lost to a lag, a CLI edit made with no daemon to
+/// nudge, and the first step after a restart.
+const MISSION_RECONCILE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Master-only, like maintenance: two daemons driving the same missions would start every step twice.
+fn spawn_mission_driver(state: Arc<AppState>) {
+    let mut rx = state.job_manager.subscribe_events();
+    let driver = state.mission_driver.clone();
+    tokio::spawn(async move {
+        loop {
+            match rx.recv().await {
+                Ok(event)
+                    if matches!(
+                        event.event_type.as_str(),
+                        tendril_core::jobs::manager::JOB_EVENT_COMPLETED
+                            | tendril_core::jobs::manager::JOB_EVENT_FAILED
+                    ) =>
+                {
+                    driver.on_job_settled(&event.job_id).await;
+                }
+                Ok(_) => {}
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(dropped)) => {
+                    tracing::warn!("mission driver lagged by {dropped} job events; the timer catches up");
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+            }
+        }
+    });
+
+    let driver = state.mission_driver.clone();
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(MISSION_RECONCILE_INTERVAL);
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            ticker.tick().await;
+            driver.reconcile_all().await;
+        }
+    });
+}
+
 fn spawn_master_reassert(master: &Arc<tendril_core::config::MasterGuard>) {
     use tendril_core::config::MasterCheck;
 

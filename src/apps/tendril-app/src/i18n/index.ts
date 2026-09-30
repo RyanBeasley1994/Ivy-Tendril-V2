@@ -12,6 +12,7 @@ import type common from "../locales/en/common.json";
 import type dashboard from "../locales/en/dashboard.json";
 import type inbox from "../locales/en/inbox.json";
 import type jobs from "../locales/en/jobs.json";
+import type missions from "../locales/en/missions.json";
 import type onboarding from "../locales/en/onboarding.json";
 import type plans from "../locales/en/plans.json";
 import type review from "../locales/en/review.json";
@@ -47,6 +48,7 @@ export type AppResources = {
   common: typeof common;
   chat: typeof chat;
   jobs: typeof jobs;
+  missions: typeof missions;
   plans: typeof plans;
   review: typeof review;
   inbox: typeof inbox;
@@ -67,6 +69,7 @@ const NAMESPACES: Record<AppNamespace, true> = {
   common: true,
   chat: true,
   jobs: true,
+  missions: true,
   plans: true,
   review: true,
   inbox: true,

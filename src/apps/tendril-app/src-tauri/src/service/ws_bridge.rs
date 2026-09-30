@@ -54,6 +54,12 @@ impl WsBridge {
                     }
                 };
 
+                // Re-read on every attempt: a remote connection's session token is refreshed in the
+                // background, and the one captured at startup will have expired by a late reconnect.
+                let secret = crate::daemon::read_master(&crate::daemon::resolve_tendril_home())
+                    .map(|m| m.secret)
+                    .ok()
+                    .or_else(|| secret.clone());
                 if let Some(ref sec) = secret {
                     req.headers_mut().insert(
                         "Authorization",

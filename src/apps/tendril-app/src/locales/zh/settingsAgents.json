@@ -123,5 +123,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "刚刚"
+  },
+  "harnesses": {
+    "title": "选择器中的执行代理",
+    "hint": "选择创建计划或为使命选择代理时显示哪些编码代理。默认代理始终显示。",
+    "default": "默认"
   }
 }

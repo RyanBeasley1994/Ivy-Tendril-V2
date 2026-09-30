@@ -5,7 +5,10 @@
       "afternoon": "Good Afternoon!",
       "evening": "Good Evening!"
     },
-    "headline": "What Are We Producing Today?"
+    "headline": "What Are We Producing Today?",
+    "status": "{{running}} running · {{queued}} queued",
+    "systemsOk": "All systems operational",
+    "systemsDown": "Service unreachable"
   },
   "kpis": {
     "featuresShipped": {
@@ -70,6 +73,149 @@
     "tokensCompact": {
       "thousand": "{{value}}k",
       "million": "{{value}}M"
+    }
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Tokens, spend and outcomes across every agent and project",
+    "tokens30": "Tokens · 30 days",
+    "spendByAgent": "Spend by agent",
+    "agents": "Agents",
+    "agent": "Agent",
+    "plans": "Plans",
+    "tokensPerPlan": "Tokens / plan",
+    "tokens": "Tokens",
+    "cost": "Cost",
+    "trendTitle": "Cost and plans",
+    "noAgents": "No agent has recorded usage yet",
+    "ofMonth": "of this month's spend",
+    "gitActivity": "Git activity",
+    "pullRequests": "Merged pull requests",
+    "rolling": "7-day average",
+    "window": "Last 4 weeks",
+    "week": "Week",
+    "month": "Month",
+    "loading": "Loading metrics",
+    "v2": {
+      "perDay": "Per day · 30 days",
+      "dailyAvg": "avg {{value}} / day",
+      "today": "Today",
+      "spend": "Spend",
+      "breakdown": "Breakdown",
+      "forecast": "forecast {{value}}",
+      "year": "Year in tokens",
+      "costliest": "Costliest plans · 30 days",
+      "avgPlan": "avg {{value}} / plan",
+      "noPlans": "No priced plans yet",
+      "share": "Share of spend"
+    }
+  },
+  "command": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "summary": "{{decisions}} waiting on you · {{running}} agents working · {{queued}} queued",
+    "summaryStalled_one": "· {{count}} stalled",
+    "summaryStalled_other": "· {{count}} stalled",
+    "refresh": "Refresh",
+    "composer": {
+      "placeholder": "Describe what Tendril should build next, or paste an issue link…",
+      "label": "Describe a plan",
+      "project": "Project",
+      "anyProject": "Any project",
+      "hintDetails": "Level, repos and model are set in the next step",
+      "submit": "Draft plan"
+    },
+    "fleet": {
+      "title": "Agent fleet",
+      "live": "Live",
+      "window": "last {{minutes}} min",
+      "stopAll": "Stop all",
+      "now": "now",
+      "empty": "No agents have run in the last hour",
+      "columns": {
+        "job": "JOB",
+        "tokens": "TOKENS"
+      },
+      "state": {
+        "running": "Running",
+        "queued": "Queued",
+        "failed": "Failed",
+        "done": "Done",
+        "stalled": "Stalled"
+      },
+      "stalledFor": "Stalled {{minutes}}m",
+      "queued_one": "{{count}} queued",
+      "queued_other": "{{count}} queued",
+      "stats": {
+        "running": "Running now",
+        "tokens": "Tokens in flight",
+        "spend": "Spend in flight",
+        "median": "Median job · 7d"
+      },
+      "legend": {
+        "explore": "Plan / explore",
+        "implement": "Implement",
+        "ship": "PR / sync",
+        "failed": "Failed",
+        "stalled": "Stalled"
+      }
+    },
+    "decisions": {
+      "title": "Decisions",
+      "viewAll": "Open review",
+      "empty": "Nothing is waiting on you",
+      "checks": "{{passed}}/{{total}} checks",
+      "kind": {
+        "review": "Ready for review",
+        "failed": "Plan failed",
+        "stalled": "Job stalled",
+        "draft": "Draft ready to execute"
+      },
+      "action": {
+        "review": "Review",
+        "failed": "Open",
+        "stalled": "Inspect",
+        "draft": "Open"
+      },
+      "keys": {
+        "move": "move",
+        "open": "open"
+      }
+    },
+    "today": {
+      "title": "Today",
+      "shipped": "Shipped",
+      "tokens": "Tokens",
+      "spend": "Spend",
+      "last8": "last 8 days",
+      "vsAvg": "{{delta}} vs avg",
+      "month": "{{spent}} this month",
+      "monthForecast": "{{spent}} · forecast {{forecast}}"
+    },
+    "heat": {
+      "title": "Tokens / day",
+      "tokens": "Tokens",
+      "plans": "Plans",
+      "spend": "Spend",
+      "lastWeeks": "last {{weeks}} weeks",
+      "streak": "{{days}}-day streak",
+      "avg": "Avg / day",
+      "peak": "Peak",
+      "busiest": "Busiest"
+    },
+    "activity": {
+      "title": "Activity",
+      "empty": "No activity yet",
+      "kind": {
+        "merged": "Merged",
+        "finished": "Finished",
+        "failed": "Failed",
+        "drafted": "Drafted plan",
+        "pr": "Opened PR for"
+      }
     }
   }
 }

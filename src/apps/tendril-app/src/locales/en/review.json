@@ -188,5 +188,18 @@
     "small": "Small",
     "medium": "Medium",
     "high": "High"
+  },
+  "verdict": {
+    "title": "Verdict",
+    "noChecks": "No checks",
+    "failing_one": "{{count}} check failing",
+    "failing_other": "{{count}} checks failing",
+    "running": "Checks running",
+    "ready": "Ready to ship",
+    "checks": "Checks",
+    "tokens": "Tokens",
+    "cost": "Cost",
+    "time": "Agent time",
+    "runs": "Runs"
   }
 }

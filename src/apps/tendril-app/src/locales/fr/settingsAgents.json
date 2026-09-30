@@ -125,5 +125,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "à l'instant"
+  },
+  "harnesses": {
+    "title": "Harness dans les sélecteurs",
+    "hint": "Choisissez quels agents de code apparaissent lors de la création d'un plan ou du choix des agents d'une mission. L'agent par défaut est toujours affiché.",
+    "default": "Par défaut"
   }
 }

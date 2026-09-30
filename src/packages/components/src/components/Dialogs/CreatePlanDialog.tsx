@@ -4,6 +4,7 @@ import { NativeSelect } from "../ui/native-select";
 import { ContentInput } from "../ContentInput";
 import { useTranslation } from "@/i18n/uiDialogs";
 import { DialogShell } from "./DialogShell";
+import { AgentPicker, RoleAgentsPicker } from "./AgentPicker";
 
 /**
  * `CreatePlanDialog.AddProjectActionValue`. Picking it is a navigation, not a project.
@@ -66,6 +67,35 @@ export interface CreatePlanUpload {
   base64Data: string;
 }
 
+/** A coding agent (harness) the operator can pick. `value` is the agent id the job is started with. */
+export interface AgentOption {
+  value: string;
+  label: string;
+}
+
+/** The roles a mission runs, in the order the dialog lists them. */
+export const MISSION_ROLES = ["planner", "worker", "judge", "validator"] as const;
+export type MissionRole = (typeof MISSION_ROLES)[number];
+
+/** The harness picked for each mission role. An empty string means the configured default. */
+export type MissionAgentChoice = Record<MissionRole, string>;
+
+/** What `onSubmit` is given beyond the text and the project. */
+export interface CreatePlanSubmitOptions {
+  /** The harness for the planning job; `undefined` leaves it to the configured default. */
+  agent?: string;
+}
+
+export type CreateMode = "plan" | "mission";
+
+/** A machine the plan can be created on, when the app is connected to a remote server. */
+export interface MachineOption {
+  value: string;
+  label: string;
+  /** No daemon is running there; the option is shown but cannot be picked. */
+  disabled?: boolean;
+}
+
 export interface CreatePlanDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -79,7 +109,36 @@ export interface CreatePlanDialogProps {
    * Dispatches CreatePlan with the trimmed description and the picked project. The app owns the
    * request, the dirty-repo preflight in front of it, and the outcome.
    */
-  onSubmit: (description: string, project: string) => void | Promise<void>;
+  onSubmit: (
+    description: string,
+    project: string,
+    options?: CreatePlanSubmitOptions,
+  ) => void | Promise<void>;
+  /**
+   * The harnesses to offer. Given, the dialog shows a harness picker (one for a plan, one per role for
+   * a mission); omitted, jobs run on the configured default and no picker is shown.
+   */
+  agentOptions?: AgentOption[];
+  /** The configured default agent's label, for the pickers' "Default (…)" entry. */
+  defaultAgentLabel?: string;
+  /**
+   * Starts a mission instead of a plan: an orchestrator breaks the task into milestones, runs and
+   * judges each, and validates the whole. Given, the dialog offers a Plan / Mission switch.
+   */
+  onSubmitMission?: (
+    description: string,
+    project: string,
+    agents: MissionAgentChoice,
+  ) => void | Promise<void>;
+  /** Which mode the dialog opens in, when missions are offered. */
+  initialMode?: CreateMode;
+  /**
+   * The machines to choose between. Given with two or more entries, the dialog shows a "Create on"
+   * picker; the app owns the selection because the projects offered depend on it.
+   */
+  machines?: MachineOption[];
+  selectedMachine?: string;
+  onMachineChange?: (machine: string) => void;
   /** Opens project settings, for the picker's "+ Add New Project" entry. Omitted, it is not offered. */
   onAddProject?: () => void;
   /**
@@ -156,10 +215,26 @@ export function CreatePlanDialog({
   agentLabel,
   onContinueInChat,
   onUploadFile,
+  agentOptions,
+  defaultAgentLabel,
+  onSubmitMission,
+  initialMode = "plan",
+  machines,
+  selectedMachine,
+  onMachineChange,
   isBusy = false,
   error,
 }: CreatePlanDialogProps) {
   const { t } = useTranslation("uiDialogs");
+  const [mode, setMode] = React.useState<CreateMode>(initialMode);
+  const [planAgent, setPlanAgent] = React.useState("");
+  const [roleAgents, setRoleAgents] = React.useState<MissionAgentChoice>({
+    planner: "",
+    worker: "",
+    judge: "",
+    validator: "",
+  });
+  const isMission = mode === "mission" && onSubmitMission !== undefined;
   const [description, setDescription] = React.useState(initialDescription);
   const [selectedProject, setSelectedProject] = React.useState(() =>
     defaultProject(projects, initialProject),
@@ -187,7 +262,8 @@ export function CreatePlanDialog({
     setDescription(initialDescription);
     setSelectedProject(defaultProject(projectsRef.current, initialProject));
     setLocalError(null);
-  }, [isOpen, initialDescription, initialProject]);
+    setMode(initialMode);
+  }, [isOpen, initialDescription, initialProject, initialMode]);
 
   // The projects can arrive after the dialog opens; a selection that is no longer offered falls back
   // to the default rather than being sent.
@@ -228,8 +304,39 @@ export function CreatePlanDialog({
       return;
     }
     setLocalError(null);
-    void onSubmit(text, selectedProject);
+    if (isMission) {
+      void onSubmitMission(text, selectedProject, roleAgents);
+      return;
+    }
+    void onSubmit(text, selectedProject, planAgent ? { agent: planAgent } : undefined);
   };
+
+  const defaultLabel = t("createPlan.defaultAgent", { agent: defaultAgentLabel ?? "" });
+  // The harness pickers ride in the composer's action row, beside the attach button, as one chip.
+  const agentPicker =
+    agentOptions && agentOptions.length > 0 ? (
+      isMission ? (
+        <RoleAgentsPicker
+          label={t("createPlan.agents")}
+          roles={MISSION_ROLES}
+          roleLabel={(role) => t(`createPlan.roles.${role}`)}
+          values={roleAgents}
+          defaultLabel={defaultLabel}
+          defaultShortLabel={t("createPlan.defaultShort")}
+          mixedLabel={(count) => t("createPlan.mixedAgents", { count })}
+          options={agentOptions}
+          onChange={(role, v) => setRoleAgents((current) => ({ ...current, [role]: v }))}
+        />
+      ) : (
+        <AgentPicker
+          label={t("createPlan.harness")}
+          value={planAgent}
+          defaultLabel={defaultLabel}
+          options={agentOptions}
+          onChange={setPlanAgent}
+        />
+      )
+    ) : undefined;
 
   const handleUpload = async (file: CreatePlanUpload) => {
     if (!onUploadFile) return;
@@ -255,7 +362,7 @@ export function CreatePlanDialog({
     <DialogShell
       isOpen={isOpen}
       onClose={onClose}
-      title={t("createPlan.title")}
+      title={isMission ? t("createPlan.missionTitle") : t("createPlan.title")}
       testId="new-plan-modal"
       width="rem30"
       mobileSheet
@@ -266,6 +373,69 @@ export function CreatePlanDialog({
           <Callout.Error className="mb-2" data-testid="create-plan-error">
             {shownError}
           </Callout.Error>
+        )}
+
+        {machines && machines.length > 1 && (
+          <div className="flex items-center gap-2" data-testid="machine-picker">
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {t("createPlan.machineLabel")}
+            </span>
+            <div
+              role="radiogroup"
+              aria-label={t("createPlan.machineLabel")}
+              className="flex flex-1 flex-wrap gap-1 rounded-field border border-border p-1"
+            >
+              {machines.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedMachine === m.value}
+                  disabled={m.disabled}
+                  title={m.disabled ? t("createPlan.machineUnavailable") : undefined}
+                  onClick={() => onMachineChange?.(m.value)}
+                  className={`flex-1 rounded-selector px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    selectedMachine === m.value
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {onSubmitMission && (
+          <div
+            role="radiogroup"
+            aria-label={t("createPlan.modeLabel")}
+            className="grid grid-cols-2 gap-1 rounded-field border border-border p-1"
+            data-testid="create-mode"
+          >
+            {(["plan", "mission"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
+                onClick={() => setMode(m)}
+                className={`rounded-selector px-3 py-1.5 text-sm font-medium transition ${
+                  mode === m
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                }`}
+              >
+                {m === "plan" ? t("createPlan.modePlan") : t("createPlan.modeMission")}
+              </button>
+            ))}
+          </div>
+        )}
+        {isMission && (
+          <p className="m-0 text-xs text-muted-foreground" data-testid="mission-hint">
+            {t("createPlan.modeMissionHint")}
+          </p>
         )}
 
         {/* `Layout.Vertical().Gap(2) | projectPickerWidget | contentInputWidget` */}
@@ -307,13 +477,15 @@ export function CreatePlanDialog({
           </NativeSelect>
         )}
 
+
         <ContentInput
           id="content-input"
           value={description}
           autoFocus
-          submitLabel={t("createPlan.submit")}
+          submitLabel={isMission ? t("createPlan.submitMission") : t("createPlan.submit")}
           placeholder={t("createPlan.placeholder")}
           menuOptions={continueLabel ? [continueLabel] : []}
+          slots={agentPicker ? { LeftActions: agentPicker } : undefined}
           eventHandler={(evt: string, _id: string, args?: unknown[]) => {
             switch (evt) {
               case "OnChange": {

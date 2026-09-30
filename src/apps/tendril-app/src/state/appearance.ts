@@ -67,12 +67,19 @@ export function readAppearance(config: TendrilConfig | null): AppearanceSettings
 }
 
 /**
- * Installs a preset and a mode, the pair `AppearanceSetupView` applies on every click and
+ * The mode the app renders in, whatever `themeMode` says. The command-center redesign is dark-only:
+ * `themeMode` is still read (and left in config.yaml) so an older build sharing the file keeps its
+ * setting, but nothing here applies it.
+ */
+export const APP_THEME_MODE: Theme = "dark";
+
+/**
+ * Installs a preset in the app's one mode, what `AppearanceSetupView` applies on every click and
  * `TendrilAppShell` applies on every session start.
  */
-export function applyAppearance(settings: Pick<AppearanceSettings, "themeMode" | "theme">): void {
+export function applyAppearance(settings: Pick<AppearanceSettings, "theme">): void {
   applyThemePreset(settings.theme);
-  setThemeGlobal(settings.themeMode);
+  setThemeGlobal(APP_THEME_MODE);
 }
 
 /**
@@ -88,7 +95,8 @@ export async function initAppearance(): Promise<AppearanceSettings> {
     applyAppearance(settings);
     return settings;
   } catch {
-    // Keep the provider's default.
+    // The daemon is unreachable: stay in the defaults (the preset `main.tsx` installed, in dark).
+    applyAppearance(APPEARANCE_DEFAULTS);
     return APPEARANCE_DEFAULTS;
   }
 }

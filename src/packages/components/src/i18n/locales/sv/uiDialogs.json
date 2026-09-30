@@ -336,7 +336,23 @@
     "submit": "Skapa",
     "placeholder": "Ange en uppgiftsbeskrivning…",
     "emptyDescription": "Ange en beskrivning för den nya planen.",
-    "continueInChat": "Chatta med {{agent}}"
+    "continueInChat": "Chatta med {{agent}}",
+    "missionTitle": "Skapa nytt uppdrag",
+    "modeLabel": "Vad som ska skapas",
+    "modePlan": "Plan",
+    "modeMission": "Uppdrag",
+    "modeMissionHint": "En orkestrerare delar upp uppgiften i milstolpar, kör och bedömer varje, validerar helheten och levererar en enda pull request. Du godkänner milstolparna en gång.",
+    "harness": "Harness",
+    "defaultAgent": "Standard ({{agent}})",
+    "submitMission": "Starta uppdrag",
+    "roles": {
+      "planner": "Planerare",
+      "worker": "Utförare",
+      "judge": "Granskare",
+      "validator": "Validerare"
+    },
+    "machineLabel": "Skapa på",
+    "machineUnavailable": "Ingen Tendril-tjänst körs där"
   },
   "recommendationNote": {
     "submit": "Skicka",

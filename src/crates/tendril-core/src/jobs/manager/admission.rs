@@ -47,6 +47,13 @@ pub struct StartOptions {
     /// scheduler; a job that names a plan then inherits the plan's own chat session instead, so the
     /// link survives an agent that forgot to pass one.
     pub chat_session_id: Option<String>,
+    /// The coding agent (harness) to run this job with, in place of the configured `codingAgent`:
+    /// how a mission runs its planner, workers, judge and validator on different agents.
+    pub agent: Option<String>,
+    /// The model to run with, in place of the one the agent's profile picks.
+    pub model: Option<String>,
+    /// The effort to run with, in place of the one the agent's profile picks.
+    pub effort: Option<String>,
 }
 
 impl JobManager {
@@ -224,7 +231,15 @@ impl JobManager {
             plan_folder_str.clone(),
             "Auto".to_string(),
         );
-        job.provider = settings.coding_agent.clone();
+        job.provider = opts
+            .agent
+            .as_deref()
+            .map(str::trim)
+            .filter(|a| !a.is_empty())
+            .map(crate::agents::resolution::normalize_agent_name)
+            .unwrap_or_else(|| settings.coding_agent.clone());
+        job.model = opts.model.clone().filter(|m| !m.trim().is_empty());
+        job.effort = opts.effort.clone().filter(|e| !e.trim().is_empty());
         job.started_at = Some(Utc::now());
         job.typed_args = Some(args.clone());
         job.args = serde_json::to_string(&args).ok();

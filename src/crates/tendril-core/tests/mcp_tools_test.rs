@@ -326,8 +326,8 @@ fn mcp_tool_list_contains_verification_remove() {
 fn mcp_tool_count_increments_by_one() {
     assert_eq!(
         get_mcp_tool_definitions().len(),
-        32,
-        "the catalog gained exactly one tool (tendril_plan_verification_remove) over the prior 31"
+        36,
+        "32 plan/job/config tools plus the four mission tools (create, list, get, action)"
     );
 }
 

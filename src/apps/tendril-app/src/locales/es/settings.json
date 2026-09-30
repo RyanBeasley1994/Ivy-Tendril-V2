@@ -18,7 +18,8 @@
     "security": "Seguridad y túneles",
     "advanced": "Avanzado",
     "newsletter": "Boletín informativo",
-    "fallback": "Configuración"
+    "fallback": "Configuración",
+    "git": "Git y ramas"
   },
   "nav": {
     "ariaLabel": "Secciones de configuración",
@@ -360,5 +361,56 @@
     "emailLabel": "Correo electrónico",
     "subscribing": "Suscribiendo…",
     "subscribe": "Suscribirse"
+  },
+  "remoteServer": {
+    "title": "Servidor remoto",
+    "hint": "Usa Tendril en otra máquina, como un VPS, en lugar de esta. El servidor necesita una contraseña configurada (protección de sesión).",
+    "urlLabel": "Dirección del servidor",
+    "urlPlaceholder": "203.0.113.7 o https://mi-servidor.example.com",
+    "urlHint": "Una IP o nombre de host usa el puerto 5010. Incluye https:// para un túnel o proxy inverso.",
+    "usernameLabel": "Usuario",
+    "defaultUser": "admin",
+    "passwordLabel": "Contraseña",
+    "connect": "Conectar",
+    "disconnect": "Desconectar y usar esta máquina",
+    "connectedAs": "Conectado como {{username}}",
+    "notAuthenticated": "Sin sesión: {{error}}",
+    "restarting": "Reiniciando Tendril…"
+  },
+  "git": {
+    "title": "Git y ramas",
+    "hint": "Cómo nombra Tendril las ramas de planes y misiones, y cómo hacen commit los agentes.",
+    "prefixLabel": "Prefijo de rama",
+    "prefixHint": "Lo que vale {prefix}. Predeterminado: tendril/.",
+    "templateLabel": "Rama de plan",
+    "templateHint": "Planes e hitos de misiones. Predeterminado: {prefix}{folder}.",
+    "missionTemplateLabel": "Rama de misión",
+    "missionTemplateHint": "La rama de integración de una misión, donde aterrizan todos los hitos y de la que sale su pull request.",
+    "previewTitle": "Vista previa",
+    "previewUnavailable": "Sin vista previa: el servicio no está disponible.",
+    "preview": {
+      "plan": "Plan",
+      "milestone": "Hito",
+      "mission": "Misión"
+    },
+    "unknownTokens": "Marcadores desconocidos: {{tokens}}",
+    "tokensTitle": "Marcadores",
+    "tokens": {
+      "prefix": "el prefijo de rama",
+      "folder": "carpeta del plan, p. ej. 00042-AddLogin",
+      "id": "id del plan, p. ej. 00042",
+      "title": "título del plan, p. ej. AddLogin",
+      "slug": "título en kebab-case, p. ej. add-login",
+      "project": "proyecto, kebab-case",
+      "level": "nivel, p. ej. feature",
+      "date": "hoy, AAAAMMDD",
+      "mission": "id de misión (solo misiones)",
+      "milestone": "id de hito, p. ej. m2 (solo hitos)"
+    },
+    "stableNote": "La rama de un plan se fija la primera vez que obtiene un worktree, así que los cambios se aplican a planes nuevos; los planes en curso conservan su rama.",
+    "signLabel": "Firmar los commits de los agentes",
+    "signHint": "Desactívalo si tu firma requiere tu presencia (clave SSH de 1Password, pinentry de GPG): los agentes sin interfaz no pueden firmar y sus commits fallan. Solo afecta a los commits de los agentes; tu configuración de git no cambia.",
+    "save": "Guardar",
+    "saved": "Ajustes de ramas guardados"
   }
 }

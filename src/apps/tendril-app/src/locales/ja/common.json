@@ -66,7 +66,9 @@
     "reviewAction": "レビューアクション",
     "agent": "エージェント",
     "plan": "計画 {{id}}",
-    "job": "ジョブ {{id}}"
+    "job": "ジョブ {{id}}",
+    "insights": "インサイト",
+    "missions": "ミッション"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "計画",
       "review": "レビュー",
       "recommendations": "レコメンデーション",
-      "jobs": "ジョブ"
+      "jobs": "ジョブ",
+      "insights": "インサイト",
+      "missions": "ミッション"
+    },
+    "navGroup": {
+      "overview": "概要",
+      "work": "作業",
+      "observe": "観測"
     },
     "chat": "チャット",
     "inbox": "受信トレイ",
@@ -93,6 +102,16 @@
       "help": "ヘルプ",
       "documentation": "ドキュメント",
       "reportIssue": "問題を報告"
+    },
+    "status": {
+      "online": "サービス稼働中",
+      "reconnecting": "再接続中…",
+      "offline": "サービス停止中"
+    },
+    "usage": {
+      "title": "{{agent}} · {{window}} 制限",
+      "used": "{{percent}} 使用",
+      "resets": "{{countdown}} 後にリセット"
     }
   },
   "shortcuts": {
@@ -181,7 +200,8 @@
     },
     "ownership": {
       "adoptedExternal": "外部（引き継ぎ済み）",
-      "managed": "管理対象"
+      "managed": "管理対象",
+      "remote": "リモート"
     }
   },
   "serviceStatus": {
@@ -248,5 +268,16 @@
     "reviewActionFailed": "レビューアクション {{endpoint}} に失敗しました ({{status}})：{{detail}}",
     "subscribeFailed": "{{url}} の購読に失敗しました：HTTP {{status}}",
     "agentTerminalFailed": "エージェントターミナル {{endpoint}} に失敗しました：HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "プランを検索",
+    "agentSession": "エージェントセッション",
+    "inbox": "受信箱を開く"
+  },
+  "pageSubtitles": {
+    "jobs": "すべてのエージェント実行：実行中・待機中・完了",
+    "recommendations": "完了したプランが提案したフォローアップ",
+    "inbox": "プランにする Issue と提案",
+    "pullRequests": "あなたのプランが作成したプルリクエスト"
   }
 }

@@ -4,3 +4,43 @@
 
 @source "./";
 @source "../../../packages/components/src";
+
+/* The sidebar's usage card has no room on the collapsed rail; the service dot stays, centred. */
+.tsh-root[data-collapsed="true"] .tcc-usage-card {
+  display: none;
+}
+
+.tsh-root[data-collapsed="true"] .tcc-service-line {
+  justify-content: center;
+  padding: 0;
+}
+
+.tsh-root[data-collapsed="true"] .tcc-service-line > :not(:first-child) {
+  display: none;
+}
+
+/* ---- Edge-to-edge macOS window: no title bar, traffic lights over the sidebar ---- */
+
+/* The sidebar's content starts below the lights, and that band drags the window. */
+.tauri-macos .tsh-sidebar {
+  padding-top: 46px;
+}
+
+.tauri-drag-strip {
+  display: none;
+}
+
+.tauri-macos .tauri-drag-strip {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  width: 220px;
+  height: 40px;
+}
+
+/* On the collapsed rail the lights overhang into the content, so the top bar's text clears them. */
+.tauri-macos .tsh-root[data-collapsed="true"] [data-testid="shell-top-bar"] {
+  padding-left: 40px;
+}

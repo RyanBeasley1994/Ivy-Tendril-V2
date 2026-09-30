@@ -66,7 +66,9 @@
     "reviewAction": "Действие ревью",
     "agent": "Агент",
     "plan": "План {{id}}",
-    "job": "Задание {{id}}"
+    "job": "Задание {{id}}",
+    "insights": "Аналитика",
+    "missions": "Миссии"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Планы",
       "review": "Ревью",
       "recommendations": "Рекомендации",
-      "jobs": "Задания"
+      "jobs": "Задания",
+      "insights": "Аналитика",
+      "missions": "Миссии"
+    },
+    "navGroup": {
+      "overview": "Обзор",
+      "work": "Работа",
+      "observe": "Наблюдение"
     },
     "chat": "Чат",
     "inbox": "Входящие",
@@ -93,6 +102,16 @@
       "help": "Справка",
       "documentation": "Документация",
       "reportIssue": "Сообщить о проблеме"
+    },
+    "status": {
+      "online": "Сервис в сети",
+      "reconnecting": "Переподключение…",
+      "offline": "Сервис недоступен"
+    },
+    "usage": {
+      "title": "{{agent}} · лимит {{window}}",
+      "used": "использовано {{percent}}",
+      "resets": "Сброс через {{countdown}}"
     }
   },
   "shortcuts": {
@@ -187,7 +206,8 @@
     },
     "ownership": {
       "adoptedExternal": "Внешний (принятый)",
-      "managed": "Управляемый"
+      "managed": "Управляемый",
+      "remote": "Удалённый"
     }
   },
   "serviceStatus": {
@@ -254,5 +274,16 @@
     "reviewActionFailed": "Сбой действия ревью {{endpoint}} ({{status}}): {{detail}}",
     "subscribeFailed": "Не удалось подписаться на {{url}}: HTTP {{status}}",
     "agentTerminalFailed": "Сбой терминала агента {{endpoint}}: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Поиск планов",
+    "agentSession": "Сеанс агента",
+    "inbox": "Открыть входящие"
+  },
+  "pageSubtitles": {
+    "jobs": "Все запуски агентов: текущие, в очереди и завершённые",
+    "recommendations": "Следующие шаги, предложенные завершёнными планами",
+    "inbox": "Issues и предложения, из которых получатся планы",
+    "pullRequests": "Pull request, открытые вашими планами"
   }
 }

@@ -4,7 +4,14 @@ import { i18n } from "../i18n";
 import { jobTypeLabel } from "../i18n/enumLabels";
 import { serviceStore } from "./serviceStore";
 import type { JobNotification } from "./notificationBurst";
-import type { Job, JobDetail, JobStatus, StartJobArgs, StartJobResponse } from "../types/api";
+import type {
+  Job,
+  JobDetail,
+  JobStatus,
+  MachineTarget,
+  StartJobArgs,
+  StartJobResponse,
+} from "../types/api";
 
 /** A job has exited once it reaches one of these. `Blocked` and `Queued` are not exits. */
 const TERMINAL_STATUSES: readonly JobStatus[] = ["Completed", "Failed", "Timeout", "Stopped"];
@@ -358,8 +365,8 @@ class JobsStore {
     return this.state.jobDetails[id];
   }
 
-  public async startJob(args: StartJobArgs): Promise<StartJobResponse> {
-    const res = await bridge.startJob(args);
+  public async startJob(args: StartJobArgs, target?: MachineTarget): Promise<StartJobResponse> {
+    const res = await bridge.startJob(args, target);
     // Refresh jobs
     this.fetchJobs().catch(() => {});
     return res;

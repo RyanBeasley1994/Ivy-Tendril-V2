@@ -410,6 +410,8 @@ export const PlanWorkspace: React.FC<PlanWorkspaceProps> = ({
   const hasToolbar = hasNodes(slots?.Toolbar);
   const hasProjectBadges = hasNodes(slots?.ProjectBadges);
   const showChat = hasNodes(slots?.Chat);
+  const hasAside = hasNodes(slots?.Aside);
+  const showSide = showChat || hasAside;
 
   const rootStyle = {
     "--pws-chat-width": `${Math.max(width, MIN_CHAT_WIDTH)}px`,
@@ -550,7 +552,7 @@ export const PlanWorkspace: React.FC<PlanWorkspaceProps> = ({
             <div className="pws-content">{slots?.Content}</div>
           </section>
 
-          {showChat && (
+          {showSide && (
             <>
               <Tooltip content={t("workspace.resizer.tooltip")} side="left">
                 <div
@@ -564,8 +566,13 @@ export const PlanWorkspace: React.FC<PlanWorkspaceProps> = ({
                   onDoubleClick={resetWidth}
                 />
               </Tooltip>
-              <aside className="pws-chat" aria-label={t("workspace.chatAriaLabel")}>
-                {slots?.Chat}
+              <aside
+                className="pws-chat"
+                data-has-aside={hasAside || undefined}
+                aria-label={t("workspace.chatAriaLabel")}
+              >
+                {hasAside && <div className="pws-aside">{slots?.Aside}</div>}
+                {showChat && <div className="pws-chat-body">{slots?.Chat}</div>}
               </aside>
             </>
           )}

@@ -1,22 +1,7 @@
 import React from "react";
-import {
-  applyThemePreset,
-  setThemeGlobal,
-  THEME_PRESETS,
-  getThemePreset,
-  type Theme,
-} from "@ivy-interactive/components/theme";
+import { applyThemePreset, THEME_PRESETS, getThemePreset } from "@ivy-interactive/components/theme";
 import { Badge, Button, Callout } from "@ivy-interactive/components/ui";
-import {
-  MessageCircle,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Sun,
-  SunMoon,
-  SwatchBook,
-  Terminal,
-} from "lucide-react";
+import { MessageCircle, PanelLeftClose, PanelLeftOpen, SwatchBook, Terminal } from "lucide-react";
 import { LOCALES, SITE_LOCALES } from "@ivy-interactive/components/i18n";
 import { useTranslation } from "../../i18n";
 import { chatLauncher } from "../../state/chatLauncher";
@@ -43,23 +28,15 @@ const VaultThemesDialog = React.lazy(() =>
  * `Apps/Settings/AppearanceSetupView.cs`.
  *
  * Four blocks in V1, in this order: the light/dark/system button row, the theme preset select with its
- * preview swatches, the main sidebar default, and the chat mode. Every one of them applies and
+ * preview swatches, the main sidebar default, and the chat mode. V2 is dark-only since the
+ * command-center redesign, so the mode row is gone (`appearance.ts` applies dark whatever
+ * `themeMode` says) and a preset picks the dark palette. Every remaining one applies and
  * persists **on the click** - V1 has no Save here, because a look-and-feel setting is judged by
  * looking at it - and each raises its own toast with V1's wording.
  *
  * V2 adds a fifth, the UI language, which V1 does not have (it pins `en-US`). It follows the same
  * rules: applied on the change, persisted to `config.yaml`'s `language`, rolled back if either fails.
  */
-
-/**
- * V1's button row, with its icons (`Icons.Sun`, `Icons.Moon`, `Icons.SunMoon`). Each label is
- * `settings:appearance.themeMode.<value>`, looked up at render time.
- */
-const THEME_MODES: { value: Theme; icon: React.ReactNode }[] = [
-  { value: "light", icon: <Sun className="size-4" aria-hidden="true" /> },
-  { value: "dark", icon: <Moon className="size-4" aria-hidden="true" /> },
-  { value: "system", icon: <SunMoon className="size-4" aria-hidden="true" /> },
-];
 
 /**
  * `AppearanceSetupView`'s swatch row: one 20px circle per `PreviewColors` entry, with the same faint
@@ -91,7 +68,6 @@ export const AppearanceSection: React.FC<{
   const { t } = useTranslation("settings");
   // Optimistic local state, the way V1 holds each control in `UseState` and writes config behind it:
   // the click has to change the button that was clicked before the daemon answers.
-  const [themeMode, setThemeMode] = React.useState<Theme>(settings.themeMode);
   const [theme, setTheme] = React.useState<string>(settings.theme);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(settings.sidebarOpen);
   const [chatMode, setChatMode] = React.useState<ChatMode>(settings.chatMode);
@@ -101,11 +77,10 @@ export const AppearanceSection: React.FC<{
 
   // A config reload (this pane's own write, or an edit to config.yaml) re-seeds the controls.
   React.useEffect(() => {
-    setThemeMode(settings.themeMode);
     setTheme(settings.theme);
     setSidebarOpen(settings.sidebarOpen);
     setChatMode(settings.chatMode);
-  }, [settings.themeMode, settings.theme, settings.sidebarOpen, settings.chatMode]);
+  }, [settings.theme, settings.sidebarOpen, settings.chatMode]);
   React.useEffect(() => setLanguage(savedLanguage), [savedLanguage]);
 
   const write = async (key: string, value: unknown, toast: string, revert: () => void) => {
@@ -119,16 +94,6 @@ export const AppearanceSection: React.FC<{
       revert();
       setError(t("shared.saveFailed", { error: describeBridgeError(err) }));
     }
-  };
-
-  const chooseThemeMode = (mode: Theme) => {
-    const previous = themeMode;
-    setThemeMode(mode);
-    setThemeGlobal(mode);
-    void write("themeMode", mode, t("appearance.themeMode.saved", { context: mode }), () => {
-      setThemeMode(previous);
-      setThemeGlobal(previous);
-    });
   };
 
   const chooseTheme = (id: string) => {
@@ -214,21 +179,6 @@ export const AppearanceSection: React.FC<{
       testId="appearance-card"
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {THEME_MODES.map((mode) => (
-            <Button
-              key={mode.value}
-              type="button"
-              variant={themeMode === mode.value ? "default" : "outline"}
-              aria-pressed={themeMode === mode.value}
-              onClick={() => chooseThemeMode(mode.value)}
-            >
-              {mode.icon}
-              {t(`appearance.themeMode.${mode.value}`)}
-            </Button>
-          ))}
-        </div>
-
         <SubSection
           title={t("appearance.theme.title")}
           hint={t("appearance.theme.hint")}

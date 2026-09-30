@@ -125,5 +125,10 @@
       "hoursMinutes": "{{hours}} {{minutes}}"
     },
     "justNow": "ahora mismo"
+  },
+  "harnesses": {
+    "title": "Harness en los selectores",
+    "hint": "Elige qué agentes de código aparecen al crear un plan o al elegir los agentes de una misión. El agente predeterminado siempre se muestra.",
+    "default": "Predeterminado"
   }
 }

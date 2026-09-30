@@ -66,7 +66,9 @@
     "reviewAction": "审查操作",
     "agent": "智能体",
     "plan": "计划 {{id}}",
-    "job": "任务 {{id}}"
+    "job": "任务 {{id}}",
+    "insights": "洞察",
+    "missions": "使命"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "计划",
       "review": "审查",
       "recommendations": "改进建议",
-      "jobs": "任务"
+      "jobs": "任务",
+      "insights": "洞察",
+      "missions": "使命"
+    },
+    "navGroup": {
+      "overview": "概览",
+      "work": "工作",
+      "observe": "观察"
     },
     "chat": "聊天",
     "inbox": "收件箱",
@@ -93,6 +102,16 @@
       "help": "帮助",
       "documentation": "文档",
       "reportIssue": "报告 Issue"
+    },
+    "status": {
+      "online": "服务在线",
+      "reconnecting": "正在重新连接…",
+      "offline": "服务离线"
+    },
+    "usage": {
+      "title": "{{agent}} · {{window}} 限额",
+      "used": "已用 {{percent}}",
+      "resets": "{{countdown}} 后重置"
     }
   },
   "shortcuts": {
@@ -181,7 +200,8 @@
     },
     "ownership": {
       "adoptedExternal": "外部（已接管）",
-      "managed": "托管"
+      "managed": "托管",
+      "remote": "远程"
     }
   },
   "serviceStatus": {
@@ -248,5 +268,16 @@
     "reviewActionFailed": "审查操作 {{endpoint}} 失败（{{status}}）：{{detail}}",
     "subscribeFailed": "订阅 {{url}} 失败：HTTP {{status}}",
     "agentTerminalFailed": "智能体终端 {{endpoint}} 失败：HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "搜索计划",
+    "agentSession": "智能体会话",
+    "inbox": "打开收件箱"
+  },
+  "pageSubtitles": {
+    "jobs": "每一次智能体运行：进行中、排队中和已完成",
+    "recommendations": "已完成计划建议的后续工作",
+    "inbox": "可转为计划的 Issue 与提案",
+    "pullRequests": "你的计划创建的拉取请求"
   }
 }

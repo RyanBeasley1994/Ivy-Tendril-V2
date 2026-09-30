@@ -276,3 +276,49 @@
     min-height: 44px;
   }
 }
+
+/* Command center (dark): stage boxes are cards like the dashboard's, the counts are mono, and the
+   work in flight between two stages reads in the accent, so the eye follows what is moving. */
+.dark .tpv-box {
+  border-radius: 10px;
+}
+
+.dark .tpv-box-stage {
+  border-color: var(--input);
+  background: color-mix(in srgb, var(--foreground) 3%, var(--card));
+}
+
+.dark .tpv-box-create {
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent),
+    0 6px 18px -8px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+.dark .tpv-box-count,
+.dark .tpv-arrow-count {
+  font-family: var(--font-mono);
+}
+
+.dark .tpv-arrow-svg {
+  color: color-mix(in srgb, var(--primary) 45%, var(--muted-foreground));
+}
+
+.dark .tpv-arrow-label {
+  color: color-mix(in srgb, var(--primary) 80%, var(--foreground));
+}
+
+/* The New Plan pulse rings in the accent, not grey, against the dark frame. */
+.dark .tpv-pulse {
+  animation-name: tpv-pulse-accent;
+}
+
+@keyframes tpv-pulse-accent {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 28%, transparent);
+  }
+}

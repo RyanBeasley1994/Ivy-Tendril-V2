@@ -1,0 +1,180 @@
+{
+  "page": {
+    "title": "Missions",
+    "subtitle": "Goals an AI orchestrator breaks into milestones, runs, judges and ships as one pull request.",
+    "new": "New mission",
+    "newShort": "New"
+  },
+  "empty": {
+    "title": "No missions yet",
+    "description": "Hand Tendril a whole feature. The orchestrator plans milestones, runs each one, judges it against its acceptance criteria, and validates the result.",
+    "steps": {
+      "plan": {
+        "title": "Plan",
+        "body": "The planner researches the goal and writes milestones with acceptance criteria."
+      },
+      "approve": {
+        "title": "Approve",
+        "body": "You review the milestones once. That is the only stop."
+      },
+      "run": {
+        "title": "Run & judge",
+        "body": "Workers execute each milestone; the judge accepts, retries or re-plans."
+      },
+      "ship": {
+        "title": "Validate & ship",
+        "body": "The validator runs every verification on the branch, then it goes to Review as one PR."
+      }
+    }
+  },
+  "list": {
+    "title": "Missions",
+    "progress": "{{passed}}/{{total}} milestones"
+  },
+  "stats": {
+    "progress": "Progress",
+    "replans": "{{count}} of {{max}} re-plans used",
+    "cost": "Spend",
+    "costCap": "of {{cap}} budget",
+    "noCap": "No budget cap",
+    "step": "Current step",
+    "attempts": "Attempts per milestone",
+    "attemptsHint": "Pauses for you after this many",
+    "took": "Took",
+    "running": "Running for",
+    "since": "started {{ago}} ago",
+    "runs": "Runs",
+    "attemptsShort": "up to {{max}} attempts per milestone"
+  },
+  "actions": {
+    "approve": "Approve milestones",
+    "pause": "Pause",
+    "resume": "Resume",
+    "cancel": "Cancel",
+    "openPlan": "Open plan"
+  },
+  "banner": {
+    "paused": "Paused: {{reason}}",
+    "approve": "Review the milestones below. Once you approve, the mission runs on its own until it is ready for review.",
+    "planning": "The planner is researching the goal and writing milestones…",
+    "review": "Validated. The integration plan is in Review; create its pull request from there."
+  },
+  "milestones": {
+    "title": "Milestones",
+    "none": "Milestones appear here once the planner has written them.",
+    "attempt": "attempt {{attempt}}/{{max}}",
+    "feedback": "Judge: {{feedback}}",
+    "commits_one": "{{count}} commit",
+    "commits_other": "{{count}} commits",
+    "criteria": "Acceptance criteria",
+    "result": "Result",
+    "openPlan": "Plan #{{id}}"
+  },
+  "agents": {
+    "title": "Agents",
+    "hint": "The harness each role runs on. Changes apply from the next job.",
+    "default": "Default agent",
+    "roles": {
+      "planner": "Planner",
+      "worker": "Worker",
+      "judge": "Judge",
+      "validator": "Validator"
+    },
+    "describe": {
+      "planner": "Researches the goal and writes the milestones",
+      "worker": "Implements each milestone (ExecutePlan / RetryPlan)",
+      "judge": "Reviews each milestone against its criteria",
+      "validator": "Runs every verification and checks the goal"
+    }
+  },
+  "goal": {
+    "title": "Goal"
+  },
+  "log": {
+    "title": "Activity"
+  },
+  "state": {
+    "Planning": "Planning",
+    "AwaitingApproval": "Awaiting approval",
+    "Running": "Running",
+    "Validating": "Validating",
+    "Review": "In review",
+    "Completed": "Completed",
+    "Paused": "Paused",
+    "Cancelled": "Cancelled"
+  },
+  "milestoneState": {
+    "Pending": "Pending",
+    "Executing": "Executing",
+    "Judging": "Judging",
+    "Passed": "Passed",
+    "Skipped": "Skipped"
+  },
+  "step": {
+    "Plan": "Planning",
+    "Execute": "Executing",
+    "Retry": "Retrying",
+    "Judge": "Judging",
+    "Final": "Validating"
+  },
+  "create": {
+    "needsProject": "Pick a project for a mission: it runs in that project's repos from the first step."
+  },
+  "machines": {
+    "local": "This machine",
+    "startedElsewhere": "Started on {{machine}}. It runs there; switch servers to follow it."
+  },
+  "hero": {
+    "updated": "updated {{ago}} ago"
+  },
+  "phase": {
+    "plan": "Plan",
+    "approve": "Approve",
+    "run": "Run & judge",
+    "validate": "Validate",
+    "review": "Review"
+  },
+  "live": {
+    "title": "Agent working now",
+    "watch": "Watch live"
+  },
+  "runs": {
+    "title": "Runs",
+    "none": "Nothing yet"
+  },
+  "overview": {
+    "title": "Live board",
+    "summary": "{{missions}} in flight across {{projects}} projects · {{running}} agents working · {{spend}} spent",
+    "none": "No missions are in flight. Start one to see it here.",
+    "needsApproval": "Milestones are ready. Open to approve.",
+    "finished": "Recently finished"
+  },
+  "filter": {
+    "label": "Show",
+    "progress": "Active",
+    "review": "Review",
+    "done": "Done",
+    "all": "All",
+    "empty": "No missions here",
+    "showAll": "Show all missions",
+    "emptyFor": {
+      "progress": "Nothing in flight",
+      "review": "Nothing waiting for review",
+      "done": "Nothing finished yet",
+      "all": "No missions"
+    }
+  },
+  "menu": {
+    "open": "Open",
+    "done": "Mark as done",
+    "doneStops": "Mark as done (stops the agent)",
+    "cancel": "Cancel mission",
+    "more": "More actions"
+  },
+  "side": {
+    "label": "Mission details",
+    "crew": "Crew",
+    "runs": "Runs",
+    "activity": "Activity"
+  }
+}

@@ -200,6 +200,22 @@ impl McpDispatcher {
             "tendril_cancel_job" => self.cancel_job(args).await,
             "tendril_job_add_log" => self.job_add_log(args).await,
 
+            // Missions
+            "tendril_create_mission" => self.create_mission(args).await,
+            "tendril_list_missions" => Ok(ToolOutcome::structured(
+                json!({ "missions": self.get("/api/missions").await? }),
+            )),
+            "tendril_get_mission" => {
+                let id = required_str(args, "mission_id")?;
+                Ok(ToolOutcome::structured(self.get(&format!("/api/missions/{}", id)).await?))
+            }
+            "tendril_mission_action" => {
+                let id = required_str(args, "mission_id")?;
+                let action = required_str(args, "action")?;
+                let path = format!("/api/missions/{}/{}", id, action);
+                Ok(ToolOutcome::structured(self.post(&path, &json!({})).await?))
+            }
+
             // Config reads
             "tendril_get_config" => self.get_config(args),
             "tendril_list_projects" => self.list_projects(),
@@ -641,6 +657,28 @@ impl McpDispatcher {
             "sourcePath": str_arg(args, "source_path"),
         });
         let response = self.post("/api/inbox", &body).await?;
+        Ok(ToolOutcome::structured(response))
+    }
+
+    async fn create_mission(&self, args: &Value) -> Exec {
+        let role = |key: &str| {
+            str_arg(args, key)
+                .and_then(crate::missions::model::RoleAgent::parse)
+                .map(|r| json!(r))
+        };
+        let body = json!({
+            "title": required_str(args, "title")?,
+            "goal": required_str(args, "goal")?,
+            "project": required_str(args, "project")?,
+            "maxCost": args.get("max_cost").and_then(Value::as_f64),
+            "agents": {
+                "planner": role("planner"),
+                "worker": role("worker"),
+                "judge": role("judge"),
+                "validator": role("validator"),
+            },
+        });
+        let response = self.post("/api/missions", &body).await?;
         Ok(ToolOutcome::structured(response))
     }
 

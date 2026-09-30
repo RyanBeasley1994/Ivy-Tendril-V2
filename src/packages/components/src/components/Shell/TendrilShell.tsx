@@ -28,7 +28,7 @@ interface TendrilShellProps extends ShellWidgetProps {
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = "tendril.shell.sidebarCollapsed";
 export const SIDEBAR_WIDTH_STORAGE_KEY = "tendril.shell.sidebarWidth";
-export const DEFAULT_SIDEBAR_WIDTH = 320;
+export const DEFAULT_SIDEBAR_WIDTH = 256;
 export const MIN_SIDEBAR_WIDTH = 200;
 export const MAX_SIDEBAR_WIDTH = 640;
 

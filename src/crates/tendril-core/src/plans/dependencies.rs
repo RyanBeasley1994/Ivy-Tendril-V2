@@ -34,6 +34,13 @@ pub fn check_dependencies_with(
     resolve_pr_state: PrStateResolver,
 ) -> Result<DependencyCheckResult> {
     let (plan, _) = read_plan_yaml(plan_folder)?;
+
+    // A mission's integration plan belongs to the mission until the mission hands it over: nothing
+    // may execute it, and the unblock pass must not move it to Draft underneath the driver.
+    if let Some(reason) = crate::missions::integration_block_reason(&plan) {
+        return Ok(blocked(reason));
+    }
+
     if plan.depends_on.is_empty() {
         return Ok(ok_result());
     }

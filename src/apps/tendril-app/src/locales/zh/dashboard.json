@@ -5,7 +5,10 @@
       "afternoon": "下午好！",
       "evening": "晚上好！"
     },
-    "headline": "今天我们要产出什么？"
+    "headline": "今天我们要产出什么？",
+    "status": "运行中 {{running}} · 排队中 {{queued}}",
+    "systemsOk": "所有系统运行正常",
+    "systemsDown": "服务无法连接"
   },
   "kpis": {
     "featuresShipped": {
@@ -66,5 +69,27 @@
       "thousand": "{{value}}k",
       "million": "{{value}}M"
     }
+  },
+  "insights": {
+    "title": "洞察",
+    "subtitle": "所有智能体和项目的 Token、支出与成果",
+    "tokens30": "Token · 30 天",
+    "spendByAgent": "按智能体的支出",
+    "agents": "智能体",
+    "agent": "智能体",
+    "plans": "计划",
+    "tokensPerPlan": "Token / 计划",
+    "tokens": "Token",
+    "cost": "成本",
+    "trendTitle": "成本与计划",
+    "noAgents": "尚无智能体记录使用量",
+    "ofMonth": "占本月支出",
+    "gitActivity": "Git 活动",
+    "pullRequests": "已合并的拉取请求",
+    "rolling": "7 日平均",
+    "window": "最近 4 周",
+    "week": "周",
+    "month": "月",
+    "loading": "正在加载指标"
   }
 }

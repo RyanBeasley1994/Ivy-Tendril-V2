@@ -66,7 +66,9 @@
     "reviewAction": "Granskningsåtgärd",
     "agent": "Agent",
     "plan": "Plan {{id}}",
-    "job": "Jobb {{id}}"
+    "job": "Jobb {{id}}",
+    "insights": "Insikter",
+    "missions": "Uppdrag"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Planer",
       "review": "Granskning",
       "recommendations": "Rekommendationer",
-      "jobs": "Jobb"
+      "jobs": "Jobb",
+      "insights": "Insikter",
+      "missions": "Uppdrag"
+    },
+    "navGroup": {
+      "overview": "Översikt",
+      "work": "Arbete",
+      "observe": "Observera"
     },
     "chat": "Chatt",
     "inbox": "Inkorg",
@@ -93,6 +102,16 @@
       "help": "Hjälp",
       "documentation": "Dokumentation",
       "reportIssue": "Rapportera problem"
+    },
+    "status": {
+      "online": "Tjänsten online",
+      "reconnecting": "Återansluter…",
+      "offline": "Tjänsten offline"
+    },
+    "usage": {
+      "title": "{{agent}} · {{window}}-gräns",
+      "used": "{{percent}} använt",
+      "resets": "Återställs om {{countdown}}"
     }
   },
   "shortcuts": {
@@ -183,7 +202,8 @@
     },
     "ownership": {
       "adoptedExternal": "Extern (övertagen)",
-      "managed": "Hanterad"
+      "managed": "Hanterad",
+      "remote": "Fjärr"
     }
   },
   "serviceStatus": {
@@ -250,5 +270,16 @@
     "reviewActionFailed": "Granskningsåtgärden {{endpoint}} misslyckades ({{status}}): {{detail}}",
     "subscribeFailed": "Det gick inte att prenumerera på {{url}}: HTTP {{status}}",
     "agentTerminalFailed": "Agentterminalen {{endpoint}} misslyckades: HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Sök planer",
+    "agentSession": "Agentsession",
+    "inbox": "Öppna inkorgen"
+  },
+  "pageSubtitles": {
+    "jobs": "Varje agentkörning: pågående, köade och klara",
+    "recommendations": "Uppföljningar som avslutade planer föreslår",
+    "inbox": "Issues och förslag att göra planer av",
+    "pullRequests": "Pull requests som dina planer har öppnat"
   }
 }

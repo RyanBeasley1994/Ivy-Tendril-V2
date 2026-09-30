@@ -21,6 +21,15 @@ import type {
   GitHubAccountOption,
   GitHubIssuesPage,
   InboxProposal,
+  CreateMissionRequest,
+  BranchPreview,
+  GitSettings,
+  Machine,
+  MachineTarget,
+  Mission,
+  MissionAction,
+  MissionAgents,
+  MissionBudget,
   Job,
   JobDetail,
   ModelCatalogStatus,
@@ -64,6 +73,7 @@ import type {
   VerificationReport,
   VerificationStatus,
   VersionInfo,
+  DirectoryListing,
 } from "../types/api";
 import type { ChatAttachment } from "../types/chat";
 import type {
@@ -394,8 +404,12 @@ const tauriClient = {
    * Uncommitted-change status of each of a project's repos, with the base branch each syncs to - the
    * create-plan dirty-repo preflight (V1 `UsePreflightCheck(project)`).
    */
-  async getProjectRepoStatus(this: void, projectName: string): Promise<RepoStatus[]> {
-    return invoke<RepoStatus[]>("cmd_get_project_repo_status", { projectName });
+  async getProjectRepoStatus(
+    this: void,
+    projectName: string,
+    target?: MachineTarget,
+  ): Promise<RepoStatus[]> {
+    return invoke<RepoStatus[]>("cmd_get_project_repo_status", { projectName, target });
   },
 
   /** A project's GitHub labels and assignable users (`gh`, cached daemon-side), for Create Issue. */
@@ -666,8 +680,21 @@ const tauriClient = {
     return invoke<JobDetail>("cmd_get_job", { id });
   },
 
-  async startJob(this: void, args: StartJobArgs): Promise<StartJobResponse> {
-    return invoke<StartJobResponse>("cmd_start_job", { args });
+  /**
+   * `target: "local"` starts the job on this machine's daemon even while the app is connected to a
+   * remote one (the create-plan machine picker); omitted, it goes where everything else goes.
+   */
+  async startJob(
+    this: void,
+    args: StartJobArgs,
+    target?: MachineTarget,
+  ): Promise<StartJobResponse> {
+    return invoke<StartJobResponse>("cmd_start_job", { args, target });
+  },
+
+  /** The machines a plan can be created on; empty unless connected to a remote server. */
+  async listMachines(this: void): Promise<Machine[]> {
+    return invoke<Machine[]>("cmd_list_machines");
   },
 
   async cancelJob(this: void, id: string, message?: string): Promise<void> {
@@ -719,8 +746,8 @@ const tauriClient = {
     return invoke<number>("cmd_clear_jobs", { status });
   },
 
-  async listProjects(this: void): Promise<ProjectSummary[]> {
-    return invoke<ProjectSummary[]>("cmd_list_projects");
+  async listProjects(this: void, target?: MachineTarget): Promise<ProjectSummary[]> {
+    return invoke<ProjectSummary[]>("cmd_list_projects", { target });
   },
 
   async listPullRequests(this: void): Promise<PrStatus[]> {
@@ -883,6 +910,23 @@ const tauriClient = {
   /** Merges a single top-level key into `config.yaml`, leaving every other key untouched. */
   async putConfig(this: void, key: string, value: unknown): Promise<void> {
     return invoke<void>("cmd_put_config", { key, value });
+  },
+
+  /**
+   * Subdirectories of `path` on the *daemon's* host (its home directory when omitted). The folder
+   * browser uses this rather than the native picker whenever the UI is not the desktop app, since a
+   * remote client's own disk is the wrong one to pick a repository from.
+   */
+  async listDirectories(this: void, path?: string, showHidden = false): Promise<DirectoryListing> {
+    const query = new URLSearchParams();
+    if (path) query.set("path", path);
+    if (showHidden) query.set("showHidden", "true");
+    const qs = query.toString();
+    return invokeOrFetch<DirectoryListing>(
+      "cmd_list_directories",
+      { path: path ?? null, showHidden },
+      `/api/fs/directories${qs ? `?${qs}` : ""}`,
+    );
   },
 
   async getOnboardingStatus(this: void): Promise<OnboardingStatus> {
@@ -1211,6 +1255,46 @@ const tauriClient = {
   },
 
   /** Swept issues awaiting a decision. Omitting `state` returns the pending ones. */
+  async listMissions(this: void): Promise<Mission[]> {
+    return invoke<Mission[]>("cmd_list_missions");
+  },
+
+  async getMission(this: void, id: string): Promise<Mission> {
+    return invoke<Mission>("cmd_get_mission", { id });
+  },
+
+  async createMission(
+    this: void,
+    request: CreateMissionRequest,
+    target?: MachineTarget,
+  ): Promise<Mission> {
+    return invoke<Mission>("cmd_create_mission", { request, target });
+  },
+
+  /** Approve, pause, resume, cancel, or take the next step now. Answers with the mission. */
+  async missionAction(
+    this: void,
+    id: string,
+    action: MissionAction,
+    body?: { reason?: string },
+  ): Promise<Mission> {
+    return invoke<Mission>("cmd_mission_action", { id, action, body });
+  },
+
+  /** The branch names `git` would produce, before it is saved (Settings → Git & Branches). */
+  async previewBranchNames(this: void, git: GitSettings): Promise<BranchPreview> {
+    return invoke<BranchPreview>("cmd_preview_branch_names", { git });
+  },
+
+  /** The harness per role; applies from the mission's next job. */
+  async setMissionAgents(this: void, id: string, agents: MissionAgents): Promise<Mission> {
+    return invoke<Mission>("cmd_set_mission_agents", { id, agents });
+  },
+
+  async setMissionBudget(this: void, id: string, budget: Partial<MissionBudget>): Promise<Mission> {
+    return invoke<Mission>("cmd_set_mission_budget", { id, budget });
+  },
+
   async listInboxProposals(this: void, state?: string): Promise<InboxProposal[]> {
     return invoke<InboxProposal[]>("cmd_list_inbox_proposals", { state });
   },

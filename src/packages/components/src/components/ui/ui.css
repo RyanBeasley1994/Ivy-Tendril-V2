@@ -676,3 +676,24 @@
   text-align: left;
   cursor: pointer;
 }
+
+/* Command center (dark): badges are the mockup's status pills - fully round, a faint wash of the
+   colour behind brighter text, medium weight. The numeric count variant keeps its mono digits. */
+.dark .tui-badge {
+  --tui-badge-project-bg: color-mix(in srgb, var(--info) 14%, transparent);
+  --tui-badge-project-fg: color-mix(in srgb, var(--info) 80%, var(--foreground));
+  --tui-badge-success-bg: color-mix(in srgb, var(--success) 13%, transparent);
+  --tui-badge-success-fg: color-mix(in srgb, var(--success) 85%, var(--foreground));
+  --tui-badge-warning-bg: color-mix(in srgb, var(--warning) 14%, transparent);
+  --tui-badge-warning-fg: color-mix(in srgb, var(--warning) 85%, var(--foreground));
+  --tui-badge-danger-bg: color-mix(in srgb, var(--destructive) 14%, transparent);
+  --tui-badge-danger-fg: color-mix(in srgb, var(--destructive) 85%, var(--foreground));
+  --tui-badge-color-mix-bg: 14%;
+  --tui-badge-color-mix-fg: 85%;
+
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}

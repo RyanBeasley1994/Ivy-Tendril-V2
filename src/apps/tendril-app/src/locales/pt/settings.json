@@ -18,7 +18,8 @@
     "security": "Segurança e Tunelamento",
     "advanced": "Avançado",
     "newsletter": "Newsletter",
-    "fallback": "Configuração"
+    "fallback": "Configuração",
+    "git": "Git e branches"
   },
   "nav": {
     "ariaLabel": "Seções de configuração",
@@ -360,5 +361,56 @@
     "emailLabel": "Endereço de e-mail",
     "subscribing": "Inscrevendo…",
     "subscribe": "Inscrever-se"
+  },
+  "remoteServer": {
+    "title": "Servidor remoto",
+    "hint": "Use o Tendril em outra máquina, como um VPS, em vez desta. O servidor precisa ter uma senha definida (proteção de sessão).",
+    "urlLabel": "Endereço do servidor",
+    "urlPlaceholder": "203.0.113.7 ou https://meu-servidor.example.com",
+    "urlHint": "Um IP ou nome de host usa a porta 5010. Inclua https:// para um túnel ou proxy reverso.",
+    "usernameLabel": "Usuário",
+    "defaultUser": "admin",
+    "passwordLabel": "Senha",
+    "connect": "Conectar",
+    "disconnect": "Desconectar e usar esta máquina",
+    "connectedAs": "Conectado como {{username}}",
+    "notAuthenticated": "Sem sessão: {{error}}",
+    "restarting": "Reiniciando o Tendril…"
+  },
+  "git": {
+    "title": "Git e branches",
+    "hint": "Como o Tendril nomeia as branches de planos e missões, e como os agentes fazem commit.",
+    "prefixLabel": "Prefixo de branch",
+    "prefixHint": "O valor de {prefix}. Padrão: tendril/.",
+    "templateLabel": "Branch de plano",
+    "templateHint": "Planos e marcos de missões. Padrão: {prefix}{folder}.",
+    "missionTemplateLabel": "Branch de missão",
+    "missionTemplateHint": "A branch de integração de uma missão, onde todos os marcos chegam e de onde sai o pull request.",
+    "previewTitle": "Prévia",
+    "previewUnavailable": "Prévia indisponível: o serviço não está acessível.",
+    "preview": {
+      "plan": "Plano",
+      "milestone": "Marco",
+      "mission": "Missão"
+    },
+    "unknownTokens": "Marcadores desconhecidos: {{tokens}}",
+    "tokensTitle": "Marcadores",
+    "tokens": {
+      "prefix": "o prefixo de branch",
+      "folder": "pasta do plano, ex. 00042-AddLogin",
+      "id": "id do plano, ex. 00042",
+      "title": "título do plano, ex. AddLogin",
+      "slug": "título em kebab-case, ex. add-login",
+      "project": "projeto, kebab-case",
+      "level": "nível, ex. feature",
+      "date": "hoje, AAAAMMDD",
+      "mission": "id da missão (só missões)",
+      "milestone": "id do marco, ex. m2 (só marcos)"
+    },
+    "stableNote": "A branch de um plano é fixada quando ele ganha o primeiro worktree, então as mudanças valem para planos novos; planos em andamento mantêm a branch.",
+    "signLabel": "Assinar commits feitos por agentes",
+    "signHint": "Desative se sua assinatura exige você presente (chave SSH do 1Password, pinentry do GPG): agentes sem interface não conseguem assinar e os commits falham. Afeta só os commits dos agentes; sua configuração do git não muda.",
+    "save": "Salvar",
+    "saved": "Configurações de branch salvas"
   }
 }

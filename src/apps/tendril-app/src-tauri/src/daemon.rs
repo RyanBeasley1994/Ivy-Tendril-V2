@@ -132,6 +132,17 @@ pub fn parse_master_json(content: &str) -> Result<MasterInfo, String> {
 }
 
 pub fn read_master(tendril_home: &Path) -> Result<MasterInfo, String> {
+    // A saved remote connection stands in for the local daemon everywhere; see `service::remote`.
+    if let Some(remote) = crate::service::remote::master_override() {
+        return Ok(remote);
+    }
+    read_local_master(tendril_home)
+}
+
+/// The daemon on *this* machine, even while the app is connected to a remote one. Only for the few
+/// actions the operator explicitly aims at this machine (the create-plan machine picker); everything
+/// else follows [`read_master`].
+pub fn read_local_master(tendril_home: &Path) -> Result<MasterInfo, String> {
     let master_file = tendril_home.join(".master");
     if !master_file.exists() {
         return Err(format!(
@@ -221,6 +232,37 @@ pub async fn probe_daemon_health(
 pub async fn discover_daemon_status() -> DaemonStatusResponse {
     let tendril_home = resolve_tendril_home();
     let tendril_home_str = tendril_home.to_string_lossy().to_string();
+
+    if let Some(remote) = crate::service::remote::master_override() {
+        let probe =
+            probe_daemon_health(&remote.scheme, &remote.host, remote.port, &remote.secret).await;
+        let (state, api_version, capabilities, message) = match probe {
+            Ok((api, caps)) => (
+                DaemonConnectionState::Connected,
+                Some(api),
+                caps,
+                format!("Connected to remote server {}", remote.host),
+            ),
+            Err(state) => (
+                state,
+                None,
+                Vec::new(),
+                format!("Remote server {} is not reachable", remote.host),
+            ),
+        };
+        return DaemonStatusResponse {
+            state,
+            tendril_home: tendril_home_str,
+            port: Some(remote.port),
+            host: Some(remote.host),
+            scheme: Some(remote.scheme),
+            secret: Some(remote.secret),
+            pid: None,
+            api_version,
+            capabilities,
+            message,
+        };
+    }
 
     let master_path = tendril_home.join(".master");
     if !master_path.exists() {

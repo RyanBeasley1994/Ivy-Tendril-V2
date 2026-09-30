@@ -78,7 +78,7 @@ const TabsList = React.forwardRef<
       <TabsPrimitive.List
         ref={ref as React.Ref<React.ElementRef<typeof TabsPrimitive.List>>}
         className={cn(
-          "inline-flex h-9 items-center justify-center rounded-box bg-muted dark:bg-background p-1 text-muted-foreground",
+          "inline-flex h-9 items-center justify-center gap-0.5 rounded-[10px] border border-border bg-background/60 p-[3px] text-muted-foreground",
           className,
         )}
         role="tablist"
@@ -91,7 +91,7 @@ const TabsList = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "inline-flex h-9 items-center justify-center rounded-box bg-muted p-1 text-muted-foreground",
+        "inline-flex h-9 items-center justify-center gap-0.5 rounded-[10px] border border-border bg-background/60 p-[3px] text-muted-foreground",
         className,
       )}
       role="tablist"
@@ -118,7 +118,7 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
           ref={ref as React.Ref<React.ElementRef<typeof TabsPrimitive.Trigger>>}
           value={value}
           className={cn(
-            "inline-flex items-center justify-center whitespace-nowrap -ml-px -mt-px px-4 py-2 text-sm font-medium ring-offset-background transition-all hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow",
+            "inline-flex items-center justify-center whitespace-nowrap rounded-[7px] h-7 px-3 text-sm font-medium ring-offset-background transition-all hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--input)_70%,transparent)]",
             className,
           )}
           role="tab"
@@ -141,8 +141,8 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
         aria-selected={isActive}
         data-state={isActive ? "active" : "inactive"}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap -ml-px -mt-px px-4 py-2 text-sm font-medium ring-offset-background transition-all hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-          isActive && "bg-card text-foreground shadow",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-[7px] h-7 px-3 text-sm font-medium ring-offset-background transition-all hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+          isActive && "bg-secondary text-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--input)_70%,transparent)]",
           className,
         )}
         onClick={handleClick}

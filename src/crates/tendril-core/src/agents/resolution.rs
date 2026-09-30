@@ -245,6 +245,20 @@ pub fn resolve_agent(
         }
     }
 
+    // `git.signCommits: false`: one more `GIT_CONFIG_*` pair, appended after any the customer or the
+    // co-author shim already set, so the agent's commits skip a signer that needs a person present.
+    if settings.git.sign_commits == Some(false) {
+        let base = environment_variables
+            .get("GIT_CONFIG_COUNT")
+            .cloned()
+            .or_else(|| std::env::var("GIT_CONFIG_COUNT").ok())
+            .and_then(|v| v.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        environment_variables.insert("GIT_CONFIG_COUNT".to_string(), (base + 1).to_string());
+        environment_variables.insert(format!("GIT_CONFIG_KEY_{base}"), "commit.gpgsign".to_string());
+        environment_variables.insert(format!("GIT_CONFIG_VALUE_{base}"), "false".to_string());
+    }
+
     AgentResolution {
         agent: agent_id,
         model,
@@ -634,4 +648,32 @@ fn dedupe_ignore_case(items: impl IntoIterator<Item = String>) -> Vec<String> {
         out.push(item);
     }
     out
+}
+
+#[cfg(test)]
+mod sign_commits_tests {
+    use super::*;
+
+    fn resolve(settings: &TendrilSettings) -> AgentResolution {
+        resolve_agent(settings, "claude", "ExecutePlan", None, &HashMap::new())
+    }
+
+    #[test]
+    fn signing_off_appends_one_git_config_pair() {
+        let mut settings = TendrilSettings::default();
+        assert!(!resolve(&settings).environment_variables.contains_key("GIT_CONFIG_KEY_0"));
+
+        settings.git.sign_commits = Some(false);
+        let env = resolve(&settings).environment_variables;
+        let count: usize = env["GIT_CONFIG_COUNT"].parse().unwrap();
+        let index = count - 1;
+        assert_eq!(env[&format!("GIT_CONFIG_KEY_{index}")], "commit.gpgsign");
+        assert_eq!(env[&format!("GIT_CONFIG_VALUE_{index}")], "false");
+
+        settings.git.sign_commits = Some(true);
+        assert!(!resolve(&settings)
+            .environment_variables
+            .values()
+            .any(|v| v == "commit.gpgsign"));
+    }
 }

@@ -7,11 +7,13 @@ export const buttonVariant = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:brightness-90",
+        default:
+          "bg-primary text-primary-foreground font-semibold shadow-[0_6px_18px_-10px_color-mix(in_srgb,var(--primary)_70%,transparent)] hover:bg-[color-mix(in_srgb,var(--primary)_85%,var(--foreground))]",
         destructive: "bg-destructive text-destructive-foreground shadow-sm hover:brightness-90",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-secondary/60 hover:text-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:brightness-90",
+          "border border-input bg-secondary text-secondary-foreground hover:bg-accent hover:text-foreground",
+        secondary:
+          "border border-input bg-secondary text-secondary-foreground hover:bg-accent hover:text-foreground",
         success: "bg-success text-success-foreground shadow-sm hover:brightness-90",
         warning: "bg-warning text-warning-foreground shadow-sm hover:brightness-90",
         info: "bg-info text-info-foreground shadow-sm hover:brightness-90",

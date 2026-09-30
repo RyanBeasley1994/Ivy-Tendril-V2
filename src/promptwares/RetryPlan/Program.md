@@ -19,6 +19,8 @@ Project repos, verifications, and context are in the **Projects** section of you
 
 The launcher sets the working directory to the project's primary repo.
 
+**Mission milestones:** When the firmware header has a **MissionBranch**, this plan is one milestone of a mission. Its base branch (`RepoConfigs`) is that local mission branch, which already holds every earlier milestone — there is no `origin/<MissionBranch>`, so compare against the local branch (`git diff <MissionBranch>...HEAD`, `git log <MissionBranch>..HEAD`). Build on the earlier milestones' work rather than redoing it. Never push and never open a pull request: the mission's orchestrator judges this milestone, lands it on the mission branch, and the whole mission ships as one pull request at the end.
+
 ## Change Request Priority
 
 The `ChangeRequest` header contains specific changes the reviewer wants. Your primary objective is to address this feedback.
@@ -47,7 +49,7 @@ For each repo in `plan.yaml` `repos` (or the project's repos from the **Projects
 2. **Directory missing, but the branch still exists.** Check the main repo for the plan's own branch, and for the head branch of any PR listed in plan.yaml `prs` or `SourceUrl` when the plan updates an existing PR:
 
 ```bash
-git -C <main-repo> branch --list "tendril/<planFolderName>"
+git -C <main-repo> branch --list "<PlanBranch>"   # the PlanBranch firmware header
 ```
 
    If a branch is found, re-attach the worktree without touching its history:

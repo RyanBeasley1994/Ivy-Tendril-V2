@@ -9,7 +9,6 @@
     "dev:desktop": "tsx src/scripts/dev-desktop.ts",
     "dev:docs": "node src/scripts/ensure-components.mjs && pnpm --filter @ivy-interactive/tendril-docs dev",
     "dev:components": "pnpm --filter @ivy-interactive/components dev",
-    "dev:storybook": "pnpm --filter @ivy-interactive/components storybook",
     "build": "pnpm --filter @ivy-interactive/components build && pnpm --filter @ivy-interactive/tendril-app build && pnpm --filter @ivy-interactive/tendril-docs build",
     "build:extension": "pnpm --filter ivy-tendril build",
     "package:extension": "pnpm --filter ivy-tendril package",

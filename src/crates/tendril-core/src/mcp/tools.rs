@@ -58,8 +58,59 @@ pub fn get_mcp_tool_definitions() -> Vec<McpToolDefinition> {
     tools.extend(plan_read_tools());
     tools.extend(plan_write_tools());
     tools.extend(job_tools());
+    tools.extend(mission_tools());
     tools.extend(config_tools());
     tools
+}
+
+fn mission_id_prop() -> Value {
+    json!({
+        "type": "string",
+        "description": "Mission ID (e.g. 00003 or 3) or folder name"
+    })
+}
+
+fn role_agent_prop(role: &str) -> Value {
+    json!({
+        "type": "string",
+        "description": format!("Harness for the {} role: agent[:model[:effort]], e.g. codex:gpt-5.6-sol:high. Omit for the default agent.", role)
+    })
+}
+
+fn mission_tools() -> Vec<McpToolDefinition> {
+    vec![
+        tool(
+            "tendril_create_mission",
+            "Create a mission: an AI orchestrator breaks the goal into milestones, runs and judges each on a shared branch, validates the whole, and hands one integration plan to Review. The operator approves the milestones once before anything runs.",
+            json!({
+                "title": { "type": "string", "description": "Short title" },
+                "goal": { "type": "string", "description": "The task, in full" },
+                "project": { "type": "string", "description": "Project to run in (required: missions need real repos)" },
+                "planner": role_agent_prop("planner"),
+                "worker": role_agent_prop("worker"),
+                "judge": role_agent_prop("judge"),
+                "validator": role_agent_prop("validator"),
+                "max_cost": { "type": "number", "description": "Pause once total spend reaches this many USD" }
+            }),
+            &["title", "goal", "project"],
+        ),
+        tool("tendril_list_missions", "List missions with their state, progress and cost", json!({}), &[]),
+        tool(
+            "tendril_get_mission",
+            "Get a mission: goal, milestones, agents, budget, current job and log",
+            json!({ "mission_id": mission_id_prop() }),
+            &["mission_id"],
+        ),
+        tool(
+            "tendril_mission_action",
+            "Approve a mission's milestones, or pause, resume or cancel it",
+            json!({
+                "mission_id": mission_id_prop(),
+                "action": { "type": "string", "enum": ["approve", "pause", "resume", "cancel"] }
+            }),
+            &["mission_id", "action"],
+        ),
+    ]
 }
 
 fn plan_read_tools() -> Vec<McpToolDefinition> {

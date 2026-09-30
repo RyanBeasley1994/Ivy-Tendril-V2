@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../components/page/Page";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink, FileText, GitBranch, RefreshCw } from "lucide-react";
 import {
@@ -115,6 +116,7 @@ export const PullRequestsView: React.FC<PullRequestsViewProps> = ({
   onOpenNewPlanModal,
 }) => {
   const { t } = useTranslation("inbox");
+  const { t: tc } = useTranslation("common");
   const format = useFormatters();
   const [rows, setRows] = useState<PrStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -413,9 +415,7 @@ export const PullRequestsView: React.FC<PullRequestsViewProps> = ({
 
   return (
     <div className="space-y-6" data-testid="pull-requests-view">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("pullRequests.title")}</h1>
-      </div>
+      <PageHeader title={t("pullRequests.title")} subtitle={tc("pageSubtitles.pullRequests")} />
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
       {syncError && <ErrorBanner>{syncError}</ErrorBanner>}

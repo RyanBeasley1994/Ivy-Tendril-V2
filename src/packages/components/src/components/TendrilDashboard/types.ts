@@ -20,6 +20,50 @@ export interface DashboardKpiDto {
   hint?: string | null;
   /** A smaller figure beside the value, on a card whose number needs a second one to read. */
   subValue?: string | null;
+  /** The recent values behind the figure, oldest first, drawn as a sparkline beside it. */
+  series?: number[] | null;
+  /** A glyph for the card's icon tile: one of {@link KPI_ICON_NAMES}. */
+  icon?: string | null;
+}
+
+/** The glyphs a KPI tile can carry, by name, so a host can pick one without importing lucide. */
+export const KPI_ICON_NAMES = ["rocket", "coins", "calendar", "receipt", "layers", "eye"] as const;
+
+/**
+ * One thing on the dashboard that is waiting on the operator: a plan ready for review, a failed
+ * verification, a job that stopped producing output. `OnAttention` fires with the id.
+ */
+export interface DashboardAttentionDto {
+  id: string;
+  /** Drives the icon and colour: review is an invitation, failed and stalled are problems. */
+  kind: "review" | "failed" | "stalled" | "info";
+  title: string;
+  /** A short status beside the title, e.g. "6/6 checks" or "no output 9m". */
+  status?: string | null;
+  /** The mono line underneath: plan id, name, age. */
+  detail?: string | null;
+  /** The button's label. */
+  action: string;
+}
+
+/** One column of the Plan Flow ribbon. `OnFlowStage` fires with the id when it is clicked. */
+export interface DashboardFlowStageDto {
+  id: string;
+  label: string;
+  count: number;
+}
+
+/** Tokens used on one calendar day. */
+export interface DashboardTokenDayDto {
+  /** `yyyy-MM-dd`. */
+  date: string;
+  tokens: number;
+}
+
+/** One slice of the token split bar. */
+export interface DashboardTokenShareDto {
+  label: string;
+  tokens: number;
 }
 
 export interface DashboardMonthValueDto {
@@ -53,6 +97,14 @@ export interface DashboardJobDto {
   title: string;
   /** Lowercased job status; "running" animates the row's spinner. */
   status: string;
+  /** What the job is doing, e.g. the promptware or the status message's first word. */
+  phase?: string | null;
+  /** Pre-formatted, e.g. "412k". */
+  tokens?: string | null;
+  /** Pre-formatted elapsed time, e.g. "08:42". */
+  elapsed?: string | null;
+  /** True when the job has stopped producing output; the row is tinted as a warning. */
+  stalled?: boolean;
 }
 
 export interface DashboardTrendDto {
@@ -87,6 +139,20 @@ export interface TendrilDashboardProps {
   pullRequestsWeekly?: DashboardMonthValueDto[];
   activity?: DashboardActivityMonthDto[];
   jobs?: DashboardJobDto[];
+  /** A one-line summary under the greeting, e.g. "5 agents running · 2 queued". */
+  statusText?: string;
+  /** False when the service is unreachable: the status dot turns red. */
+  statusOk?: boolean;
+  /** The plan lifecycle, in order. Omitted, the Plan Flow card is not drawn. */
+  flow?: DashboardFlowStageDto[];
+  /** Plans that failed out of the flow, drawn as a branch. */
+  flowFailed?: DashboardFlowStageDto | null;
+  /** What is waiting on the operator. Omitted, the Needs Attention card is not drawn. */
+  attention?: DashboardAttentionDto[];
+  /** Tokens per day, ascending. Omitted, the Tokens card is not drawn. */
+  tokensDaily?: DashboardTokenDayDto[] | null;
+  /** The split bar under the token heatmap, largest first. */
+  tokenShare?: DashboardTokenShareDto[];
   /**
    * True while the analytics behind the KPI, trend, Git Activity and Pull Requests cards have never
    * arrived. Those four regions render `Skeleton` placeholders of their own shape instead, which is

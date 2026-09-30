@@ -66,7 +66,9 @@
     "reviewAction": "Action de revue",
     "agent": "Agent",
     "plan": "Plan {{id}}",
-    "job": "Job {{id}}"
+    "job": "Job {{id}}",
+    "insights": "Analyses",
+    "missions": "Missions"
   },
   "navigation": {
     "errors": {
@@ -80,7 +82,14 @@
       "plans": "Plans",
       "review": "Revue",
       "recommendations": "Recommandations",
-      "jobs": "Jobs"
+      "jobs": "Jobs",
+      "insights": "Analyses",
+      "missions": "Missions"
+    },
+    "navGroup": {
+      "overview": "Vue d'ensemble",
+      "work": "Travail",
+      "observe": "Observer"
     },
     "chat": "Chat",
     "inbox": "Boîte de réception",
@@ -93,6 +102,16 @@
       "help": "Aide",
       "documentation": "Documentation",
       "reportIssue": "Signaler un problème"
+    },
+    "status": {
+      "online": "Service en ligne",
+      "reconnecting": "Reconnexion…",
+      "offline": "Service hors ligne"
+    },
+    "usage": {
+      "title": "{{agent}} · limite {{window}}",
+      "used": "{{percent}} utilisé",
+      "resets": "Réinitialisation dans {{countdown}}"
     }
   },
   "shortcuts": {
@@ -185,7 +204,8 @@
     },
     "ownership": {
       "adoptedExternal": "Externe adopté",
-      "managed": "Géré"
+      "managed": "Géré",
+      "remote": "Distant"
     }
   },
   "serviceStatus": {
@@ -252,5 +272,16 @@
     "reviewActionFailed": "L'action de revue {{endpoint}} a échoué ({{status}}) : {{detail}}",
     "subscribeFailed": "Échec de l'abonnement à {{url}} : HTTP {{status}}",
     "agentTerminalFailed": "Le terminal de l'agent {{endpoint}} a échoué : HTTP {{status}}"
+  },
+  "topBar": {
+    "search": "Rechercher des plans",
+    "agentSession": "Session d'agent",
+    "inbox": "Ouvrir la boîte de réception"
+  },
+  "pageSubtitles": {
+    "jobs": "Chaque exécution d'agent : en cours, en file et terminée",
+    "recommendations": "Les suites proposées par vos plans terminés",
+    "inbox": "Issues et propositions à transformer en plans",
+    "pullRequests": "Pull requests ouvertes par vos plans"
   }
 }

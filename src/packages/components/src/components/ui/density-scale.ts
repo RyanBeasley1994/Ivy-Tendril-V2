@@ -1,15 +1,15 @@
 /** Heights shared by inputs, selects, and buttons at each density */
 export const controlHeight = {
   Small: "h-7",
-  Medium: "h-9",
-  Large: "h-11",
+  Medium: "h-8",
+  Large: "h-10",
 } as const;
 
 /** Square control size (icon-only buttons) matching {@link controlHeight} */
 export const controlSize = {
   Small: "size-7",
-  Medium: "size-9",
-  Large: "size-11",
+  Medium: "size-8",
+  Large: "size-10",
 } as const;
 
 /** Base density scale — used by table-head, expandable trigger, and as reference for offset scales */

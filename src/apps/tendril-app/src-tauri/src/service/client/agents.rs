@@ -111,11 +111,19 @@ impl TendrilClient {
         request: serde_json::Value,
     ) -> Result<serde_json::Value, BridgeError> {
         let url = format!("{}/api/agents/{}/test", self.base_url, urlencoding(agent));
+        let models = request
+            .get("models")
+            .and_then(|m| m.as_array())
+            .map_or(1, |m| m.len().max(1));
         let resp = self
             .client
             .post(&url)
             .headers(self.headers())
             .header(reqwest::header::ACCEPT, "application/json")
+            // The client's 10s default is far shorter than a probe: a single model takes seconds to
+            // answer and the daemon allows each one thirty, so every run was cut off client-side and
+            // shown as "Test run failed" with every check "Cancelled".
+            .timeout(test_agent_timeout(models))
             .json(&request)
             .send()
             .await?;
@@ -224,5 +232,24 @@ impl TendrilClient {
             ));
         }
         Ok(resp.json().await?)
+    }
+}
+
+/// The budget for one `POST /api/agents/{agent}/test`: install and auth checks, then up to thirty
+/// seconds per model on the daemon's side, plus slack for the round trip.
+pub(crate) fn test_agent_timeout(models: usize) -> std::time::Duration {
+    std::time::Duration::from_secs(60 + 35 * models.clamp(1, 16) as u64)
+}
+
+#[cfg(test)]
+mod test_agent_timeout_tests {
+    use super::test_agent_timeout;
+
+    #[test]
+    fn covers_the_daemons_per_model_budget() {
+        assert!(test_agent_timeout(1).as_secs() >= 30 + 10);
+        assert!(test_agent_timeout(4) > test_agent_timeout(2));
+        assert_eq!(test_agent_timeout(0), test_agent_timeout(1));
+        assert_eq!(test_agent_timeout(100), test_agent_timeout(16));
     }
 }

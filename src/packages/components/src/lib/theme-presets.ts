@@ -38,25 +38,52 @@ export const DEFAULT_THEME_PRESET_ID = "default";
 /** The id of the `<style>` element {@link applyThemePreset} owns. */
 export const THEME_PRESET_STYLE_ID = "tendril-theme-preset";
 
+/** The default preset's dark palette, which is the palette the app ships in. */
+export const COMMAND_CENTER_DARK: ThemePresetColors = {
+  primary: "#00cc92",
+  "primary-foreground": "#04140f",
+  secondary: "#161d26",
+  "secondary-foreground": "#e6edf3",
+  destructive: "#f06a72",
+  "destructive-foreground": "#07090c",
+  success: "#3fe0ae",
+  "success-foreground": "#04140f",
+  warning: "#f0b54a",
+  "warning-foreground": "#1a1204",
+  info: "#6aa1ff",
+  "info-foreground": "#06101f",
+  background: "#07090c",
+  foreground: "#e6edf3",
+  border: "#1a212b",
+  input: "#232c38",
+  ring: "#3fe0ae",
+  muted: "#10151c",
+  "muted-foreground": "#8593a1",
+  accent: "#161d26",
+  "accent-foreground": "#e6edf3",
+  card: "#0d1117",
+  "card-foreground": "#e6edf3",
+  popover: "#0f141b",
+  "popover-foreground": "#e6edf3",
+};
+
 export const THEME_PRESETS: ThemePreset[] = [
   {
     id: DEFAULT_THEME_PRESET_ID,
     name: "Default",
-    description: "Neutral Tendril theme with a black primary, light and dark",
-    isDark: false,
-    previewColors: ["#000000", "#dfe7e3", "#f8f8f8", "#ffffff"],
+    description: "Tendril's command-center theme: blue-black surfaces with the Ivy green accent",
+    isDark: true,
+    previewColors: ["#00cc92", "#161d26", "#0d1117", "#07090c"],
     /**
-     * Black primary, requested directly. Only `primary` and its foreground are overridden - every
-     * other token stays as `tokens.css` declares it, so this is a brand change and not a new palette.
+     * The app renders dark-only (see `appearance.ts`), so the dark half is the whole palette: blue-black
+     * surfaces stepping up by lightness (background < card < popover < secondary), one saturated accent,
+     * and status hues that differ in lightness as well as hue. Every foreground pairing clears WCAG AA.
      *
-     * The dark half inverts rather than repeating black, because `--background` is `#0a0a0a` there
-     * and a black primary on it is invisible. That is the same light-near-black / dark-near-white
-     * relationship the neutral shadcn palettes use, and the only token pair in this file whose two
-     * halves are deliberately opposites.
+     * The light half keeps the old black primary so light-mode library stories are unchanged.
      */
     colors: {
       light: { primary: "#000000", "primary-foreground": "#ffffff" },
-      dark: { primary: "#f8f8f8", "primary-foreground": "#000000" },
+      dark: COMMAND_CENTER_DARK,
     },
   },
   {

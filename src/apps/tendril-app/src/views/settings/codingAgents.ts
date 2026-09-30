@@ -556,3 +556,35 @@ export function catalogAgentFor(
   if (url.includes("api.openai.com") || url.trim() === "") return first("codex");
   return first("openaiproxy", "opencode");
 }
+
+/**
+ * The `config.yaml` key listing the harnesses hidden from every agent picker (Create New Plan, and a
+ * mission's per-role agents). A *hidden* list rather than an enabled one, so an agent a newer build
+ * adds shows up without anyone opting in.
+ */
+export const HIDDEN_AGENTS_KEY = "hiddenAgents";
+
+/** The hidden agent ids, normalised. A missing or malformed value hides nothing. */
+export function readHiddenAgents(config: TendrilConfig | null | undefined): string[] {
+  const value = config?.raw?.[HIDDEN_AGENTS_KEY];
+  return Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string").map((v) => normalizeAgentName(v))
+    : [];
+}
+
+/**
+ * The agents a picker offers: every known one minus the hidden, except the configured default and
+ * any in `keep` (a value already chosen), which stay so a selection never silently disappears.
+ */
+export function visibleAgents(
+  config: TendrilConfig | null | undefined,
+  keep: (string | undefined)[] = [],
+): { id: string; label: string; icon: string }[] {
+  const hidden = new Set(readHiddenAgents(config));
+  const pinned = new Set(
+    [config?.codingAgent, ...keep]
+      .filter((v): v is string => !!v)
+      .map((v) => normalizeAgentName(v)),
+  );
+  return CODING_AGENTS.filter((agent) => !hidden.has(agent.id) || pinned.has(agent.id));
+}

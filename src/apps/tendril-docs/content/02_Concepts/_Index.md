@@ -24,6 +24,8 @@ these three core primitives:
 - [Lifecycle & Jobs](03_Lifecycle.md) — one run of one promptware against a plan constitutes a job:
   status, telemetry, isolated git worktrees, cost tracking, and quality gates that determine whether work
   advances to review.
+- [Missions](04_Missions.md) — a whole feature built from these three: an AI orchestrator plans
+  milestones, runs each as its own plan, judges it, and validates the result as one pull request.
 
 If you have not run the loop yet, the [Tutorial](../01_GettingStarted/04_Tutorial.md) demonstrates these
 primitives in action. You can also review [Onboarding a Codebase](../01_GettingStarted/03_Onboarding.md)

@@ -203,7 +203,43 @@
     },
     "jobs": {
       "title": "Active Jobs",
-      "empty": "No jobs running"
+      "empty": "No jobs running",
+      "columns": {
+        "plan": "Plan",
+        "phase": "Phase",
+        "tokens": "Tokens",
+        "time": "Time"
+      },
+      "stalled": "Stalled"
+    },
+    "composer": {
+      "placeholder": "Describe what Tendril should build next…",
+      "submit": "Create plan",
+      "ariaLabel": "Describe a new plan"
+    },
+    "attention": {
+      "title": "Needs attention",
+      "empty": "Nothing needs you right now",
+      "count": "{{count}} open"
+    },
+    "tokens": {
+      "title": "Tokens / day",
+      "window": "last {{weeks}} weeks",
+      "today": "today",
+      "average": "avg {{value}}",
+      "peak": "peak {{value}}",
+      "less": "less",
+      "more": "more",
+      "cell": "{{date}}: {{value}} tokens",
+      "empty": "No token usage recorded yet",
+      "loading": "Loading token usage",
+      "share": "Share by agent"
+    },
+    "newPlan": "New plan",
+    "flow": {
+      "title": "Plan flow",
+      "live": "Live",
+      "caption": "Band width shows plans at each stage"
     }
   },
   "trendChart": {

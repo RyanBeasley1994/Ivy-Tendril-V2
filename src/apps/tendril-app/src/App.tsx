@@ -1,3 +1,4 @@
+import { isMissionPlan, useMissionPlanIds } from "./state/missionPlans";
 import React, { useState, useEffect, useMemo } from "react";
 import { useShortcut } from "@ivy-interactive/components/tendril";
 import { uiStore, type UiState } from "./state/uiStore";
@@ -74,6 +75,9 @@ const NewPlanModal = React.lazy(() =>
   import("./views/NewPlanModal").then((m) => ({ default: m.NewPlanModal })),
 );
 
+const CommandPalette = React.lazy(() =>
+  import("./views/dialogs/CommandPalette").then((m) => ({ default: m.CommandPalette })),
+);
 const PlanSearchDialog = React.lazy(() =>
   import("./views/dialogs/PlanSearchDialog").then((m) => ({ default: m.PlanSearchDialog })),
 );
@@ -129,6 +133,9 @@ const InboxView = React.lazy(() =>
 const PullRequestsView = React.lazy(() =>
   import("./views/PullRequestsView").then((m) => ({ default: m.PullRequestsView })),
 );
+const InsightsView = React.lazy(() =>
+  import("./views/InsightsView").then((m) => ({ default: m.InsightsView })),
+);
 const RecommendationsView = React.lazy(() =>
   import("./views/RecommendationsView").then((m) => ({ default: m.RecommendationsView })),
 );
@@ -137,6 +144,9 @@ const IceboxView = React.lazy(() =>
 );
 const JobsView = React.lazy(() =>
   import("./views/JobsView").then((m) => ({ default: m.JobsView })),
+);
+const MissionsView = React.lazy(() =>
+  import("./views/MissionsView").then((m) => ({ default: m.MissionsView })),
 );
 // Lazy like the rest, though its graph is now small: the dialog harness this page used to carry
 // moved to Storybook, leaving a notifications bench that pulls in only the store it fires through.
@@ -205,11 +215,17 @@ export const App: React.FC = () => {
     description?: string;
     sourceUrl?: string;
     project?: string;
+    /** Opens the dialog in Mission mode, from the Missions page. */
+    mode?: "plan" | "mission";
   }>({});
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   // V1's `showPlanSearchDialog` state, owned by the shell because the sidebar section it opens from
   // is the shell's, and because the plans it finds belong to no one page.
   const [isPlanSearchOpen, setIsPlanSearchOpen] = useState(false);
+  // The V2 ⌘K command palette, which fronts the plan search above.
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  // The plans missions own, which the Plans page and its badge leave out.
+  const missionPlanIds = useMissionPlanIds();
   // Which review action the review-action view is running. Held here rather than encoded into the nav
   // id: it is three values, and it is deliberately not persisted — a restored nav pointing at a
   // process that died with the last session has nothing to show.
@@ -470,7 +486,7 @@ export const App: React.FC = () => {
      to navigate to Plans here, standing in for the dialog V2 lacked; leaving it that way would now
      both move the page and open the dialog over it on one keypress. Registered rather than left to
      the widget alone so it keeps its row in the shortcuts help. */
-  useShortcut("app:plan-search", "Ctrl+K", () => setIsPlanSearchOpen(true), {
+  useShortcut("app:plan-search", "Ctrl+K", () => setIsPaletteOpen(true), {
     description: t("shortcuts.planSearch"),
   });
   useShortcut("app:show-shortcuts", "?", () => setIsShortcutsOpen(true), {
@@ -713,8 +729,12 @@ export const App: React.FC = () => {
    * `PlansView` and `ReviewView` build their lists from, so the number and the list cannot drift again.
    */
   const draftCount = useMemo(
-    () => draftQueueFor(plansState.plans, jobsState.jobs).length,
-    [plansState.plans, jobsState.jobs],
+    () =>
+      draftQueueFor(
+        plansState.plans.filter((plan) => !isMissionPlan(missionPlanIds, plan.id)),
+        jobsState.jobs,
+      ).length,
+    [plansState.plans, jobsState.jobs, missionPlanIds],
   );
   const reviewCount = useMemo(
     () => reviewQueueFor(plansState.plans, jobsState.jobs).length,
@@ -1037,9 +1057,16 @@ export const App: React.FC = () => {
             plans={plansState.plans}
             jobs={jobsState.jobs}
             onSelectJob={handleSelectJob}
+            onSelectPlan={(planId) => void handleSelectPlan(planId)}
+            projects={projects}
+            serviceOnline={serviceState.status === "online"}
             onNavigate={(nav) => uiStore.setActiveNav(nav)}
-            onNewPlan={() => {
-              setNewPlanPrefill({});
+            onStopAll={() => setStopAllOpen(true)}
+            onNewPlan={(description, project) => {
+              setNewPlanPrefill({
+                ...(description ? { description } : {}),
+                ...(project ? { project } : {}),
+              });
               setIsNewPlanOpen(true);
             }}
           />
@@ -1071,7 +1098,8 @@ export const App: React.FC = () => {
       case "plans":
         return (
           <PlansView
-            plans={plansState.plans}
+            // Missions run their own plans; those are followed from Missions, not listed here.
+            plans={plansState.plans.filter((plan) => !isMissionPlan(missionPlanIds, plan.id))}
             // `PlansApp.Build`'s `activePlanFolders`: a plan a job already holds is not offered for
             // action. Without the list the exclusion is dead wiring, as it was for Review.
             jobs={jobsState.jobs}
@@ -1140,6 +1168,9 @@ export const App: React.FC = () => {
           />
         );
 
+      case "insights":
+        return <InsightsView onSelectPlan={(planId) => void handleSelectPlan(planId)} />;
+
       case "recommendations":
         return (
           <RecommendationsView
@@ -1164,6 +1195,18 @@ export const App: React.FC = () => {
             onSelectPlan={handleSelectPlan}
             onNewPlan={() => {
               setNewPlanPrefill({});
+              setIsNewPlanOpen(true);
+            }}
+          />
+        );
+
+      case "missions":
+        return (
+          <MissionsView
+            onSelectPlan={handleSelectPlan}
+            onSelectJob={handleSelectJob}
+            onNewMission={() => {
+              setNewPlanPrefill({ mode: "mission" });
               setIsNewPlanOpen(true);
             }}
           />
@@ -1308,6 +1351,7 @@ export const App: React.FC = () => {
         reviewCount={reviewCount}
         recommendationsCount={recommendationsCount}
         jobCount={jobCount}
+        runningJobCount={jobsState.jobs.filter((j) => j.status === "Running").length}
         chatCount={chatSessionsCount}
         onCheckForUpdates={handleCheckForUpdates}
         sidebarList={sidebarList}
@@ -1315,7 +1359,7 @@ export const App: React.FC = () => {
         // V1's `showPlanSearchDialog`. It has to be a search over the plan database rather than a
         // navigation to Plans: that page's list is Draft and Blocked only, so a Completed, Skipped or
         // in-flight plan is reachable through nothing else in the UI.
-        onPlanSearch={() => setIsPlanSearchOpen(true)}
+        onPlanSearch={() => setIsPaletteOpen(true)}
         /* V1's `StartNewChat` -> `ChatLauncher.StartNew` and `OpenChat` -> `ChatLauncher.TargetFor`:
            both consult `chatMode`, so the Chat button opens either the chat view or the agent's own
            terminal. */
@@ -1386,8 +1430,12 @@ export const App: React.FC = () => {
             initialDescription={newPlanPrefill.description}
             initialSourceUrl={newPlanPrefill.sourceUrl}
             initialProject={newPlanPrefill.project}
+            initialMode={newPlanPrefill.mode}
             onJobStarted={(res) => {
               handleSelectJob(res.jobId);
+            }}
+            onMissionCreated={(mission) => {
+              uiStore.setActiveNav("missions", { mission: mission.id });
             }}
             // V1's project picker always ends with "+ Add New Project", which navigates to Settings.
             // Without the handler the entry never renders, so a project the operator has not created
@@ -1472,6 +1520,27 @@ export const App: React.FC = () => {
           dialog chunk is fetched at that moment. A pick is routed through the very handler a sidebar
           row click uses, so opening a plan means the same navigation either way - `plan-<id>` with
           `{ planId }` as its args - and this dialog reaches into no view's state. */}
+      {isPaletteOpen && (
+        <React.Suspense fallback={null}>
+          <CommandPalette
+            plans={plansState.plans}
+            jobs={jobsState.jobs}
+            onClose={() => setIsPaletteOpen(false)}
+            onOpenPlan={(planId) => void handleSelectPlan(planId)}
+            onOpenJob={handleSelectJob}
+            onNavigate={(nav) => uiStore.setActiveNav(nav)}
+            onNewPlan={(description) => {
+              setNewPlanPrefill(description ? { description } : {});
+              setIsNewPlanOpen(true);
+            }}
+            onNewChat={() => void handleNewChat()}
+            onStopAll={() => setStopAllOpen(true)}
+            onShowShortcuts={() => setIsShortcutsOpen(true)}
+            onSearchAllPlans={() => setIsPlanSearchOpen(true)}
+          />
+        </React.Suspense>
+      )}
+
       {isPlanSearchOpen && (
         <React.Suspense fallback={null}>
           <PlanSearchDialog

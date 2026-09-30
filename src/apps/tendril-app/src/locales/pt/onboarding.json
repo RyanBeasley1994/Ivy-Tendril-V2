@@ -133,5 +133,20 @@
     "noVerifications": "Nenhuma verificação foi configurada. Adicione-as nas configurações do projeto.",
     "noReviewActions": "Nenhuma ação de revisão foi configurada. Adicione-as nas configurações do projeto.",
     "harnessEmpty": "O projeto está registrado. Se o agente de configuração ainda estiver em execução, os resultados aparecerão aqui quando ele terminar — reabra o projeto na linha Projetos para vê-los."
+  },
+  "folderBrowser": {
+    "title": "Escolher uma pasta de repositório",
+    "description": "Pastas na máquina que executa o Tendril. Repositórios estão marcados; clique duas vezes para escolher um.",
+    "up": "Subir um nível",
+    "home": "Pasta pessoal",
+    "pathLabel": "Caminho da pasta",
+    "showHidden": "Mostrar pastas ocultas",
+    "hideHidden": "Ocultar pastas ocultas",
+    "empty": "Nenhuma subpasta aqui.",
+    "gitRepo": "Repositório Git",
+    "truncated": "Apenas as primeiras 2000 pastas são exibidas. Digite um caminho para ir além.",
+    "cancel": "Cancelar",
+    "select": "Usar esta pasta",
+    "selectRepo": "Usar este repositório"
   }
 }

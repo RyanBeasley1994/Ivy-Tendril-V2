@@ -459,6 +459,31 @@
   min-height: 0;
 }
 
+.pws-chat-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pws-chat-body > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The aside sits above the chat at its natural height, scrolling on its own if it outgrows half. */
+.pws-chat > .pws-aside {
+  flex: 0 1 auto;
+  max-height: 60%;
+  overflow-y: auto;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.pws-chat[data-has-aside="true"]:not(:has(.pws-chat-body)) > .pws-aside {
+  flex: 1;
+  max-height: none;
+  border-bottom: 0;
+}
+
 /* Too narrow for two columns: the chat keeps its place under the plan instead. */
 .pws-root[data-narrow="true"] .pws-body {
   flex-direction: column;
@@ -485,3 +510,155 @@
 .pws-root[data-compact="true"] .pws-btn-kbd {
   display: none;
 }
+
+/* ---------- Command center (dark) ----------
+
+   The plan page as a document with its agent beside it. The top bar becomes a two-tier header: the
+   state, project and level pills with the actions on the first line, and the plan's title on its own
+   line underneath at headline size. The tabs are a segmented control, and the chat is a darker pane
+   the document sits against. Pure CSS over the same DOM, so every slot and test hook is unchanged. */
+
+.dark .pws-root {
+  --pws-active-bg: color-mix(in srgb, var(--foreground) 9%, var(--card));
+  --pws-hover-bg: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.dark .pws-topbar {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 14px;
+  height: auto;
+  padding: 14px 20px 12px 24px;
+  border-bottom-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+/* The right half comes first and fills the line: pills on the left of it, actions on the right. */
+.dark .pws-topbar-right {
+  order: 1;
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.dark .pws-project-badges {
+  margin-right: auto;
+  flex-wrap: wrap;
+}
+
+.dark .pws-icon-group {
+  gap: 2px;
+}
+
+/* The title line: the id as a mono tag, then the title at headline size, allowed to wrap. */
+.dark .pws-title-wrap {
+  order: 2;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.dark .pws-title-main {
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  max-width: 64rem;
+}
+
+.dark .pws-plan-id {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm-tight);
+  color: var(--muted-foreground);
+}
+
+.dark .pws-title {
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.dark .pws-meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+
+.dark .pws-btn {
+  height: 32px;
+  border-radius: 8px;
+  font-size: var(--text-sm-tight);
+}
+
+.dark .pws-btn--primary {
+  font-weight: var(--font-weight-semibold);
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+
+.dark .pws-btn--secondary {
+  border-color: var(--input);
+  background: var(--secondary);
+}
+
+/* Underline tabs on a hairline, the command center's section switcher. */
+.dark .pws-tabs-row {
+  align-items: center;
+  margin: 14px 24px 0 28px;
+  padding: 0;
+  border-bottom: var(--border-width) solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.dark .pws-tabs {
+  gap: 18px;
+}
+
+.dark .pws-tab {
+  height: 38px;
+  padding: 0 1px;
+  margin-bottom: -1px;
+  border-bottom: var(--border-width-thick) solid transparent;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.dark .pws-tab:hover {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.dark .pws-tab[aria-selected="true"] {
+  background: transparent;
+  border-bottom-color: var(--primary);
+  color: var(--foreground);
+  font-weight: var(--font-weight-medium);
+}
+
+.dark .pws-tab-tools {
+  padding: 0;
+}
+
+.dark .pws-content {
+  padding-left: 16px;
+  padding-right: 8px;
+}
+
+.dark .pws-toolbar {
+  padding: 12px 24px 0 28px;
+}
+
+/* The agent's pane: one step darker than the document, divided by a hairline, like the mockup's
+   session column. */
+.dark .pws-chat {
+  background: color-mix(in srgb, var(--background) 45%, var(--card));
+  border-left-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.dark .pws-dropdown {
+  border-radius: 12px;
+  border-color: var(--input);
+}
+

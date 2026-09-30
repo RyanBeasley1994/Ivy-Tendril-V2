@@ -336,7 +336,23 @@
     "submit": "बनाएं",
     "placeholder": "कार्य का विवरण दर्ज करें…",
     "emptyDescription": "कृपया नई योजना के लिए विवरण दर्ज करें।",
-    "continueInChat": "{{agent}} के साथ चैट करें"
+    "continueInChat": "{{agent}} के साथ चैट करें",
+    "missionTitle": "नया मिशन बनाएँ",
+    "modeLabel": "क्या बनाना है",
+    "modePlan": "प्लान",
+    "modeMission": "मिशन",
+    "modeMissionHint": "एक ऑर्केस्ट्रेटर काम को माइलस्टोन में बाँटता है, हर एक को चलाकर जाँचता है, पूरे काम को सत्यापित करता है और एक पुल रिक्वेस्ट देता है। आप माइलस्टोन को एक बार स्वीकृत करते हैं।",
+    "harness": "हार्नेस",
+    "defaultAgent": "डिफ़ॉल्ट ({{agent}})",
+    "submitMission": "मिशन शुरू करें",
+    "roles": {
+      "planner": "प्लानर",
+      "worker": "वर्कर",
+      "judge": "जज",
+      "validator": "वैलिडेटर"
+    },
+    "machineLabel": "यहाँ बनाएँ",
+    "machineUnavailable": "वहाँ Tendril सेवा नहीं चल रही है"
   },
   "recommendationNote": {
     "submit": "सबमिट करें",

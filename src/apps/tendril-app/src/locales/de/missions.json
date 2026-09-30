@@ -1,0 +1,118 @@
+{
+  "page": {
+    "title": "Missionen",
+    "subtitle": "Ziele, die ein KI-Orchestrator in Meilensteine zerlegt, ausführt, bewertet und als einen Pull Request liefert.",
+    "new": "Neue Mission"
+  },
+  "empty": {
+    "title": "Noch keine Missionen",
+    "description": "Übergib Tendril ein ganzes Feature. Der Orchestrator plant Meilensteine, führt jeden aus, bewertet ihn anhand seiner Akzeptanzkriterien und validiert das Ergebnis.",
+    "steps": {
+      "plan": {
+        "title": "Planen",
+        "body": "Der Planer recherchiert das Ziel und schreibt Meilensteine mit Akzeptanzkriterien."
+      },
+      "approve": {
+        "title": "Freigeben",
+        "body": "Du prüfst die Meilensteine einmal. Das ist der einzige Halt."
+      },
+      "run": {
+        "title": "Ausführen & bewerten",
+        "body": "Ausführer setzen jeden Meilenstein um; der Prüfer akzeptiert, wiederholt oder plant neu."
+      },
+      "ship": {
+        "title": "Validieren & liefern",
+        "body": "Der Validierer führt alle Prüfungen auf dem Branch aus, dann geht es als ein PR ins Review."
+      }
+    }
+  },
+  "list": {
+    "title": "Missionen",
+    "progress": "{{passed}}/{{total}} Meilensteine"
+  },
+  "stats": {
+    "progress": "Fortschritt",
+    "replans": "{{count}} von {{max}} Neuplanungen genutzt",
+    "cost": "Kosten",
+    "costCap": "von {{cap}} Budget",
+    "noCap": "Kein Budgetlimit",
+    "step": "Aktueller Schritt",
+    "attempts": "Versuche pro Meilenstein",
+    "attemptsHint": "Danach wird für dich pausiert"
+  },
+  "actions": {
+    "approve": "Meilensteine freigeben",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "cancel": "Abbrechen",
+    "openPlan": "Plan öffnen"
+  },
+  "banner": {
+    "paused": "Pausiert: {{reason}}",
+    "approve": "Prüfe die Meilensteine unten. Nach der Freigabe läuft die Mission selbstständig, bis sie bereit fürs Review ist.",
+    "planning": "Der Planer recherchiert das Ziel und schreibt Meilensteine…",
+    "review": "Validiert. Der Integrationsplan ist im Review; erstelle dort seinen Pull Request."
+  },
+  "milestones": {
+    "title": "Meilensteine",
+    "none": "Meilensteine erscheinen hier, sobald der Planer sie geschrieben hat.",
+    "attempt": "Versuch {{attempt}}/{{max}}",
+    "feedback": "Prüfer: {{feedback}}",
+    "commits_one": "{{count}} Commit",
+    "commits_other": "{{count}} Commits"
+  },
+  "agents": {
+    "title": "Agenten",
+    "hint": "Der Harness, auf dem jede Rolle läuft. Änderungen gelten ab dem nächsten Job.",
+    "default": "Standard-Agent",
+    "roles": {
+      "planner": "Planer",
+      "worker": "Ausführer",
+      "judge": "Prüfer",
+      "validator": "Validierer"
+    },
+    "describe": {
+      "planner": "Recherchiert das Ziel und schreibt die Meilensteine",
+      "worker": "Setzt jeden Meilenstein um (ExecutePlan / RetryPlan)",
+      "judge": "Prüft jeden Meilenstein anhand seiner Kriterien",
+      "validator": "Führt alle Prüfungen aus und prüft das Ziel"
+    }
+  },
+  "goal": {
+    "title": "Ziel"
+  },
+  "log": {
+    "title": "Aktivität"
+  },
+  "state": {
+    "Planning": "Planung",
+    "AwaitingApproval": "Wartet auf Freigabe",
+    "Running": "Läuft",
+    "Validating": "Validierung",
+    "Review": "Im Review",
+    "Completed": "Abgeschlossen",
+    "Paused": "Pausiert",
+    "Cancelled": "Abgebrochen"
+  },
+  "milestoneState": {
+    "Pending": "Ausstehend",
+    "Executing": "In Ausführung",
+    "Judging": "In Prüfung",
+    "Passed": "Bestanden",
+    "Skipped": "Übersprungen"
+  },
+  "step": {
+    "Plan": "Planung",
+    "Execute": "Ausführung",
+    "Retry": "Wiederholung",
+    "Judge": "Prüfung",
+    "Final": "Validierung"
+  },
+  "create": {
+    "needsProject": "Wähle ein Projekt für die Mission: Sie läuft ab dem ersten Schritt in dessen Repos."
+  },
+  "machines": {
+    "local": "Dieser Rechner",
+    "startedElsewhere": "Auf {{machine}} gestartet. Es läuft dort; wechsle den Server, um es zu verfolgen."
+  }
+}

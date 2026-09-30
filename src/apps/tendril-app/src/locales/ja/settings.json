@@ -18,7 +18,8 @@
     "security": "セキュリティとトンネル",
     "advanced": "詳細設定",
     "newsletter": "ニュースレター",
-    "fallback": "構成"
+    "fallback": "構成",
+    "git": "Git とブランチ"
   },
   "nav": {
     "ariaLabel": "構成のセクション",
@@ -356,5 +357,56 @@
     "emailLabel": "メールアドレス",
     "subscribing": "購読中…",
     "subscribe": "購読"
+  },
+  "remoteServer": {
+    "title": "リモートサーバー",
+    "hint": "このマシンではなく、VPS などの別のマシンで Tendril を使用します。サーバーにはパスワード(セッション保護)の設定が必要です。",
+    "urlLabel": "サーバーアドレス",
+    "urlPlaceholder": "203.0.113.7 または https://my-server.example.com",
+    "urlHint": "IP またはホスト名ではポート 5010 を使用します。トンネルやリバースプロキシの場合は https:// を付けてください。",
+    "usernameLabel": "ユーザー名",
+    "defaultUser": "admin",
+    "passwordLabel": "パスワード",
+    "connect": "接続",
+    "disconnect": "切断してこのマシンを使用",
+    "connectedAs": "{{username}} として接続中",
+    "notAuthenticated": "未ログイン: {{error}}",
+    "restarting": "Tendril を再起動しています…"
+  },
+  "git": {
+    "title": "Git とブランチ",
+    "hint": "プランとミッションのブランチ名の付け方と、エージェントのコミット方法。",
+    "prefixLabel": "ブランチ接頭辞",
+    "prefixHint": "{prefix} の値。既定は tendril/。",
+    "templateLabel": "プランのブランチ",
+    "templateHint": "プランとミッションのマイルストーン。既定は {prefix}{folder}。",
+    "missionTemplateLabel": "ミッションのブランチ",
+    "missionTemplateHint": "ミッションの統合ブランチ。全マイルストーンがここに入り、プルリクエストもここから作成されます。",
+    "previewTitle": "プレビュー",
+    "previewUnavailable": "プレビューできません: サービスに接続できません。",
+    "preview": {
+      "plan": "プラン",
+      "milestone": "マイルストーン",
+      "mission": "ミッション"
+    },
+    "unknownTokens": "不明なトークン: {{tokens}}",
+    "tokensTitle": "トークン",
+    "tokens": {
+      "prefix": "ブランチ接頭辞",
+      "folder": "プランフォルダー (例: 00042-AddLogin)",
+      "id": "プラン ID (例: 00042)",
+      "title": "プランのタイトル (例: AddLogin)",
+      "slug": "kebab-case のタイトル (例: add-login)",
+      "project": "プロジェクト (kebab-case)",
+      "level": "レベル (例: feature)",
+      "date": "今日 (YYYYMMDD)",
+      "mission": "ミッション ID (ミッションのみ)",
+      "milestone": "マイルストーン ID (例: m2、マイルストーンのみ)"
+    },
+    "stableNote": "プランのブランチは最初の worktree 作成時に確定します。変更は新しいプランに適用され、進行中のプランはブランチを維持します。",
+    "signLabel": "エージェントのコミットに署名する",
+    "signHint": "署名にあなたの操作が必要な場合 (1Password の SSH キー、GPG の pinentry) はオフにしてください。ヘッドレスのエージェントは署名できず、コミットが失敗します。影響はエージェントのコミットのみで、git 設定は変更されません。",
+    "save": "保存",
+    "saved": "ブランチ設定を保存しました"
   }
 }

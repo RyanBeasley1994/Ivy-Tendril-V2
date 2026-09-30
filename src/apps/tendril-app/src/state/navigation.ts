@@ -116,7 +116,11 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
   plans: app("plans", () => i18n.t("common:appTitles.plans"), { fullBleed: true }),
   review: app("review", () => i18n.t("common:appTitles.review"), { fullBleed: true }),
   recommendations: app("recommendations", () => i18n.t("common:appTitles.recommendations")),
+  // Full-bleed: `Page` supplies the command-center inset itself, as every rebuilt page does.
+  insights: app("insights", () => i18n.t("common:appTitles.insights"), { fullBleed: true }),
   jobs: app("jobs", () => i18n.t("common:appTitles.jobs")),
+  // Full-bleed: `Page` supplies the command-center inset itself, as every rebuilt page does.
+  missions: app("missions", () => i18n.t("common:appTitles.missions"), { fullBleed: true }),
   chat: app("chat", () => i18n.t("common:appTitles.chat"), { fullBleed: true }),
   inbox: app("inbox", () => i18n.t("common:appTitles.inbox")),
   // V1 builds Settings as `new SidebarLayout(content, sidebar)`, and `SidebarLayoutWidget` carries
@@ -257,6 +261,9 @@ export interface NavigationState {
   activeNav: string;
   /** Rule 1's failure, V1's `client.Error("Tab no longer exists.")`. */
   error: string | null;
+  /** Whether this session has an earlier / later address to step to: the top bar's back and forward. */
+  canGoBack: boolean;
+  canGoForward: boolean;
 }
 
 /** A navigation target: V1's `NavigateArgs`, minus the history bookkeeping the browser already does. */
@@ -280,7 +287,34 @@ class Navigation {
     activeSessionId: null,
     activeNav: DEFAULT_APP_ID,
     error: null,
+    canGoBack: false,
+    canGoForward: false,
   };
+
+  /**
+   * Where this session is in the browser's history, stamped into each entry's `state` as `tdx`. The
+   * browser keeps the stack; the stamp is only what lets the buttons know whether there is anywhere
+   * to go. Entries from before this session (a reload) carry no stamp and count as the start.
+   */
+  private historyIndex = 0;
+  private historyMax = 0;
+
+  private syncHistoryFlags(): void {
+    const canGoBack = this.historyIndex > 0;
+    const canGoForward = this.historyIndex < this.historyMax;
+    if (canGoBack !== this.state.canGoBack || canGoForward !== this.state.canGoForward) {
+      this.set({ canGoBack, canGoForward });
+    }
+  }
+
+  /** Steps back through this session's addresses, like the browser's back button. */
+  public goBack(): void {
+    if (hasHistory() && this.historyIndex > 0) window.history.back();
+  }
+
+  public goForward(): void {
+    if (hasHistory() && this.historyIndex < this.historyMax) window.history.forward();
+  }
 
   private listeners = new Set<() => void>();
   private detach: (() => void) | null = null;
@@ -311,8 +345,14 @@ class Navigation {
   private writeAddress(address: Address, replace: boolean): void {
     if (!hasHistory()) return;
     const url = addressToUrl(address);
-    if (replace) window.history.replaceState(null, "", url);
-    else window.history.pushState(null, "", url);
+    if (replace) {
+      window.history.replaceState({ tdx: this.historyIndex }, "", url);
+    } else {
+      this.historyIndex += 1;
+      this.historyMax = this.historyIndex;
+      window.history.pushState({ tdx: this.historyIndex }, "", url);
+    }
+    this.syncHistoryFlags();
   }
 
   private currentAddress(): Address {
@@ -329,7 +369,12 @@ class Navigation {
    */
   public start(fallbackAppId?: string): () => void {
     this.detach?.();
-    const onPopState = () => this.syncFromAddress(true);
+    const onPopState = (event: PopStateEvent) => {
+      const tdx = (event.state as { tdx?: unknown } | null)?.tdx;
+      this.historyIndex = typeof tdx === "number" ? tdx : 0;
+      this.syncHistoryFlags();
+      this.syncFromAddress(true);
+    };
     if (typeof window !== "undefined") window.addEventListener("popstate", onPopState);
     this.detach = () => {
       if (typeof window !== "undefined") window.removeEventListener("popstate", onPopState);
@@ -488,7 +533,11 @@ class Navigation {
       activeSessionId: null,
       activeNav: DEFAULT_APP_ID,
       error: null,
+      canGoBack: false,
+      canGoForward: false,
     };
+    this.historyIndex = 0;
+    this.historyMax = 0;
     this.listeners.clear();
     if (hasHistory()) window.history.replaceState(null, "", "/");
   }

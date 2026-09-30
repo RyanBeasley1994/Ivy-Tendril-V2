@@ -29,10 +29,18 @@ export {
   ADD_PROJECT_VALUE,
   AUTO_PROJECT,
   MAX_PROJECTS_FOR_TOGGLE,
+  MISSION_ROLES,
+  type AgentOption,
+  type CreateMode,
+  type MachineOption,
+  type CreatePlanSubmitOptions,
+  type MissionAgentChoice,
+  type MissionRole,
   type CreatePlanDialogProps,
   type CreatePlanUpload,
   type ProjectOption,
 } from "./CreatePlanDialog";
+export { AgentPicker, RoleAgentsPicker, type AgentPickerOption } from "./AgentPicker";
 export {
   RecommendationNoteDialog,
   type RecommendationNoteDialogProps,

@@ -37,6 +37,8 @@ import {
   normalizePlanState,
   planStateBadgeVariant,
 } from "./PlansView";
+import { LifecycleBar } from "./planDetail/LifecycleBar";
+import { PlanTrace } from "./planDetail/PlanTrace";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { VerificationReportSheet } from "./sheets/VerificationReportSheet";
 import { CommitDetailSheet } from "./sheets/CommitDetailSheet";
@@ -488,6 +490,10 @@ export const PlanDetailView: React.FC<PlanDetailViewProps> = ({
     { id: "plan", label: t("detail.tabs.plan") },
     { id: "details", label: t("detail.tabs.details") },
   ];
+
+  // The V2 run waterfall, once the plan has run anything at all.
+  const planRunCount = jobs.filter((job) => job.planId === plan.id).length;
+  if (planRunCount > 0) tabs.push({ id: "trace", label: t("detail.tabs.trace", { n: planRunCount }) });
 
   /**
    * `BuildPage`'s own gate on the diff, with V1's reason quoted: "Only surface the Changes tab once
@@ -1146,13 +1152,16 @@ export const PlanDetailView: React.FC<PlanDetailViewProps> = ({
            * does not have. So the banner the page already had lives here, above the tab strip, which
            * is where the slot renders.
            */
-          Toolbar: actionError
-            ? [
-                <ErrorBanner key="error" data-testid="plan-action-error" className="flex-1">
-                  {actionError}
-                </ErrorBanner>,
-              ]
-            : [],
+          Toolbar: [
+            <LifecycleBar key="lifecycle" state={effectivePlan.state} />,
+            ...(actionError
+              ? [
+                  <ErrorBanner key="error" data-testid="plan-action-error" className="flex-1">
+                    {actionError}
+                  </ErrorBanner>,
+                ]
+              : []),
+          ],
           /**
            * `new VerificationsPanelView(selectedPlan, planService, config, chatExecution)` — the
            * corner dropdown, not a tab. This is also the first consumer the shared
@@ -1196,7 +1205,9 @@ export const PlanDetailView: React.FC<PlanDetailViewProps> = ({
              yet. */
           Chat: [<PlanChatPanel key="chat" plan={plan} draft={chatDraft} />],
           Content: [
-            effectiveTab === "plan" ? (
+            effectiveTab === "trace" ? (
+              <PlanTrace key="trace" jobs={jobs} planId={plan.id} onOpenJob={setDebugJobId} />
+            ) : effectiveTab === "plan" ? (
               <PlanPane
                 key="plan-pane"
                 plan={plan}
