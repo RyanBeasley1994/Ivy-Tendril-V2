@@ -1,8 +1,10 @@
-//! Connecting the desktop app to a Tendril server on another machine. See `service::remote`.
+//! Connecting the desktop app to a Tendril server on another machine, over SSH. See
+//! `service::remote` and `service::ssh_tunnel`.
 
 use crate::daemon::resolve_tendril_home;
 use crate::error::BridgeError;
 use crate::service::remote::{self, RemoteStatusDto, SavedConnection};
+use crate::service::ssh_tunnel::{self, SshSettings};
 
 /// Which server the app is using. Carries the address and username, never the password or token.
 #[tauri::command]
@@ -10,29 +12,44 @@ pub async fn cmd_get_remote_connection() -> Result<RemoteStatusDto, BridgeError>
     Ok(remote::status())
 }
 
-/// Logs in to the server at `url`; on success saves the connection and restarts the app onto it.
+/// Opens an SSH tunnel to the server and logs in to Tendril through it; on success saves the
+/// connection (host key pinned) and restarts the app onto it.
 ///
-/// The login happens before anything is saved, so a wrong password or an unreachable address is
-/// reported here and leaves the current connection untouched.
+/// Both the SSH login and the Tendril login happen before anything is saved, so a wrong password or
+/// an unreachable host is reported here and leaves the current connection untouched.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn cmd_connect_remote(
     app: tauri::AppHandle,
-    url: String,
+    ssh_address: String,
+    ssh_username: Option<String>,
+    ssh_password: String,
+    remote_port: Option<u16>,
     username: Option<String>,
     password: String,
 ) -> Result<(), BridgeError> {
-    let origin =
-        remote::parse_origin(&url).map_err(|e| BridgeError::new("INVALID_REMOTE_URL", e))?;
+    let (host, port, ssh_username) =
+        ssh_tunnel::parse_address(&ssh_address, ssh_username.as_deref().unwrap_or_default())
+            .map_err(|e| BridgeError::new("INVALID_REMOTE_URL", e))?;
+    let ssh = SshSettings {
+        host,
+        port,
+        username: ssh_username,
+        password: ssh_password,
+        remote_port: remote_port.unwrap_or(remote::DEFAULT_PORT),
+        host_key: None,
+    };
     let username = username.unwrap_or_default().trim().to_string();
-    remote::login(&origin, &username, &password)
+    let ssh = remote::probe_ssh(ssh, &username, &password)
         .await
         .map_err(|e| BridgeError::new("REMOTE_LOGIN_FAILED", e))?;
     remote::save(
         &resolve_tendril_home(),
         &SavedConnection {
-            url: origin.base_url(),
+            url: ssh.label(),
             username,
             password,
+            ssh: Some(ssh),
         },
     )
     .map_err(|e| BridgeError::new("REMOTE_SAVE_FAILED", e))?;

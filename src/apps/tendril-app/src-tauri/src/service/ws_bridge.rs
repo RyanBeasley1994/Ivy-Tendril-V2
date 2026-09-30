@@ -9,6 +9,11 @@ use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::Message;
 
+/// A remote daemon usually sits behind a tunnel or reverse proxy that drops a quiet WebSocket
+/// (Cloudflare after 100s), and the daemon itself never pings. Well inside that, so an idle
+/// connection stays up rather than cycling through disconnected/reconnecting.
+const PING_EVERY: Duration = Duration::from_secs(30);
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WSClientMessage {
     pub action: String,
@@ -77,9 +82,16 @@ impl WsBridge {
                         let _ = app_handle.emit("service-status", "connected");
 
                         let (mut write, mut read) = ws_stream.split();
+                        let mut ping = tokio::time::interval(PING_EVERY);
+                        ping.tick().await;
 
                         loop {
                             tokio::select! {
+                                _ = ping.tick() => {
+                                    if write.send(Message::Ping(Vec::new().into())).await.is_err() {
+                                        break;
+                                    }
+                                }
                                 Some(client_msg) = rx.recv() => {
                                     if let Ok(json_str) = serde_json::to_string(&client_msg) {
                                         if write.send(Message::Text(json_str.into())).await.is_err() {

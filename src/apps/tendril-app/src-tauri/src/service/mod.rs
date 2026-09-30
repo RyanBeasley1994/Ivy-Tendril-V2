@@ -8,6 +8,7 @@ pub mod plan_mapping;
 pub mod provision;
 pub mod remote;
 pub mod review_action_bridge;
+pub mod ssh_tunnel;
 pub mod supervisor;
 pub mod tunnel_client;
 pub mod ws_bridge;
