@@ -409,6 +409,8 @@
     "signLabel": "Sign commits made by agents",
     "signHint": "Turn off if your signing needs you present (a 1Password SSH key, a GPG pinentry): headless agents cannot sign, and their commits fail. Only agents' commits are affected; your git config is not changed.",
     "save": "Save",
-    "saved": "Branch settings saved"
+    "saved": "Branch settings saved",
+    "nativeLabel": "Create pull requests without the agent",
+    "nativeHint": "Tendril pushes the branch, opens or updates the PR, applies your options and merges by itself, in seconds and without tokens. The agent is only called to resolve merge conflicts or recover an unusual branch. Turn off to send every Create PR through the agent."
   }
 }

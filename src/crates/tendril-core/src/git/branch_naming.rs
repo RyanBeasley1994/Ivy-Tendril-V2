@@ -48,6 +48,10 @@ pub struct GitSettings {
     /// GPG pinentry - which cannot sign in a headless run. Absent or `true`: your git config applies.
     #[serde(rename = "signCommits", default, skip_serializing_if = "Option::is_none")]
     pub sign_commits: Option<bool>,
+    /// `false` sends every Create PR through the `CreatePr` agent, as before. Absent or `true`: Tendril
+    /// pushes and opens the PR itself and only calls the agent for merge conflicts and odd cases.
+    #[serde(rename = "nativePullRequests", default, skip_serializing_if = "Option::is_none")]
+    pub native_pull_requests: Option<bool>,
 }
 
 impl GitSettings {
@@ -314,6 +318,7 @@ mod tests {
             branch_template: Some("{prefix}{level}/{id}-{slug}".into()),
             mission_branch_template: Some("{prefix}mission-{mission}-{slug}".into()),
             sign_commits: None,
+            native_pull_requests: None,
         };
         assert_eq!(render_branch_name(&s, &ctx(), false), "rb/feature/00042-add-sso-login");
         let mut c = ctx();

@@ -56,6 +56,10 @@ pub struct NewPr<'a> {
 
 /// The GitHub operations the flow needs, each already retried on transient failures.
 pub trait GitHub: Send + Sync {
+    /// `owner/repo` for a remote URL; `None` for a remote that is not on GitHub.
+    fn repo_slug(&self, remote_url: &str) -> Option<String> {
+        parse_github_remote_url(remote_url).map(|(owner, name)| format!("{owner}/{name}"))
+    }
     fn default_branch(&self, repo: &str) -> Result<String>;
     fn branch_visible(&self, repo: &str, branch: &str) -> bool;
     fn open_pr_for_branch(&self, repo: &str, branch: &str) -> Result<Option<PrRef>>;
@@ -419,7 +423,7 @@ fn run(
             });
         }
         let remote = git_out(worktree, &["remote", "get-url", "origin"]).unwrap_or_default();
-        let Some((owner, name)) = parse_github_remote_url(&remote) else {
+        let Some(slug) = gh.repo_slug(&remote) else {
             return Ok(NativePrOutcome::Failed {
                 reason: format!("{} has no GitHub origin ({remote})", repo_root.display()),
             });
@@ -435,7 +439,6 @@ fn run(
                 reason: format!("the worktree at {} has uncommitted changes", worktree.display()),
             });
         }
-        let slug = format!("{owner}/{name}");
         let base = match args.base_branch.as_deref().map(str::trim).filter(|b| !b.is_empty()) {
             Some(b) => b.to_string(),
             None => project

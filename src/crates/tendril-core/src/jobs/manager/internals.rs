@@ -94,6 +94,8 @@ pub(super) struct DispatchContext {
     pub(super) plans_dir_override: Option<PathBuf>,
     pub(super) self_handle: Weak<JobManager>,
     pub(super) events: broadcast::Sender<JobEvent>,
+    pub(super) github: Arc<dyn crate::pull_request::GitHub>,
+    pub(super) pr_timing: crate::pull_request::NativePrTiming,
 }
 
 pub struct JobManager {
@@ -137,6 +139,9 @@ pub struct JobManager {
     /// them onto the WebSocket. See [`JobEvent`]. The channel exists whether or not anyone is
     /// listening, so a send is always safe and a CLI invocation simply drops every event.
     pub(super) events: broadcast::Sender<JobEvent>,
+    /// What the native CreatePr path talks to GitHub through. `gh` in production; a fake in tests.
+    github: Arc<dyn crate::pull_request::GitHub>,
+    pr_timing: crate::pull_request::NativePrTiming,
 }
 
 impl JobManager {
@@ -161,7 +166,20 @@ impl JobManager {
             plans_dir_override: None,
             self_handle: OnceLock::new(),
             events,
+            github: Arc::new(crate::pull_request::GhCli),
+            pr_timing: crate::pull_request::NativePrTiming::default(),
         }
+    }
+
+    /// Replaces the GitHub client the native CreatePr path uses, and its polling. Intended for tests.
+    pub fn with_github(
+        mut self,
+        github: Arc<dyn crate::pull_request::GitHub>,
+        timing: crate::pull_request::NativePrTiming,
+    ) -> Self {
+        self.github = github;
+        self.pr_timing = timing;
+        self
     }
 
     /// Subscribes to this manager's job lifecycle events.
@@ -251,6 +269,8 @@ impl JobManager {
             plans_dir_override: self.plans_dir_override.clone(),
             self_handle: self.self_handle.get().cloned().unwrap_or_else(Weak::new),
             events: self.events.clone(),
+            github: self.github.clone(),
+            pr_timing: self.pr_timing.clone(),
         }
     }
 

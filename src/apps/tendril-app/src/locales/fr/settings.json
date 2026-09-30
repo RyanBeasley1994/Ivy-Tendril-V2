@@ -411,6 +411,8 @@
     "signLabel": "Signer les commits des agents",
     "signHint": "Désactivez si votre signature exige votre présence (clé SSH 1Password, pinentry GPG) : les agents sans interface ne peuvent pas signer et leurs commits échouent. Seuls les commits des agents sont concernés ; votre configuration git n'est pas modifiée.",
     "save": "Enregistrer",
-    "saved": "Réglages des branches enregistrés"
+    "saved": "Réglages des branches enregistrés",
+    "nativeLabel": "Créer les pull requests sans l'agent",
+    "nativeHint": "Tendril pousse la branche, crée ou met à jour la PR, applique vos options et fusionne lui-même, en quelques secondes et sans jetons. L'agent n'intervient que pour résoudre les conflits ou récupérer une branche inhabituelle. Désactivez pour faire passer chaque PR par l'agent."
   }
 }

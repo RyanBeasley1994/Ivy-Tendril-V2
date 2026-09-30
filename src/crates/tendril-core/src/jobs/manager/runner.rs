@@ -101,6 +101,79 @@ pub(super) fn spawn_runner(
             run_hooks(&hook_ctx, HookPhase::Before, &hook_executor).await;
         }
 
+        // CreatePr's mechanical part runs here, without an agent. It either finishes the job or says
+        // why the agent is needed, and the agent then takes over this same job with that reason.
+        let mut handoff: Option<String> = None;
+        if job.job_type == "CreatePr" && settings.git.native_pull_requests != Some(false) {
+            if let Some(crate::models::JobArgs::CreatePr(args)) =
+                crate::jobs::firmware_values::job_args(&job)
+            {
+                let started = Instant::now();
+                let outcome = run_native_pr(
+                    &tendril_home,
+                    &jobs_map,
+                    &job_events,
+                    &job,
+                    &args,
+                    &settings,
+                    ctx.github.clone(),
+                    ctx.pr_timing.clone(),
+                )
+                .await;
+                let native_finish = match outcome {
+                    crate::pull_request::NativePrOutcome::Done { summary } => {
+                        Some((JobStatus::Completed, summary))
+                    }
+                    crate::pull_request::NativePrOutcome::Failed { reason } => {
+                        Some((JobStatus::Failed, reason))
+                    }
+                    crate::pull_request::NativePrOutcome::NeedsAgent { reason } => {
+                        let _ = append_to_raw_log(
+                            &tendril_home,
+                            &job_id,
+                            &format!("[native] Handing over to the agent: {reason}"),
+                        );
+                        handoff = Some(reason);
+                        None
+                    }
+                };
+                if let Some((final_status, msg)) = native_finish {
+                    let finished = job.clone();
+                    let completed = finish_job(
+                        &tendril_home,
+                        &plans_dir,
+                        &jobs_map,
+                        &handles,
+                        &completion_claimed,
+                        job,
+                        final_status,
+                        msg,
+                        Some(started.elapsed().as_secs() as i64),
+                        Some(&job_events),
+                    )
+                    .await;
+                    if let Some(completed) = &completed {
+                        if let Some(hook_ctx) = hook_context(
+                            &tendril_home,
+                            &settings,
+                            completed,
+                            completed.status,
+                            HookPhase::After,
+                        ) {
+                            run_hooks(&hook_ctx, HookPhase::After, &hook_executor).await;
+                        }
+                    }
+                    release_wait_dependents(&ctx, &job_id).await;
+                    let manager = ctx.self_handle.upgrade();
+                    release_dependents(&tendril_home, &plans_dir, &jobs_map, manager.as_ref(), &finished)
+                        .await;
+                    drop(permit);
+                    dispatch_notify.notify_one();
+                    return;
+                }
+            }
+        }
+
         let promptware_folder = tendril_home.join("Promptwares").join(&job.job_type);
         if !promptware_folder.is_dir() {
             let msg = format!(
@@ -128,7 +201,10 @@ pub(super) fn spawn_runner(
             return;
         }
 
-        let values = build_firmware_values(&job, &tendril_home, &settings);
+        let mut values = build_firmware_values(&job, &tendril_home, &settings);
+        if let Some(reason) = &handoff {
+            values.insert("Handoff".to_string(), reason.clone());
+        }
         let skills = resolve_project_skills(&settings, &job.project, &tendril_home);
         let compiled_prompt =
             match compile_firmware_with_skills(&promptware_folder, &values, &skills) {
@@ -407,6 +483,50 @@ pub(super) fn spawn_runner(
         drop(permit);
         dispatch_notify.notify_one();
     });
+}
+
+#[allow(clippy::too_many_arguments)]
+/// Runs the native CreatePr path on a blocking thread, mirroring each step into the job's log and
+/// status line so the Jobs view shows what is happening.
+async fn run_native_pr(
+    tendril_home: &Path,
+    jobs_map: &Arc<tokio::sync::RwLock<std::collections::HashMap<String, JobItem>>>,
+    job_events: &tokio::sync::broadcast::Sender<super::events::JobEvent>,
+    job: &JobItem,
+    args: &crate::models::CreatePrArgs,
+    settings: &TendrilSettings,
+    github: Arc<dyn crate::pull_request::GitHub>,
+    timing: crate::pull_request::NativePrTiming,
+) -> crate::pull_request::NativePrOutcome {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    let plan_folder = std::path::PathBuf::from(&job.plan_file);
+    let home = tendril_home.to_path_buf();
+    let args = args.clone();
+    let settings = settings.clone();
+    let task = tokio::task::spawn_blocking(move || {
+        let mut progress = |message: &str| {
+            let _ = tx.send(message.to_string());
+        };
+        crate::pull_request::run_native_create_pr(
+            &plan_folder,
+            &args,
+            &settings,
+            &home,
+            github.as_ref(),
+            &timing,
+            &mut progress,
+        )
+    });
+
+    let mut status_job = job.clone();
+    while let Some(message) = rx.recv().await {
+        let _ = append_to_raw_log(tendril_home, &job.id, &format!("[native] {message}"));
+        status_job.status_message = Some(message);
+        persist(tendril_home, jobs_map, &status_job, Some(job_events)).await;
+    }
+    task.await.unwrap_or_else(|e| crate::pull_request::NativePrOutcome::NeedsAgent {
+        reason: format!("the native pull request step crashed: {e}"),
+    })
 }
 
 /// What a hook run needs from a job, or `None` when the job's project is unknown or configures no

@@ -409,6 +409,8 @@
     "signLabel": "Signera commits från agenter",
     "signHint": "Stäng av om din signering kräver att du är närvarande (1Password-SSH-nyckel, GPG-pinentry): agenter utan gränssnitt kan inte signera och deras commits misslyckas. Påverkar bara agenternas commits; din git-konfiguration ändras inte.",
     "save": "Spara",
-    "saved": "Greninställningar sparade"
+    "saved": "Greninställningar sparade",
+    "nativeLabel": "Skapa pull requests utan agenten",
+    "nativeHint": "Tendril pushar grenen, skapar eller uppdaterar PR:en, tillämpar dina val och mergar själv – på sekunder och utan tokens. Agenten anropas bara för mergekonflikter eller ovanliga grenar. Stäng av för att skicka varje PR via agenten."
   }
 }

@@ -993,6 +993,8 @@ export interface GitSettings {
   missionBranchTemplate?: string;
   /** `false`: agents commit unsigned (for signers that need a person present). Absent: git config. */
   signCommits?: boolean;
+  /** `false`: every Create PR goes through the agent. Absent: Tendril pushes and opens PRs itself. */
+  nativePullRequests?: boolean;
 }
 
 /** What each kind of branch would be called under a `GitSettings`, rendered by the daemon. */

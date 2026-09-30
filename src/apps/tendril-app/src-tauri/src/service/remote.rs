@@ -202,8 +202,8 @@ pub fn init_at_startup(home: &Path) {
 
     tauri::async_runtime::spawn(async {
         loop {
-            let has_token = current().and_then(|a| a.token).is_some();
-            tokio::time::sleep(if has_token {
+            let healthy = current().is_some_and(|a| a.token.is_some() && a.last_error.is_none());
+            tokio::time::sleep(if healthy {
                 REFRESH_EVERY
             } else {
                 RETRY_EVERY
@@ -226,7 +226,7 @@ pub fn init_at_startup(home: &Path) {
                     Err(e) => {
                         tracing::warn!("Remote login refresh failed: {e}");
                         // A token that has not expired yet is still worth sending; the next pass
-                        // retries sooner because `has_token` only reflects success.
+                        // retries sooner because `healthy` requires the last attempt to have succeeded.
                         active.last_error = Some(e);
                     }
                 }

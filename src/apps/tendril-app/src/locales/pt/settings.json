@@ -411,6 +411,8 @@
     "signLabel": "Assinar commits feitos por agentes",
     "signHint": "Desative se sua assinatura exige você presente (chave SSH do 1Password, pinentry do GPG): agentes sem interface não conseguem assinar e os commits falham. Afeta só os commits dos agentes; sua configuração do git não muda.",
     "save": "Salvar",
-    "saved": "Configurações de branch salvas"
+    "saved": "Configurações de branch salvas",
+    "nativeLabel": "Criar pull requests sem o agente",
+    "nativeHint": "O Tendril envia a branch, cria ou atualiza o PR, aplica suas opções e faz o merge sozinho, em segundos e sem tokens. O agente só entra para resolver conflitos ou recuperar uma branch incomum. Desative para mandar todo PR pelo agente."
   }
 }

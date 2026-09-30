@@ -411,6 +411,8 @@
     "signLabel": "Firmar los commits de los agentes",
     "signHint": "Desactívalo si tu firma requiere tu presencia (clave SSH de 1Password, pinentry de GPG): los agentes sin interfaz no pueden firmar y sus commits fallan. Solo afecta a los commits de los agentes; tu configuración de git no cambia.",
     "save": "Guardar",
-    "saved": "Ajustes de ramas guardados"
+    "saved": "Ajustes de ramas guardados",
+    "nativeLabel": "Crear pull requests sin el agente",
+    "nativeHint": "Tendril sube la rama, crea o actualiza el PR, aplica tus opciones y hace el merge por sí mismo, en segundos y sin tokens. El agente solo interviene para resolver conflictos o recuperar una rama inusual. Desactívalo para que cada PR pase por el agente."
   }
 }

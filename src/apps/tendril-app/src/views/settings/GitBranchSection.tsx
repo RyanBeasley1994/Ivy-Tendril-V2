@@ -36,6 +36,8 @@ const readGit = (config: TendrilConfig | null): GitSettings => {
     branchTemplate: str("branchTemplate"),
     missionBranchTemplate: str("missionBranchTemplate"),
     signCommits: typeof git.signCommits === "boolean" ? git.signCommits : undefined,
+    nativePullRequests:
+      typeof git.nativePullRequests === "boolean" ? git.nativePullRequests : undefined,
   };
 };
 
@@ -45,6 +47,8 @@ interface GitForm {
   missionBranchTemplate: string;
   /** Checked means "leave signing to git config" - the default. */
   signCommits: boolean;
+  /** Checked means Tendril opens PRs itself - the default. */
+  nativePullRequests: boolean;
 }
 
 /** Blank fields are left out, so the daemon's default applies rather than an empty template. */
@@ -56,6 +60,7 @@ const toWire = (form: GitForm): GitSettings => {
     out.missionBranchTemplate = form.missionBranchTemplate.trim();
   // Only the non-default value is written, so an untouched install keeps no `signCommits` key.
   if (!form.signCommits) out.signCommits = false;
+  if (!form.nativePullRequests) out.nativePullRequests = false;
   return out;
 };
 
@@ -76,6 +81,7 @@ export const GitBranchSection: React.FC<{
     branchTemplate: "",
     missionBranchTemplate: "",
     signCommits: true,
+    nativePullRequests: true,
   });
   const [preview, setPreview] = React.useState<BranchPreview | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -87,6 +93,7 @@ export const GitBranchSection: React.FC<{
       branchTemplate: saved.branchTemplate ?? "",
       missionBranchTemplate: saved.missionBranchTemplate ?? "",
       signCommits: saved.signCommits !== false,
+      nativePullRequests: saved.nativePullRequests !== false,
     });
   }, [saved]);
 
@@ -114,7 +121,8 @@ export const GitBranchSection: React.FC<{
     form.branchPrefix !== (saved.branchPrefix ?? "") ||
     form.branchTemplate !== (saved.branchTemplate ?? "") ||
     form.missionBranchTemplate !== (saved.missionBranchTemplate ?? "") ||
-    form.signCommits !== (saved.signCommits !== false);
+    form.signCommits !== (saved.signCommits !== false) ||
+    form.nativePullRequests !== (saved.nativePullRequests !== false);
 
   const save = async () => {
     if (unknown.length > 0) return;
@@ -221,6 +229,22 @@ export const GitBranchSection: React.FC<{
             </Label>
           </div>
           <p className="text-xs text-muted-foreground">{t("git.signHint")}</p>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <Switch
+              id="git-native-prs"
+              checked={form.nativePullRequests}
+              onCheckedChange={(checked) =>
+                setForm((current) => ({ ...current, nativePullRequests: checked }))
+              }
+            />
+            <Label htmlFor="git-native-prs" className="text-xs font-medium text-foreground">
+              {t("git.nativeLabel")}
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("git.nativeHint")}</p>
         </div>
         <SaveError message={error} />
         <Button type="submit" disabled={!dirty || isSaving || unknown.length > 0}>

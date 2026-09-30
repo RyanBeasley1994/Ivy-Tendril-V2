@@ -409,6 +409,8 @@
     "signLabel": "Commits von Agenten signieren",
     "signHint": "Ausschalten, wenn deine Signatur deine Anwesenheit braucht (1Password-SSH-Schlüssel, GPG-Pinentry): Agenten ohne Oberfläche können nicht signieren, ihre Commits schlagen fehl. Betrifft nur Commits von Agenten; deine Git-Konfiguration bleibt unverändert.",
     "save": "Speichern",
-    "saved": "Branch-Einstellungen gespeichert"
+    "saved": "Branch-Einstellungen gespeichert",
+    "nativeLabel": "Pull Requests ohne Agent erstellen",
+    "nativeHint": "Tendril pusht den Branch, erstellt oder aktualisiert den PR, wendet deine Optionen an und merged selbst – in Sekunden und ohne Tokens. Der Agent wird nur für Merge-Konflikte oder ungewöhnliche Branches gerufen. Ausschalten, um jeden PR über den Agenten zu erstellen."
   }
 }

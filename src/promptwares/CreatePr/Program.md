@@ -16,6 +16,21 @@ The firmware header contains:
 
 The plan structure and CLI commands are in the **Reference Documents** section of your firmware.
 
+## Handoff
+
+Tendril normally pushes the branch, opens (or updates) the PR, applies the options and merges by
+itself, without running this program. You are only started when it hit something that needs
+judgement, and the **Handoff** firmware header says what. Read it first:
+
+- **"… conflicts with <base> …"** — the branch is already pushed and the PR already exists and is
+  recorded on the plan. Go straight to **3.7 Resolve Merge Conflicts**, then **4. Merge** (only if
+  `PrMerge` is `true`), **5.** and **6.** Do not push a second branch or open a second PR: step 3's
+  idempotency check will find the existing one.
+- **Anything else** (no worktree on disk, uncommitted changes, a detached HEAD, a `gh`/`git` error,
+  artifacts to upload) — follow the steps below from the start; they already handle each of these.
+
+Without a **Handoff** header you were started directly: run every step.
+
 ## Execution Steps
 
 > **Transient-error retry convention (applies to every `git` and `gh` command below):**
