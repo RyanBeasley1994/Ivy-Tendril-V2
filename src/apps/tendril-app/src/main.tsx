@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { ThemeProvider } from "@ivy-interactive/components/theme";
 import { App } from "./App";
+import { installBrowserTransport } from "./api/httpClient";
 import { ProxyOriginProvider } from "./api/proxyOrigin";
 import { initI18n } from "./i18n";
 import { startupLanguage, syncDocumentLanguage } from "./state/language";
@@ -10,6 +11,12 @@ import { isTauri } from "./utils/tauri";
 import "./index.css";
 
 applyAppZoom();
+
+// Outside the desktop app there is no Tauri IPC: the page is served by the authenticating proxy in
+// front of the daemon, and every call goes to the daemon's HTTP routes through it instead.
+if (!isTauri()) {
+  installBrowserTransport();
+}
 
 // The macOS window has no title bar (`titleBarStyle: Overlay`): the traffic lights float over the
 // sidebar, so the layout leaves them room. Other platforms keep their native frame.

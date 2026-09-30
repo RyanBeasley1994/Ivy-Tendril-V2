@@ -1,5 +1,5 @@
 import React from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../utils/opener";
 import { copyToClipboard } from "@ivy-interactive/components";
 import { Button, Callout, Input, Label, Spinner, Switch } from "@ivy-interactive/components/ui";
 import { ClipboardCopy, Download, ExternalLink } from "lucide-react";

@@ -1,5 +1,5 @@
 import React from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../utils/opener";
 import { GitBranch, Plus, RefreshCw, GitPullRequest } from "lucide-react";
 import { DensityProvider } from "@ivy-interactive/components";
 import {

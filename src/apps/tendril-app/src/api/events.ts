@@ -1,7 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
 import { isTauri } from "../utils/tauri";
 import { i18n } from "../i18n";
+import { listenInBrowser } from "./browserEvents";
+
+/**
+ * Tauri's `listen` in the desktop app; in a browser, the same channels fed from the daemon's streams
+ * directly (see `browserEvents.ts`). Every subscriber below goes through this, so none of them has to
+ * know which build it is in.
+ */
+function listen<T>(channel: string, handler: (event: { payload: T }) => void): Promise<UnlistenFn> {
+  return isTauri() ? tauriListen<T>(channel, handler) : listenInBrowser<T>(channel, handler);
+}
 
 export type EventUnsubscribe = () => void;
 
@@ -438,7 +448,11 @@ export function subscribeJobEvents(
   options: JobEventSubscriptionOptions,
 ): EventUnsubscribe {
   const trimmedBase = baseUrl.replace(/\/+$/, "");
-  const url = new URL(`${trimmedBase}/api/jobs/${encodeURIComponent(jobId)}/events`);
+  // Resolved against the page, so an empty base (served alongside the daemon) is same-origin.
+  const url = new URL(
+    `${trimmedBase}/api/jobs/${encodeURIComponent(jobId)}/events`,
+    window.location.href,
+  );
   if (options.kinds && options.kinds.length > 0) {
     url.searchParams.set("kinds", options.kinds.join(","));
   }

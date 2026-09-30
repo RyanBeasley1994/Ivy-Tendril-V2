@@ -1,5 +1,5 @@
 import React from "react";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath } from "../../utils/opener";
 import { WandSparkles } from "lucide-react";
 import { copyToClipboard } from "@ivy-interactive/components";
 import { formatList } from "@ivy-interactive/components/i18n";

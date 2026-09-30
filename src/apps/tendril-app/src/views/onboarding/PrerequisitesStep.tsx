@@ -1,5 +1,5 @@
 import type { DoctorCheck, DoctorCheckStatus } from "../../types/api";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../utils/opener";
 import { Badge, Button } from "@ivy-interactive/components/ui";
 import { ErrorBanner } from "../../components/ErrorBanner";
 import { Trans, useTranslation, type TFunction } from "../../i18n";

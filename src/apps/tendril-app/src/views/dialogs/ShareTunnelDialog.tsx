@@ -1,4 +1,4 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../utils/opener";
 import {
   ShareTunnelDialog as ShareTunnelDialogView,
   shareUrlForPlan,

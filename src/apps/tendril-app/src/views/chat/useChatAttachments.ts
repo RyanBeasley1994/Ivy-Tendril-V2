@@ -4,6 +4,8 @@ import { bridge } from "../../api/bridge";
 import { useWebviewFileDrop } from "../../hooks/useWebviewFileDrop";
 import type { ChatAttachment } from "../../types/chat";
 import { i18n } from "../../i18n";
+import { fileToBase64 } from "../../utils/browserFiles";
+import { isTauri } from "../../utils/tauri";
 
 /**
  * Everything the composer does with a file: the chips, the staging copies, and the four drag
@@ -112,7 +114,48 @@ export function useChatAttachments({
     void stageAttachments(paths);
   };
 
+  /**
+   * A browser's files are bytes with no path anywhere the daemon can read, so each one is uploaded
+   * with `uploadAttachmentBytes` and its chip - keyed by name until then - re-pointed at the copy, the
+   * same hand-off `stageAttachments` makes for a path.
+   */
+  const stageBrowserFiles = async (files: File[]) => {
+    const sessionId = activeSessionId;
+    await Promise.all(
+      files.map(async (file) => {
+        const source = file.name;
+        let pending = stagingRef.current.get(source);
+        if (!pending) {
+          pending = fileToBase64(file)
+            .then((data) => bridge.uploadAttachmentBytes(file.name, data, sessionId))
+            .then((staged) => staged.path);
+          stagingRef.current.set(source, pending);
+        }
+        setStagingPaths((prev) => (prev.includes(source) ? prev : [...prev, source]));
+        try {
+          applyStagedPath(source, await pending);
+        } catch {
+          stagingRef.current.delete(source);
+        } finally {
+          setStagingPaths((prev) => prev.filter((path) => path !== source));
+        }
+      }),
+    );
+  };
+
   const processFiles = (fileList: FileList | File[]) => {
+    if (!isTauri()) {
+      const files = Array.from(fileList);
+      addAttachments(
+        files.map((file) => ({
+          name: file.name,
+          path: file.name,
+          mimeType: file.type || undefined,
+        })),
+      );
+      void stageBrowserFiles(files);
+      return;
+    }
     const incoming = Array.from(fileList).map((file) => ({
       name: file.name,
       path: (file as unknown as { path?: string }).path || file.name,
@@ -140,6 +183,10 @@ export function useChatAttachments({
   };
 
   const handleAttachClick = async () => {
+    if (!isTauri()) {
+      fileInputRef.current?.click();
+      return;
+    }
     try {
       const selected = await open({
         multiple: true,

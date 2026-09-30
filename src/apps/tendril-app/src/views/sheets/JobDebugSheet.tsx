@@ -1,5 +1,5 @@
 import * as React from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../utils/opener";
 import {
   DebugWithAgentDialog,
   JobDebugSheet as JobDebugSheetView,

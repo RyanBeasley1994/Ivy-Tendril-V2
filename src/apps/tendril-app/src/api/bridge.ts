@@ -318,7 +318,7 @@ function vaultPath(vaultId: string | undefined, suffix = ""): string {
   return `/api/vaults/${encodeURIComponent(vaultId?.trim() || "default")}${suffix}`;
 }
 
-const tauriClient = {
+export const tauriClient = {
   async checkServiceHealth(this: void): Promise<ServiceHealth> {
     return invoke<ServiceHealth>("cmd_check_service_health");
   },

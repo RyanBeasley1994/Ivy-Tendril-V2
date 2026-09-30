@@ -1,4 +1,4 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../utils/opener";
 import { resolveArtifactLink } from "@ivy-interactive/components/dialogs";
 import { plansStore } from "../../state/plansStore";
 import { uiStore } from "../../state/uiStore";

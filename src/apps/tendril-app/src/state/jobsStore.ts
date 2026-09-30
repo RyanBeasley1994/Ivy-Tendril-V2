@@ -649,11 +649,10 @@ class JobsStore {
     options?: JobSubscriptionCallbacks,
   ): EventUnsubscribe {
     const info = serviceStore.getState().info;
+    // No daemon origin means the page is served alongside the daemon, so same-origin reaches it.
     const resolvedBaseUrl =
       baseUrl ||
-      (info?.port
-        ? `${info.scheme || "http"}://${info.host || "127.0.0.1"}:${info.port}`
-        : "http://127.0.0.1:3000");
+      (info?.port ? `${info.scheme || "http"}://${info.host || "127.0.0.1"}:${info.port}` : "");
 
     const seen = this.lastStreamLine.get(jobId);
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath } from "../utils/opener";
 import { copyToClipboard } from "@ivy-interactive/components";
 import {
   PlanChangesView,

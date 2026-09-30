@@ -1,5 +1,5 @@
 import React from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../utils/opener";
 import { BrandIcon, CodeBlock } from "@ivy-interactive/components/tendril";
 import { Button, Callout, Input, Label, Switch } from "@ivy-interactive/components/ui";
 import { Check, ExternalLink } from "lucide-react";

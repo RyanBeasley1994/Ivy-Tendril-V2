@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { openUrl, revealItemInDir } from "../utils/opener";
 import { Spinner } from "@ivy-interactive/components/ui";
 import {
   ArtifactFileSheet as ArtifactFileSheetView,

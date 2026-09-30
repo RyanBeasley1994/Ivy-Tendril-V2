@@ -3,6 +3,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import type { DialogAttachment } from "@ivy-interactive/components/dialogs";
 import { bridge } from "../../api/bridge";
 import { describeBridgeError } from "../../types/api";
+import { fileToBase64, pickFiles } from "../../utils/browserFiles";
+import { isTauri } from "../../utils/tauri";
 
 /**
  * A fresh upload session id: V1's `Guid.NewGuid().ToString("N")` for `uploadSessionId`, which names
@@ -49,7 +51,36 @@ export function useDialogAttachments(isOpen: boolean, pickerTitle: string) {
     setIsAttaching(false);
   }, [isOpen]);
 
+  const stage = React.useCallback((staged: { name: string; path: string }) => {
+    setAttachments((current) =>
+      current.some((file) => file.path === staged.path)
+        ? current
+        : [...current, { name: staged.name, path: staged.path }],
+    );
+  }, []);
+
+  /** No native dialog in a browser: the picked files arrive as bytes and are uploaded as such. */
+  const onAttachBrowserFiles = React.useCallback(async () => {
+    const files = await pickFiles();
+    if (files.length === 0) return;
+    setIsAttaching(true);
+    setAttachError(null);
+    try {
+      for (const file of files) {
+        stage(await bridge.uploadAttachmentBytes(file.name, await fileToBase64(file), sessionId));
+      }
+    } catch (err) {
+      setAttachError(describeBridgeError(err));
+    } finally {
+      setIsAttaching(false);
+    }
+  }, [sessionId, stage]);
+
   const onAttachFiles = React.useCallback(async () => {
+    if (!isTauri()) {
+      await onAttachBrowserFiles();
+      return;
+    }
     let picked: string | string[] | null;
     try {
       picked = await open({ multiple: true, title: pickerTitle });
@@ -65,19 +96,14 @@ export function useDialogAttachments(isOpen: boolean, pickerTitle: string) {
     setAttachError(null);
     try {
       for (const path of paths) {
-        const staged = await bridge.uploadChatAttachment(path, sessionId);
-        setAttachments((current) =>
-          current.some((file) => file.path === staged.path)
-            ? current
-            : [...current, { name: staged.name, path: staged.path }],
-        );
+        stage(await bridge.uploadChatAttachment(path, sessionId));
       }
     } catch (err) {
       setAttachError(describeBridgeError(err));
     } finally {
       setIsAttaching(false);
     }
-  }, [pickerTitle, sessionId]);
+  }, [onAttachBrowserFiles, pickerTitle, sessionId, stage]);
 
   const onRemoveAttachment = React.useCallback((path: string) => {
     setAttachments((current) => current.filter((file) => file.path !== path));

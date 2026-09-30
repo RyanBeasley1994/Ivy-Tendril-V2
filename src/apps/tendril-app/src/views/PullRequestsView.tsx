@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../components/page/Page";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../utils/opener";
 import { ExternalLink, FileText, GitBranch, RefreshCw } from "lucide-react";
 import {
   Badge,
