@@ -10,6 +10,7 @@ pub use commands::attachments::*;
 pub use commands::chat::*;
 pub use commands::config::*;
 pub use commands::dashboard::*;
+pub use commands::forward::*;
 pub use commands::github::*;
 pub use commands::inbox::*;
 pub use commands::missions::*;
@@ -255,6 +256,9 @@ pub fn run() {
             cmd_vault_catalog,
             cmd_vault_github_accounts,
             cmd_list_github_repos,
+            cmd_forward_port,
+            cmd_list_port_forwards,
+            cmd_stop_port_forward,
             cmd_vault_discover,
             cmd_vault_create,
             cmd_vault_connect,

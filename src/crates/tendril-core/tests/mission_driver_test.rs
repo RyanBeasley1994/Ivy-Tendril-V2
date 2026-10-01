@@ -711,4 +711,5 @@ async fn a_chat_on_a_mission_plan_is_briefed_and_runs_in_its_worktree() {
     assert!(b.contains("Goal:") && b.contains("- M1 [Executing]"), "{b}");
     assert!(b.contains("m1 work"), "recent commits are listed: {b}");
     assert!(b.contains("## The plan") && b.contains("## Tasks"), "{b}");
+    assert!(b.contains("## Serving the app") && b.contains("http://localhost:<port>"), "the chat knows how to serve: {b}");
 }

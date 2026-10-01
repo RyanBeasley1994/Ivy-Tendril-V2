@@ -3,6 +3,7 @@ pub mod attachments;
 pub mod chat;
 pub mod config;
 pub mod dashboard;
+pub mod forward;
 pub mod github;
 pub mod inbox;
 pub mod missions;

@@ -7,6 +7,7 @@ pub mod config;
 pub mod costs;
 pub mod dashboard;
 pub mod filesystem;
+pub mod forward;
 pub mod health;
 pub mod inbox;
 pub mod jobs;
@@ -559,6 +560,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         // WebSocket
         .route("/api/ws", get(ws::ws_handler))
+        // `ssh -L` over the Forge connection: a loopback port on this host, for the desktop app's
+        // port forwards. Same auth as every route here.
+        .route("/api/forward/:port", get(forward::forward_port))
         // REST counterpart to `?since=<seq>` WS resume — same ring buffer, for a client that would
         // rather poll (or top up before opening a socket) than hold one open.
         .route("/api/events/backfill", get(ws::events_backfill_handler))

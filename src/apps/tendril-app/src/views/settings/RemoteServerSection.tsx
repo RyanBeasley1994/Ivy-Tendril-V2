@@ -5,6 +5,7 @@ import { remoteApi, type RemoteApi, type RemoteConnection } from "../../api/remo
 import { useTranslation } from "../../i18n";
 import { describeBridgeError } from "../../types/api";
 import { SettingsSection } from "./fields";
+import { PortForwardsPanel } from "./PortForwardsPanel";
 
 export interface RemoteServerSectionProps {
   /** Injectable for tests; the Tauri-backed API otherwise. */
@@ -110,6 +111,7 @@ export const RemoteServerSection: React.FC<RemoteServerSectionProps> = ({ api = 
               {busy && <Spinner size="sm" aria-hidden />}
               {t("remoteServer.disconnect")}
             </Button>
+            <PortForwardsPanel />
           </div>
         ) : (
           <form

@@ -373,7 +373,16 @@
     "disconnect": "Disconnect and use this machine",
     "connectedAs": "Connected as {{username}}",
     "notAuthenticated": "Not logged in: {{error}}",
-    "restarting": "Restarting Forge…"
+    "restarting": "Restarting Forge…",
+    "forwards": {
+      "title": "Port forwards",
+      "hint": "Open a port from the server on this machine, like ssh -L, over this connection. Localhost links from review actions and chats are forwarded for you when you open them.",
+      "row": "server :{{remote}} → 127.0.0.1:{{local}}",
+      "open": "Open",
+      "stop": "Stop forwarding {{port}}",
+      "portLabel": "Server port",
+      "add": "Forward"
+    }
   },
   "git": {
     "title": "Git & Branches",

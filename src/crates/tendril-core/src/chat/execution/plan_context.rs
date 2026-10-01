@@ -172,6 +172,38 @@ pub fn plan_chat_context(tendril_home: &Path, plan_folder_name: &str) -> Option<
         }
     }
 
+    // How to serve the app, so "can you run it so I can check?" is something the chat can do: the
+    // project's dev-server commands (its review actions), the ports this plan was given, and how the
+    // operator opens what it starts.
+    let project_cfg = settings
+        .as_ref()
+        .and_then(|st| st.projects.iter().find(|p| p.name.eq_ignore_ascii_case(&plan.project)));
+    let actions: Vec<_> = project_cfg
+        .map(|p| p.review_actions.iter().filter(|a| !a.command.trim().is_empty()).collect())
+        .unwrap_or_default();
+    let ports = plan.allocated_ports.clone().unwrap_or_default();
+    if !actions.is_empty() || !ports.is_empty() || working_directory.is_some() {
+        b.push_str("## Serving the app\n");
+        b.push_str(
+            "You can start the project's servers so the operator can try the change. They run on the machine Tendril runs on; the operator reaches any `http://localhost:<port>` you give them through Forge's port forwarding (clicking the link forwards it automatically, and Settings → Remote Server → Port forwards opens any other port), so a remote server is fine.\n\n",
+        );
+        if !actions.is_empty() {
+            b.push_str("The project's dev-server commands (review actions); `%PORT%`-style tokens are the plan's ports below:\n");
+            for a in &actions {
+                b.push_str(&format!("- **{}**: `{}`\n", a.name, a.command.trim()));
+            }
+            b.push('\n');
+        }
+        if !ports.is_empty() {
+            b.push_str("Ports allocated to this plan: ");
+            b.push_str(&ports.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join(", "));
+            b.push_str("\n\n");
+        }
+        b.push_str(
+            "To serve: run the command from the worktree in the background so this turn can finish, e.g. `nohup <command> > /tmp/<name>-<plan>.log 2>&1 &`, then wait until it is listening (`curl -s -o /dev/null -w '%{http_code}' http://localhost:<port>` or the log), and tell the operator the URL as a link: `http://localhost:<port>`. Check first whether something is already listening on the port (`lsof -i :<port>` or `ss -ltnp`) and reuse it rather than starting a second copy. Say how to stop it (the PID, or `kill $(lsof -t -i :<port>)`).\n\n",
+        );
+    }
+
     let revision = get_revision(&folder, None).unwrap_or_default();
     if !revision.trim().is_empty() {
         b.push_str("## The plan\n");

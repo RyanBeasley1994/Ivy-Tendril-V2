@@ -1,5 +1,6 @@
 import * as tauriOpener from "@tauri-apps/plugin-opener";
 import { isTauri } from "./tauri";
+import { forwardedUrl } from "./loopbackUrl";
 
 /**
  * `@tauri-apps/plugin-opener`, with a browser fallback.
@@ -9,7 +10,8 @@ import { isTauri } from "./tauri";
  * the HTTP client uses, and the caller's existing error handling reports it.
  */
 export async function openUrl(url: string | URL): Promise<void> {
-  if (isTauri()) return tauriOpener.openUrl(url);
+  // A dev server on the remote server announces `localhost:<port>`: forward it first.
+  if (isTauri()) return tauriOpener.openUrl(await forwardedUrl(String(url)));
   window.open(String(url), "_blank", "noopener,noreferrer");
 }
 
