@@ -9,6 +9,7 @@ pub mod generate_certs;
 pub mod hash_password;
 pub mod job;
 pub mod mcp;
+pub mod memory;
 pub mod mission;
 pub mod models;
 pub mod plan;

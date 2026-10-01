@@ -18,6 +18,7 @@ pub mod models;
 pub mod newsletter;
 pub mod onboarding;
 pub mod plans;
+pub mod project_memory;
 pub mod promptware;
 pub mod pull_request;
 pub mod questions;

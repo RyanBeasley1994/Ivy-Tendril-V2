@@ -29,6 +29,14 @@ pub struct ProjectMemoryEntry {
     /// exactly what `ProjectMemoryTableView` prints under each file name.
     pub snippet: String,
     pub size_bytes: u64,
+    /// From the memory's frontmatter when an agent (or `tendril memory write`) wrote it; a plain
+    /// hand-written file is a `note` from `user`. See `tendril_core::project_memory`.
+    pub title: String,
+    pub kind: String,
+    pub source: String,
+    pub updated: String,
+    /// Every path the memory names has gone from the project's repos.
+    pub stale: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -117,10 +125,26 @@ pub async fn list_project_memory(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
 ) -> impl IntoResponse {
-    let (_, dir) = match memory_dir(&state, &name) {
+    let (project, dir) = match memory_dir(&state, &name) {
         Ok(found) => found,
         Err(response) => return response,
     };
+    let home = state.tendril_home.to_string_lossy().to_string();
+    let roots: Vec<PathBuf> = load_config(&state.config_path)
+        .ok()
+        .and_then(|s| s.projects.into_iter().find(|p| p.name == project))
+        .map(|p| {
+            p.repos
+                .iter()
+                .map(|r| PathBuf::from(tendril_core::config::expand_variables(&r.path, &home)))
+                .collect()
+        })
+        .unwrap_or_default();
+    let parsed: std::collections::HashMap<String, tendril_core::project_memory::MemoryEntry> =
+        tendril_core::project_memory::list_with_staleness(&state.tendril_home, &project, &roots)
+            .into_iter()
+            .map(|e| (e.slug.clone(), e))
+            .collect();
 
     let mut entries = Vec::new();
     if let Ok(read) = std::fs::read_dir(&dir) {
@@ -137,10 +161,23 @@ pub async fn list_project_memory(
             }
             // One unreadable file must not hide the rest: it is listed without a snippet.
             let content = std::fs::read_to_string(&path).unwrap_or_default();
+            let slug = file_name.trim_end_matches(".md").trim_end_matches(".MD");
+            let meta = parsed.get(slug);
             entries.push(ProjectMemoryEntry {
                 file_name: file_name.to_string(),
-                snippet: memory_snippet(&content),
+                // A frontmatter file's first lines are `---` and `title: …`: show what it says.
+                snippet: match meta {
+                    Some(m) if content.starts_with("---") => {
+                        if m.description.is_empty() { m.title.clone() } else { format!("{} — {}", m.title, m.description) }
+                    }
+                    _ => memory_snippet(&content),
+                },
                 size_bytes: entry.metadata().map(|m| m.len()).unwrap_or(0),
+                title: meta.map(|m| m.title.clone()).unwrap_or_else(|| slug.to_string()),
+                kind: meta.map(|m| m.kind.as_str().to_string()).unwrap_or_else(|| "note".into()),
+                source: meta.map(|m| m.source.clone()).unwrap_or_else(|| "user".into()),
+                updated: meta.map(|m| m.updated.to_rfc3339()).unwrap_or_default(),
+                stale: meta.is_some_and(|m| m.stale),
             });
         }
     }

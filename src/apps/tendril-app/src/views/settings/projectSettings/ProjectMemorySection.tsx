@@ -55,16 +55,55 @@ export const ProjectMemorySection: React.FC<ProjectMemorySectionProps> = ({
     void load();
   }, [load]);
 
+  // Saved by an agent in the last day: flagged so a reviewer sees what is new since they looked.
+  const recent = (row: ProjectMemoryEntry) =>
+    !!row.updated &&
+    row.source !== "user" &&
+    Date.now() - new Date(row.updated).getTime() < 24 * 60 * 60 * 1000;
+
   const columns: DataTableColumn<ProjectMemoryEntry>[] = [
-    { name: "fileName", header: t("memory.columns.file"), accessor: (row) => row.fileName },
+    {
+      name: "kind",
+      header: t("memory.columns.kind"),
+      accessor: (row) => row.kind ?? "note",
+      cell: (_value, row) => (
+        <span className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+          {row.kind ?? "note"}
+        </span>
+      ),
+    },
     {
       name: "snippet",
       header: t("memory.columns.snippet"),
       accessor: (row) => row.snippet,
       cell: (_value, row) => (
-        <span className="block max-w-[32rem] truncate text-muted-foreground" title={row.snippet}>
-          {row.snippet}
+        <span className="flex min-w-0 flex-col gap-0.5" title={row.snippet}>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate">{row.title ?? row.fileName}</span>
+            {recent(row) && (
+              <span className="shrink-0 rounded-full bg-primary/15 px-1.5 text-[10.5px] font-medium text-success">
+                {t("memory.new")}
+              </span>
+            )}
+            {row.stale && (
+              <span
+                className="shrink-0 rounded-full bg-warning/15 px-1.5 text-[10.5px] font-medium text-warning"
+                title={t("memory.staleHint")}
+              >
+                {t("memory.stale")}
+              </span>
+            )}
+          </span>
+          <span className="block max-w-[32rem] truncate text-xs text-muted-foreground">{row.snippet}</span>
         </span>
+      ),
+    },
+    {
+      name: "source",
+      header: t("memory.columns.source"),
+      accessor: (row) => row.source ?? "user",
+      cell: (_value, row) => (
+        <span className="font-mono text-[11px] text-muted-foreground">{row.source ?? "user"}</span>
       ),
     },
   ];

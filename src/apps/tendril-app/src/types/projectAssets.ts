@@ -13,6 +13,15 @@ export interface ProjectMemoryEntry {
   /** The first two non-blank lines, markers trimmed, joined with " — " (V1's snippet). */
   snippet: string;
   sizeBytes: number;
+  /** From the memory's frontmatter; a hand-written file is a `note` from `user`. */
+  title?: string;
+  /** `architecture`, `convention`, `decision`, `gotcha`, `preference` or `note`. */
+  kind?: string;
+  /** Who saved it: `user`, `plan:00012`, `job:00018`, `mission:00003`, `chat:<id>`. */
+  source?: string;
+  updated?: string;
+  /** Every path it names has gone from the project's repos. */
+  stale?: boolean;
 }
 
 /** `GET`/`PUT /api/projects/:name/memory/:file`. */

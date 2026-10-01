@@ -33,6 +33,12 @@ enum Commands {
     )]
     Mission(commands::mission::MissionCommands),
 
+    #[command(
+        subcommand,
+        about = "A project's long-term memory: what agents and you have learned about it"
+    )]
+    Memory(commands::memory::MemoryCommands),
+
     #[command(subcommand, about = "Manage chat sessions and execution")]
     Chat(commands::chat::ChatCommands),
 
@@ -269,6 +275,7 @@ async fn dispatch(
         Commands::Mission(cmd) => {
             commands::mission::handle_mission_command(cmd, tendril_home).await?
         }
+        Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,
         Commands::Project(cmd) => {
             commands::project::handle_project_command(cmd, tendril_home).await?

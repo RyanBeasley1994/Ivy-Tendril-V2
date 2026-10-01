@@ -19,6 +19,7 @@ mod answers;
 mod events;
 mod manager;
 mod outcome;
+pub mod plan_context;
 mod prompt;
 mod streaming;
 mod titles;

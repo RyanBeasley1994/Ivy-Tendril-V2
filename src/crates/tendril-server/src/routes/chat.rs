@@ -293,11 +293,38 @@ pub async fn start_terminal_handler(
         .unwrap_or(session.agent_id);
     let model_id = body.model_id.or(Some(session.model_id));
 
+    // A terminal attached to a plan opens in the plan's worktree, briefed on the plan and its mission,
+    // exactly as the chat mode is (`chat::execution::plan_context`).
+    let plan_context = match session.plan_folder_name.clone() {
+        Some(folder) => {
+            let home = state.tendril_home.clone();
+            tokio::task::spawn_blocking(move || {
+                tendril_core::chat::execution::plan_context::plan_chat_context(&home, &folder)
+            })
+            .await
+            .ok()
+            .flatten()
+        }
+        None => None,
+    };
+    let working_dir = plan_context
+        .as_ref()
+        .and_then(|c| c.working_directory.clone())
+        .unwrap_or_else(|| state.tendril_home.clone());
+    let initial_prompt = match (&plan_context, body.prompt) {
+        (Some(ctx), Some(p)) => Some(format!("{}# Current User Request\n{}", ctx.briefing, p)),
+        (Some(ctx), None) => Some(format!(
+            "{}Read the context above, then wait for the user's request.",
+            ctx.briefing
+        )),
+        (None, p) => p,
+    };
+
     let spec = build_agent_pty_spec(
         &agent_id,
         &AgentPtyConfig {
             model: model_id,
-            initial_prompt: body.prompt,
+            initial_prompt,
             // The same variable the chat path exports, so an agent in either mode can start a job
             // that is tracked against this conversation.
             environment_variables: HashMap::from([(
@@ -310,7 +337,7 @@ pub async fn start_terminal_handler(
 
     let env: Vec<(String, String)> = spec.environment.into_iter().collect();
     let stream =
-        match crate::pty::spawn_pty_argv(&spec.argv, Some(state.tendril_home.as_path()), &env) {
+        match crate::pty::spawn_pty_argv(&spec.argv, Some(working_dir.as_path()), &env) {
             Ok(stream) => stream,
             Err(e) => {
                 return (

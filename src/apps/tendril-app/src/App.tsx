@@ -1,4 +1,4 @@
-import { isMissionPlan, useMissionPlanIds } from "./state/missionPlans";
+import { isMissionPlan, useMilestonePlanIds, useMissionPlanIds } from "./state/missionPlans";
 import { PRODUCT_NAME } from "./branding";
 import React, { useState, useEffect, useMemo } from "react";
 import { useShortcut } from "@ivy-interactive/components/tendril";
@@ -236,6 +236,13 @@ export const App: React.FC = () => {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   // The plans missions own, which the Plans page and its badge leave out.
   const missionPlanIds = useMissionPlanIds();
+  // Milestone plans are run, retried and judged by their mission: a failed one is not the operator's
+  // to review, so Review, its badge and the dashboard's decisions leave them out.
+  const milestonePlanIds = useMilestonePlanIds();
+  const reviewablePlans = useMemo(
+    () => plansState.plans.filter((plan) => !isMissionPlan(milestonePlanIds, plan.id)),
+    [plansState.plans, milestonePlanIds],
+  );
   // Which review action the review-action view is running. Held here rather than encoded into the nav
   // id: it is three values, and it is deliberately not persisted — a restored nav pointing at a
   // process that died with the last session has nothing to show.
@@ -747,8 +754,8 @@ export const App: React.FC = () => {
     [plansState.plans, jobsState.jobs, missionPlanIds],
   );
   const reviewCount = useMemo(
-    () => reviewQueueFor(plansState.plans, jobsState.jobs).length,
-    [plansState.plans, jobsState.jobs],
+    () => reviewQueueFor(reviewablePlans, jobsState.jobs).length,
+    [reviewablePlans, jobsState.jobs],
   );
   const jobCount = useMemo(
     () =>
@@ -1038,7 +1045,7 @@ export const App: React.FC = () => {
       case "dashboard":
         return (
           <DashboardView
-            plans={plansState.plans}
+            plans={reviewablePlans}
             jobs={jobsState.jobs}
             onSelectJob={handleSelectJob}
             onSelectPlan={(planId) => void handleSelectPlan(planId)}
@@ -1107,7 +1114,7 @@ export const App: React.FC = () => {
       case "review":
         return (
           <ReviewView
-            plans={plansState.plans}
+            plans={reviewablePlans}
             // The review queue excludes plans a job still holds, as V1's `activePlanFolders` does.
             // Without the list the exclusion is dead wiring, and the page offers Complete Plan and
             // Create PR on work an agent has not finished — a retry that is only Queued or Blocked
@@ -1233,7 +1240,7 @@ export const App: React.FC = () => {
       default:
         return (
           <DashboardView
-            plans={plansState.plans}
+            plans={reviewablePlans}
             jobs={jobsState.jobs}
             onSelectJob={handleSelectJob}
             onSelectMission={(missionId) =>

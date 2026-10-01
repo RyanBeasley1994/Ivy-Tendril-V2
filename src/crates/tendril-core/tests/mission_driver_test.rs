@@ -681,3 +681,34 @@ async fn the_final_phase_cannot_accept_until_every_verification_is_recorded() {
     tendril_core::plans::writer::write_plan_yaml(&integration, &yaml).unwrap();
     service::decide_checked(&folder, &w.paths.plans_dir, DecisionAction::Accept, Some(&final_job), "all green", None, None).unwrap();
 }
+
+#[tokio::test]
+async fn a_chat_on_a_mission_plan_is_briefed_and_runs_in_its_worktree() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (_, args) = w.jobs.last();
+    let m1_plan = plan_folder_of(&args);
+    execute(&w, &m1_plan, &read_mission(&folder).unwrap().branch.unwrap(), "m1 work");
+
+    // The chat reads the Plans folder from config.yaml, as the daemon does.
+    std::fs::write(
+        w.paths.tendril_home.join("config.yaml"),
+        format!("planFolder: {}\n", w.paths.plans_dir.display()),
+    )
+    .unwrap();
+    let name = m1_plan.file_name().unwrap().to_string_lossy().to_string();
+    let ctx = tendril_core::chat::execution::plan_context::plan_chat_context(&w.paths.tendril_home, &name)
+        .expect("a plan chat gets context");
+
+    let worktree = ctx.working_directory.expect("it runs in the plan's worktree");
+    assert_eq!(
+        std::fs::canonicalize(&worktree).unwrap(),
+        std::fs::canonicalize(shared_checkout(&w, &m1_plan)).unwrap(),
+        "a milestone's chat runs in the mission's shared checkout"
+    );
+    let b = &ctx.briefing;
+    assert!(b.contains("# Plan Context") && b.contains("milestone M1 of the mission"), "{b}");
+    assert!(b.contains("Goal:") && b.contains("- M1 [Executing]"), "{b}");
+    assert!(b.contains("m1 work"), "recent commits are listed: {b}");
+    assert!(b.contains("## The plan") && b.contains("## Tasks"), "{b}");
+}

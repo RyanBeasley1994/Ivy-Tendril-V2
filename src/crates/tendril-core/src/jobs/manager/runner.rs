@@ -227,7 +227,7 @@ pub(super) fn spawn_runner(
         let skills = resolve_project_skills(&settings, &job.project, &tendril_home);
         let compiled_prompt =
             match compile_firmware_with_skills(&promptware_folder, &values, &skills) {
-                Ok(p) => p,
+                Ok(p) => p + &project_memory_section(&tendril_home, &job),
                 Err(e) => {
                     let msg = format!(
                         "Failed to compile firmware from {}: {}",
@@ -584,4 +584,32 @@ fn hook_context(
             job.plan_file.clone()
         },
     })
+}
+
+/// The project's long-term memory for this job: its index, and the memories most relevant to the
+/// plan the job works on, ranked against the plan's text and the paths it names. Nothing for a job
+/// without a project.
+fn project_memory_section(tendril_home: &std::path::Path, job: &JobItem) -> String {
+    let project = job.project.trim();
+    if project.is_empty() {
+        return String::new();
+    }
+    let plan_folder = std::path::Path::new(&job.plan_file);
+    let mut query = String::new();
+    if plan_folder.is_dir() {
+        if let Ok((plan, _)) = crate::plans::reader::read_plan_yaml(plan_folder) {
+            query.push_str(&plan.title);
+            query.push('\n');
+        }
+        if let Ok(revision) = crate::plans::revisions::get_revision(plan_folder, None) {
+            query.push_str(&revision);
+        }
+    }
+    // A CreatePlan's description, a retry's change request: what the job was asked, in words.
+    if let Some(args) = &job.args {
+        query.push('\n');
+        query.push_str(args);
+    }
+    let paths = crate::project_memory::paths_in(&query);
+    crate::project_memory::render_for_prompt(tendril_home, project, &query, &paths)
 }

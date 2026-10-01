@@ -364,12 +364,17 @@
   "importedFromRepo_mcpServers_other": "Imported {{count}} MCP servers",
   "memory": {
     "title": "Project Memories",
-    "hint": "Markdown notes about this project (stack, rules, conventions), stored under {{path}}.",
+    "hint": "What agents and you have learned about this project: architecture, conventions, decisions, gotchas and preferences. Every plan, mission and chat on the project is given the ones relevant to its work, and agents save new ones as they learn. Stored under {{path}}.",
     "addButton": "Add Project Memory",
     "columns": {
       "file": "File",
-      "snippet": "Summary"
+      "kind": "Type",
+      "snippet": "Memory",
+      "source": "Saved by"
     },
+    "new": "New",
+    "stale": "Stale",
+    "staleHint": "The files this memory is about are no longer in the project's repos. Check it and update or delete it.",
     "empty": "No project memory files yet.",
     "loadError": "Could not read the project's memories: {{error}}",
     "saved": "Memory file '{{name}}' saved",

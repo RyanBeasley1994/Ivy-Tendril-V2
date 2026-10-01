@@ -186,17 +186,43 @@ impl ChatExecutionManager {
                 // (`AgentLaunchHelper.PrepareResolutionContext`). The chat session's id still
                 // reaches the agent, as the environment variable V1 sets, so `tendril job start
                 // --chat-session $TENDRIL_CHAT_SESSION_ID` keeps working.
+                // A chat attached to a plan opens on that plan: briefed on it (and its mission), and
+                // running in its worktree rather than in Tendril's home. Re-read every turn, so a
+                // retry or a newly recorded check is in the next answer.
+                let plan_folder = mgr
+                    .sessions
+                    .read()
+                    .await
+                    .get(&s_id)
+                    .and_then(|s| s.plan_folder_name.clone());
+                let plan_context = match plan_folder {
+                    Some(folder) => {
+                        let home = mgr.tendril_home.clone();
+                        tokio::task::spawn_blocking(move || {
+                            super::plan_context::plan_chat_context(&home, &folder)
+                        })
+                        .await
+                        .ok()
+                        .flatten()
+                    }
+                    None => None,
+                };
+                let built_prompt = build_chat_agent_prompt(
+                    &current_history,
+                    &current_prompt,
+                    &s_id,
+                    &current_role,
+                    &mgr.spawned_jobs(&s_id).await,
+                );
                 let launch_config = AgentLaunchConfig {
-                    prompt: build_chat_agent_prompt(
-                        &current_history,
-                        &current_prompt,
-                        &s_id,
-                        &current_role,
-                        &mgr.spawned_jobs(&s_id).await,
-                    ),
+                    prompt: match &plan_context {
+                        Some(ctx) => format!("{}{}", ctx.briefing, built_prompt),
+                        None => built_prompt,
+                    },
                     working_directory: current_options
                         .working_directory
                         .clone()
+                        .or_else(|| plan_context.as_ref().and_then(|c| c.working_directory.clone()))
                         .unwrap_or_else(|| mgr.tendril_home.clone()),
                     model: current_options.model_id.clone(),
                     effort: current_options.effort.clone(),

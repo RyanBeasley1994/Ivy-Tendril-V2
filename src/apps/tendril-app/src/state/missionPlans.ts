@@ -12,7 +12,10 @@ import { bridge } from "../api/bridge";
 const POLL_MS = 10_000;
 
 let ids: ReadonlySet<string> = new Set();
+/** Only the milestones' plans: the integration plan is the mission's deliverable, reviewed as usual. */
+let milestoneIds: ReadonlySet<string> = new Set();
 const listeners = new Set<(next: ReadonlySet<string>) => void>();
+const milestoneListeners = new Set<(next: ReadonlySet<string>) => void>();
 let timer: number | null = null;
 
 /** `00042-AddLogin` → `42`, so `00042` and `42` compare equal. */
@@ -25,12 +28,22 @@ async function read(): Promise<void> {
   try {
     const missions = await bridge.listMissions();
     const next = new Set<string>();
+    const nextMilestones = new Set<string>();
     for (const m of missions) {
       if (m.integrationPlan) next.add(normalize(m.integrationPlan));
-      for (const ms of m.milestones) if (ms.plan) next.add(normalize(ms.plan));
+      for (const ms of m.milestones) {
+        if (!ms.plan) continue;
+        next.add(normalize(ms.plan));
+        nextMilestones.add(normalize(ms.plan));
+      }
     }
-    const changed = next.size !== ids.size || [...next].some((id) => !ids.has(id));
-    if (!changed) return;
+    const differs = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+      a.size !== b.size || [...a].some((id) => !b.has(id));
+    if (differs(nextMilestones, milestoneIds)) {
+      milestoneIds = nextMilestones;
+      for (const l of milestoneListeners) l(milestoneIds);
+    }
+    if (!differs(next, ids)) return;
     ids = next;
     for (const l of listeners) l(ids);
   } catch {
@@ -52,7 +65,32 @@ export function useMissionPlanIds(): ReadonlySet<string> {
     }
     return () => {
       listeners.delete(setValue);
-      if (listeners.size === 0 && timer !== null) {
+      if (listeners.size === 0 && milestoneListeners.size === 0 && timer !== null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    };
+  }, []);
+  return value;
+}
+
+/**
+ * The plans mission milestones run on. A milestone that fails is the mission's to retry, judge or
+ * pause on, so it stays out of Review and the dashboard's decisions; the mission surfaces anything
+ * that needs a human. Shares the mission poll with {@link useMissionPlanIds}.
+ */
+export function useMilestonePlanIds(): ReadonlySet<string> {
+  const [value, setValue] = useState(milestoneIds);
+  useEffect(() => {
+    milestoneListeners.add(setValue);
+    setValue(milestoneIds);
+    if (timer === null) {
+      void read();
+      timer = window.setInterval(() => void read(), POLL_MS);
+    }
+    return () => {
+      milestoneListeners.delete(setValue);
+      if (listeners.size === 0 && milestoneListeners.size === 0 && timer !== null) {
         window.clearInterval(timer);
         timer = null;
       }

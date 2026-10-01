@@ -41,7 +41,12 @@ Complete your task and present the user with a summary.
 
 ## Reflection
 
-Every execution needs to end with a reflection step. This is your opportunity to improve over time. What did we learn during this session? Save reflections using the CLI:
+Every execution needs to end with a reflection step. This is your opportunity to improve over time. What did we learn during this session? Two kinds of memory, kept apart:
+
+- **How to do this job better**, whatever the project: save it as promptware memory, below.
+- **What is true about the project** (its architecture, conventions, decisions, gotchas, the operator's preferences): save it as project memory, with `tendril memory write`, when the **Project Memory** section below is present.
+
+Save promptware reflections using the CLI:
 
 ```bash
 tendril promptware write-memory {PROMPTWARE_NAME} <filename>.md <<'EOF'
