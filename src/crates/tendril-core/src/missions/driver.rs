@@ -394,6 +394,10 @@ impl MissionDriver {
     // ---------------------------------------------------------------------------------------------
 
     async fn step_planning(&self, folder: &Path, mission: &MissionYaml) -> Result<bool> {
+        // Back from Review with a change request: plan fix-ups for it rather than the whole goal.
+        if let Some(cr) = mission.pending_change_request().cloned() {
+            return self.step_revise(folder, mission, &cr).await;
+        }
         let Some((_, job)) = self.current(mission).await? else {
             let args = self.orchestrator_args(folder, mission, "Plan", None)?;
             return self
@@ -422,6 +426,67 @@ impl MissionDriver {
                 "The orchestrator finished planning without writing any milestones".to_string()
             } else {
                 format!("Planning failed: {}", Self::job_failure(&job))
+            };
+            update_mission(folder, |m| {
+                m.pause(reason.clone());
+                Ok(())
+            })?;
+        }
+        Ok(true)
+    }
+
+    /// The `Revise` phase: the orchestrator turns the operator's change request into fix-up milestones
+    /// on the existing branch. They run without a fresh approval (asking for the change was it), and
+    /// the mission goes through judging and validation back to Review.
+    async fn step_revise(&self, folder: &Path, mission: &MissionYaml, cr: &MissionChangeRequest) -> Result<bool> {
+        let Some((current, job)) = self.current(mission).await? else {
+            let args = self.orchestrator_args(folder, mission, "Revise", None)?;
+            let message = format!("Orchestrator planning change request {}", cr.id);
+            return self.start_job(folder, args, MissionStep::Revise, None, message, |_| {}).await;
+        };
+        if current.step != MissionStep::Revise {
+            // A job left over from before the change request (a hand edit): forget it.
+            update_mission(folder, |m| {
+                m.current_job = None;
+                Ok(())
+            })?;
+            return Ok(true);
+        }
+        let Some(job) = job else {
+            return self.lost_job(folder);
+        };
+        if is_live(job.status) {
+            return Ok(false);
+        }
+        let before: std::collections::HashSet<String> = cr.existing_milestones.iter().cloned().collect();
+        let mission = Self::settle(folder, &job)?;
+        if Self::park_if_rate_limited(folder, &job, MissionStep::Revise, None)? {
+            return Ok(true);
+        }
+        let added: Vec<String> = mission
+            .milestones
+            .iter()
+            .filter(|ms| ms.state == MilestoneState::Pending && !before.contains(&ms.id))
+            .map(|ms| ms.id.clone())
+            .collect();
+        if job.status == JobStatus::Completed && !added.is_empty() {
+            let cr_id = cr.id.clone();
+            update_mission(folder, |m| {
+                if let Some(c) = m.change_requests.iter_mut().find(|c| c.id == cr_id) {
+                    c.state = ChangeRequestState::Planned;
+                    c.milestones = added.clone();
+                }
+                m.state = MissionState::Running;
+                m.log(None, format!("Change request {} planned as {}", cr_id, added.join(", ")));
+                Ok(())
+            })?;
+            let mission = read_mission(folder)?;
+            self.publish_plan_to_integration(&mission);
+        } else {
+            let reason = if job.status == JobStatus::Completed {
+                format!("The orchestrator planned change request {} without adding any milestones", cr.id)
+            } else {
+                format!("Planning change request {} failed: {}", cr.id, Self::job_failure(&job))
             };
             update_mission(folder, |m| {
                 m.pause(reason.clone());
@@ -523,7 +588,7 @@ impl MissionDriver {
                     Ok(true)
                 }
                 MissionStep::Judge => self.apply_judgement(folder, &mission, &milestone, &job).await,
-                MissionStep::Plan | MissionStep::Final => {
+                MissionStep::Plan | MissionStep::Final | MissionStep::Revise => {
                     // Left over from another state (a resume, a hand edit). Forget it.
                     Ok(true)
                 }
@@ -994,6 +1059,10 @@ impl MissionDriver {
         update_mission(folder, |m| {
             m.decision = None;
             m.state = MissionState::Review;
+            // Its milestones have passed and the whole mission was validated again: done.
+            for c in m.change_requests.iter_mut().filter(|c| c.state == ChangeRequestState::Planned) {
+                c.state = ChangeRequestState::Done;
+            }
             m.summary = Some(summary.clone());
             m.log(None, "Validated; the integration plan is ready for review");
             Ok(())

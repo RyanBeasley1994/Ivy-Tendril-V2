@@ -1,4 +1,6 @@
 import React from "react";
+import { PortForwardsChip } from "./PortForwardsChip";
+import { isTauri } from "../../utils/tauri";
 import { ArrowLeft, ArrowRight, Bell, ChevronRight, Search, SquareTerminal } from "lucide-react";
 import { navigation, useNavigation } from "../../state/navigation";
 import {
@@ -141,6 +143,7 @@ export const ShellTopBar: React.FC<ShellTopBarProps> = ({
             onDiagnostics={onViewDiagnostics}
           />
         )}
+        {isTauri() && serviceInfo?.ownership === "Remote" && <PortForwardsChip />}
         {runningJobs > 0 && onJobs && (
           <button
             type="button"

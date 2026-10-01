@@ -188,6 +188,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         .route("/api/missions/:id/pause", post(missions::pause_mission_handler))
         .route(
+            "/api/missions/:id/request-changes",
+            post(missions::request_changes_handler),
+        )
+        .route(
             "/api/missions/:id/resume",
             post(missions::resume_mission_handler),
         )

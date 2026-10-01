@@ -1,4 +1,5 @@
 import * as React from "react";
+import { missionForIntegrationPlan } from "../../state/missionPlans";
 import {
   SuggestChangesDialog as SuggestChangesDialogView,
   type AppComment,
@@ -37,6 +38,8 @@ function canRequestChanges(state: PlanLifecycleState, planJobs: Job[]): boolean 
 }
 
 export interface SuggestChangesDialogProps {
+  /** The plan was a mission's integration plan, and the request went to the mission instead. */
+  onMissionChangeRequested?: (missionId: string) => void;
   isOpen: boolean;
   onClose: () => void;
   plan: PlanDetail | PlanSummary;
@@ -82,6 +85,7 @@ export function SuggestChangesDialog({
   appComments,
   appUrl,
   planJobs,
+  onMissionChangeRequested,
 }: SuggestChangesDialogProps) {
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -107,6 +111,20 @@ export function SuggestChangesDialog({
     setIsBusy(true);
     setError(null);
     try {
+      // A mission's integration plan is changed through its mission: the request becomes fix-up
+      // milestones that run, are judged and revalidated, rather than a retry on the plan that the
+      // mission would never know about.
+      const missionId = await missionForIntegrationPlan(plan.id);
+      if (missionId) {
+        const text = fromApp ? changeRequest : withFileRefs(changeRequest, attach.attachments);
+        await bridge.missionAction(missionId, "request-changes", { changeRequest: text });
+        if (!fromApp && (inlineCommentCount ?? 0) > 0) {
+          void bridge.clearDiffComments(plan.id).catch(() => undefined);
+        }
+        onMissionChangeRequested?.(missionId);
+        onClose();
+        return;
+      }
       if (fromApp) {
         const response = await bridge.startJob({
           type: "RetryPlan",

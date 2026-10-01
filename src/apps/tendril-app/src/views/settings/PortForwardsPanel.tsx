@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Input } from "@ivy-interactive/components/ui";
 import { ExternalLink, X } from "lucide-react";
-import { portForwardsApi, type PortForward } from "../../api/portForwards";
+import { portForwardsApi, usePortForwards } from "../../api/portForwards";
 import { useTranslation } from "../../i18n";
 import { describeBridgeError } from "../../types/api";
 import { openUrl } from "../../utils/opener";
@@ -11,19 +11,15 @@ import { openUrl } from "../../utils/opener";
  * loopback, opened here. Dev servers a review action or a chat announces as `localhost:<port>` are
  * forwarded automatically when their link is opened; this is for everything else.
  */
-export const PortForwardsPanel: React.FC = () => {
+export const PortForwardsPanel: React.FC<{
+  /** In a dialog: no divider or heading of its own, the dialog supplies them. */
+  bare?: boolean;
+}> = ({ bare = false }) => {
   const { t } = useTranslation("settings");
-  const [forwards, setForwards] = React.useState<PortForward[]>([]);
+  const forwards = usePortForwards();
   const [port, setPort] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
-
-  const refresh = React.useCallback(async () => {
-    setForwards(await portForwardsApi.list().catch(() => []));
-  }, []);
-  React.useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const add = async () => {
     const n = Number.parseInt(port, 10);
@@ -33,7 +29,6 @@ export const PortForwardsPanel: React.FC = () => {
     try {
       await portForwardsApi.forward(n);
       setPort("");
-      await refresh();
     } catch (err) {
       setError(describeBridgeError(err));
     } finally {
@@ -42,11 +37,20 @@ export const PortForwardsPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-2 border-t border-border/70 pt-3" data-testid="port-forwards">
-      <div>
-        <p className="m-0 text-sm font-medium text-foreground">{t("remoteServer.forwards.title")}</p>
+    <div className={bare ? "space-y-3" : "space-y-2 border-t border-border/70 pt-3"} data-testid="port-forwards">
+      {bare ? (
         <p className="m-0 text-xs text-muted-foreground">{t("remoteServer.forwards.hint")}</p>
-      </div>
+      ) : (
+        <div>
+          <p className="m-0 text-sm font-medium text-foreground">{t("remoteServer.forwards.title")}</p>
+          <p className="m-0 text-xs text-muted-foreground">{t("remoteServer.forwards.hint")}</p>
+        </div>
+      )}
+      {forwards.length === 0 && bare && (
+        <p className="m-0 rounded-selector border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+          {t("remoteServer.forwards.none")}
+        </p>
+      )}
       {forwards.length > 0 && (
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
           {forwards.map((f) => (
@@ -69,7 +73,7 @@ export const PortForwardsPanel: React.FC = () => {
                 type="button"
                 aria-label={t("remoteServer.forwards.stop", { port: f.remotePort })}
                 className="text-muted-foreground hover:text-foreground"
-                onClick={() => void portForwardsApi.stop(f.remotePort).then(refresh)}
+                onClick={() => void portForwardsApi.stop(f.remotePort)}
               >
                 <X className="size-3.5" aria-hidden />
               </button>

@@ -257,6 +257,8 @@ pub enum MissionStep {
     Judge,
     /// `OrchestrateMission`, phase `Final`.
     Final,
+    /// `OrchestrateMission`, phase `Revise`: turns an operator's change request into fix-up milestones.
+    Revise,
 }
 
 impl MissionStep {
@@ -267,6 +269,7 @@ impl MissionStep {
             Self::Retry => "Retry",
             Self::Judge => "Judge",
             Self::Final => "Final",
+            Self::Revise => "Revise",
         }
     }
 }
@@ -329,7 +332,7 @@ impl MissionAgents {
     /// The agent a step runs on.
     pub fn for_step(&self, step: MissionStep) -> Option<&RoleAgent> {
         match step {
-            MissionStep::Plan => self.planner.as_ref(),
+            MissionStep::Plan | MissionStep::Revise => self.planner.as_ref(),
             MissionStep::Execute | MissionStep::Retry => self.worker.as_ref(),
             MissionStep::Judge => self.judge.as_ref(),
             MissionStep::Final => self.validator.as_ref(),
@@ -508,6 +511,37 @@ pub struct MissionYaml {
     /// Consecutive rate-limited jobs, for the back-off. Reset when a job gets through.
     #[serde(rename = "rateLimitStreak", default, skip_serializing_if = "is_zero")]
     pub rate_limit_streak: u32,
+    /// What the operator asked to change after reviewing the result, oldest first. Each one sends the
+    /// mission back through planning, its fix-up milestones and validation to Review.
+    #[serde(rename = "changeRequests", default, skip_serializing_if = "Vec::is_empty")]
+    pub change_requests: Vec<MissionChangeRequest>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChangeRequestState {
+    /// Waiting for the orchestrator to plan it.
+    Pending,
+    /// Turned into milestones, which are running.
+    Planned,
+    /// Its milestones passed and the mission was validated again.
+    Done,
+}
+
+/// One round of review feedback on a mission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MissionChangeRequest {
+    /// `C1`, `C2`, …
+    pub id: String,
+    pub at: DateTime<Utc>,
+    /// What the operator asked for, as written.
+    pub text: String,
+    pub state: ChangeRequestState,
+    /// The milestones planned for it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub milestones: Vec<String>,
+    /// The milestones that already existed when it was made: anything new after it is its fix-ups.
+    #[serde(rename = "existingMilestones", default, skip_serializing_if = "Vec::is_empty")]
+    pub existing_milestones: Vec<String>,
 }
 
 fn is_zero(n: &u32) -> bool {
@@ -554,7 +588,13 @@ impl MissionYaml {
             log: Vec::new(),
             rate_limit: None,
             rate_limit_streak: 0,
+            change_requests: Vec::new(),
         }
+    }
+
+    /// The change request waiting to be planned, if any.
+    pub fn pending_change_request(&self) -> Option<&MissionChangeRequest> {
+        self.change_requests.iter().find(|c| c.state == ChangeRequestState::Pending)
     }
 
     pub fn log(&mut self, milestone: Option<&str>, message: impl Into<String>) {

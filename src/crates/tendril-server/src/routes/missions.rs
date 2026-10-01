@@ -98,6 +98,30 @@ pub async fn approve_mission_handler(State(state): State<Arc<AppState>>, Path(id
     mission_json(&state, &f)
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeRequestBody {
+    pub change_request: String,
+}
+
+/// `POST /api/missions/:id/request-changes` — the operator's review feedback on a mission in Review:
+/// the mission plans fix-up milestones for it, runs and validates them, and returns to Review.
+pub async fn request_changes_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(body): Json<ChangeRequestBody>,
+) -> Response {
+    let f = match folder(&state, &id) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    if let Err(e) = service::request_changes(&f, &state.plans_dir, &body.change_request) {
+        return error_response(e);
+    }
+    reconcile(&state, &f).await;
+    mission_json(&state, &f)
+}
+
 #[derive(Debug, Default, Deserialize)]
 pub struct PauseRequest {
     pub reason: Option<String>,

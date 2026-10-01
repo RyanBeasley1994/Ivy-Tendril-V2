@@ -65,6 +65,16 @@ pub enum MissionCommands {
     #[command(about = "Record the orchestrator's decision for the current step (orchestrator)")]
     Decide(MissionDecideArgs),
 
+    #[command(about = "Send a mission in Review back with changes: it plans fix-up milestones, runs and validates them, and returns to Review")]
+    RequestChanges {
+        id: String,
+        /// The change request.
+        #[arg(long)]
+        text: Option<String>,
+        #[arg(long)]
+        file: Option<PathBuf>,
+    },
+
     #[command(about = "Mark a milestone task done as you finish it, e.g. M2.3 (worker)")]
     Task {
         /// The mission id.
@@ -361,6 +371,17 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
             let ids = service::set_milestones(&folder, &paths.plans_dir, inputs, scope)?;
             println!("Milestones set: {}", ids.join(", "));
         }
+        MissionCommands::RequestChanges { id, text, file } => {
+            let folder = resolve(&id)?;
+            let text = match (text, file) {
+                (Some(t), _) => t,
+                (None, Some(f)) => std::fs::read_to_string(&f)?,
+                (None, None) => anyhow::bail!("Pass --text or --file"),
+            };
+            let cr = service::request_changes(&folder, &paths.plans_dir, &text)?;
+            nudge(tendril_home, &service::folder_name(&folder)).await;
+            println!("Change request {} recorded; the mission is planning it.", cr);
+        }
         MissionCommands::Task { id, task, undo } => {
             let folder = resolve(&id)?;
             service::set_task_done(&folder, &task, !undo)?;
@@ -437,6 +458,22 @@ fn print_mission(file: &MissionFile, paths: &MissionPaths) {
         );
     }
     println!("\nGoal:\n{}\n", m.goal.trim());
+    if !m.change_requests.is_empty() {
+        println!("Change requests:");
+        for c in &m.change_requests {
+            println!(
+                "  {} [{:?}] {}{}",
+                c.id,
+                c.state,
+                c.at.format("%Y-%m-%d %H:%M"),
+                if c.milestones.is_empty() { String::new() } else { format!(" -> {}", c.milestones.join(", ")) }
+            );
+            for line in c.text.lines() {
+                println!("    {}", line);
+            }
+        }
+        println!();
+    }
 
     println!("Milestones ({}/{} passed):", m.passed_count(), m.milestones.len());
     for ms in &m.milestones {

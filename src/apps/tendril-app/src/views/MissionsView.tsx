@@ -1033,6 +1033,35 @@ const MissionDetail: React.FC<{
       </div>
 
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-w-0 flex-col gap-4">
+        {(mission.changeRequests?.length ?? 0) > 0 && (
+          <section className="flex min-w-0 flex-col gap-2" data-testid="mission-change-requests">
+            <h2 className="m-0 text-[13px] font-semibold">{t("changeRequests.title")}</h2>
+            <ol className="m-0 flex list-none flex-col gap-2 p-0">
+              {mission.changeRequests!.map((cr) => (
+                <li key={cr.id} className="rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-muted-foreground">{cr.id}</span>
+                    <Pill tone={cr.state === "Done" ? "ok" : cr.state === "Planned" ? "info" : "warn"}>
+                      {t(`changeRequests.state.${cr.state}`)}
+                    </Pill>
+                    <span className="ml-auto font-mono text-[11px] text-muted-foreground">
+                      {formatAge(Date.now() - new Date(cr.at).getTime())}
+                    </span>
+                  </div>
+                  <p className="m-0 mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground/90">
+                    {cr.text}
+                  </p>
+                  {(cr.milestones?.length ?? 0) > 0 && (
+                    <p className="m-0 mt-1.5 font-mono text-[11px] text-muted-foreground">
+                      {t("changeRequests.milestones", { ids: cr.milestones!.join(", ") })}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
         <section
           className="flex min-w-0 flex-col gap-2"
           data-testid="mission-milestones"
@@ -1073,6 +1102,7 @@ const MissionDetail: React.FC<{
             </ol>
           )}
         </section>
+        </div>
 
         <div className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-0">
           {current && (

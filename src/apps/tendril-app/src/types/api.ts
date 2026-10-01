@@ -994,6 +994,8 @@ export interface Mission {
   log?: MissionLogEntry[];
   /** Set while waiting out a rate limit; the mission carries on by itself afterwards. */
   rateLimit?: MissionRateLimit;
+  /** What the operator asked to change after review, oldest first. */
+  changeRequests?: MissionChangeRequest[];
 }
 
 export interface CreateMissionRequest {
@@ -1006,7 +1008,25 @@ export interface CreateMissionRequest {
   agents?: MissionAgents;
 }
 
-export type MissionAction = "approve" | "pause" | "resume" | "cancel" | "complete" | "reconcile";
+export type MissionAction =
+  | "approve"
+  | "pause"
+  | "resume"
+  | "cancel"
+  | "complete"
+  | "reconcile"
+  | "request-changes";
+
+export type ChangeRequestState = "Pending" | "Planned" | "Done";
+
+/** One round of review feedback on a mission: planned into fix-up milestones, run, revalidated. */
+export interface MissionChangeRequest {
+  id: string;
+  at: string;
+  text: string;
+  state: ChangeRequestState;
+  milestones?: string[];
+}
 
 /** Which daemon an action goes to: the connected one (`remote`) or this machine's (`local`). */
 export type MachineTarget = "remote" | "local";

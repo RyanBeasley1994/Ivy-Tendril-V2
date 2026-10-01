@@ -14,6 +14,8 @@ const POLL_MS = 10_000;
 let ids: ReadonlySet<string> = new Set();
 /** Only the milestones' plans: the integration plan is the mission's deliverable, reviewed as usual. */
 let milestoneIds: ReadonlySet<string> = new Set();
+/** Integration plan id → its mission's id, so review actions on that plan can go to the mission. */
+let integrationMissions: ReadonlyMap<string, string> = new Map();
 const listeners = new Set<(next: ReadonlySet<string>) => void>();
 const milestoneListeners = new Set<(next: ReadonlySet<string>) => void>();
 let timer: number | null = null;
@@ -29,14 +31,19 @@ async function read(): Promise<void> {
     const missions = await bridge.listMissions();
     const next = new Set<string>();
     const nextMilestones = new Set<string>();
+    const nextIntegration = new Map<string, string>();
     for (const m of missions) {
-      if (m.integrationPlan) next.add(normalize(m.integrationPlan));
+      if (m.integrationPlan) {
+        next.add(normalize(m.integrationPlan));
+        nextIntegration.set(normalize(m.integrationPlan), m.id);
+      }
       for (const ms of m.milestones) {
         if (!ms.plan) continue;
         next.add(normalize(ms.plan));
         nextMilestones.add(normalize(ms.plan));
       }
     }
+    integrationMissions = nextIntegration;
     const differs = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
       a.size !== b.size || [...a].some((id) => !b.has(id));
     if (differs(nextMilestones, milestoneIds)) {
@@ -97,4 +104,13 @@ export function useMilestonePlanIds(): ReadonlySet<string> {
     };
   }, []);
   return value;
+}
+
+/**
+ * The mission whose integration plan `planId` is, if any. Read from the last mission poll; a review
+ * action on that plan (Request Changes) belongs to the mission, not to a plain plan retry.
+ */
+export async function missionForIntegrationPlan(planId: string): Promise<string | null> {
+  if (integrationMissions.size === 0) await read();
+  return integrationMissions.get(normalize(planId)) ?? null;
 }

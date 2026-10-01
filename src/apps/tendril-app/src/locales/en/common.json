@@ -273,6 +273,10 @@
     "agentTerminalFailed": "Agent terminal {{endpoint}} failed: HTTP {{status}}"
   },
   "topBar": {
+    "forwards_one": "{{ports}}",
+    "forwards_other": "{{count}} ports",
+    "forwardsNone": "Ports",
+    "forwardsTooltip": "Port forwards: open ports from the server on this machine",
     "search": "Search plans",
     "agentSession": "Agent session",
     "inbox": "Open inbox",

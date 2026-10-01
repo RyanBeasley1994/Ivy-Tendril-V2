@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../utils/tauri";
 
@@ -16,7 +17,9 @@ export interface PortForward {
 export const portForwardsApi = {
   async forward(this: void, port: number): Promise<PortForward> {
     if (!isTauri()) return { remotePort: port, localPort: port, forwarded: false };
-    return invoke<PortForward>("cmd_forward_port", { port });
+    const fwd = await invoke<PortForward>("cmd_forward_port", { port });
+    void refreshPortForwards();
+    return fwd;
   },
   async list(this: void): Promise<PortForward[]> {
     if (!isTauri()) return [];
@@ -24,6 +27,34 @@ export const portForwardsApi = {
   },
   async stop(this: void, port: number): Promise<boolean> {
     if (!isTauri()) return false;
-    return invoke<boolean>("cmd_stop_port_forward", { port });
+    const stopped = await invoke<boolean>("cmd_stop_port_forward", { port });
+    void refreshPortForwards();
+    return stopped;
   },
 };
+
+// The open forwards, shared by the top bar's chip, its modal and Settings, and refreshed after every
+// change - including one a clicked `localhost` link made - so all three agree.
+let current: PortForward[] = [];
+const listeners = new Set<() => void>();
+
+export async function refreshPortForwards(): Promise<void> {
+  try {
+    current = await portForwardsApi.list();
+  } catch {
+    return;
+  }
+  for (const l of listeners) l();
+}
+
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  if (listeners.size === 1) void refreshPortForwards();
+  return () => {
+    listeners.delete(l);
+  };
+};
+
+export function usePortForwards(): PortForward[] {
+  return useSyncExternalStore(subscribe, () => current, () => current);
+}

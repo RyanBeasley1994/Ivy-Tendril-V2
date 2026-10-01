@@ -657,6 +657,57 @@ pub fn decide_checked(
     decide(folder, action, job_id, reason, feedback, summary)
 }
 
+/// The operator reviewed the result and wants changes: records the request and reopens the mission.
+/// The orchestrator plans fix-up milestones for it (the `Revise` phase), they run and are judged on the
+/// shared branch, and the mission is validated again and comes back to Review. No fresh approval: the
+/// operator asking for the change is the approval. Returns the request's id (`C1`, …).
+///
+/// Only from `Review` (validated, before its pull request) or a pause that came from there; the
+/// integration plan goes back to `Blocked` until the mission hands it over again.
+pub fn request_changes(folder: &Path, plans_dir: &Path, text: &str) -> Result<String> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(TendrilError::Validation("A change request needs some text".into()));
+    }
+    let integration = std::cell::RefCell::new(None);
+    let id = update_mission(folder, |m| {
+        let from_review = m.state == MissionState::Review
+            || (m.state == MissionState::Paused && m.paused_from == Some(MissionState::Review));
+        if !from_review {
+            return Err(TendrilError::Mission(format!(
+                "Changes can be requested once the mission is in Review; it is {}",
+                m.state
+            )));
+        }
+        if m.current_job.is_some() {
+            return Err(TendrilError::Mission("The mission is still running a job".into()));
+        }
+        let id = format!("C{}", m.change_requests.len() + 1);
+        m.change_requests.push(MissionChangeRequest {
+            id: id.clone(),
+            at: Utc::now(),
+            text: text.to_string(),
+            state: ChangeRequestState::Pending,
+            milestones: Vec::new(),
+            existing_milestones: m.milestones.iter().map(|ms| ms.id.clone()).collect(),
+        });
+        m.state = MissionState::Planning;
+        m.paused_from = None;
+        m.pause_reason = None;
+        m.decision = None;
+        m.log(None, format!("Change request {id}: {}", text.lines().next().unwrap_or_default()));
+        *integration.borrow_mut() = m.integration_plan.clone();
+        Ok(id)
+    })?;
+    if let Some(plan) = integration.into_inner() {
+        let folder = plans_dir.join(plan);
+        if folder.is_dir() {
+            apply_plan_state(&folder, PlanStatus::Blocked);
+        }
+    }
+    Ok(id)
+}
+
 /// Writes a fresh mission file, for the few callers that replace it whole.
 pub fn save(folder: &Path, mission: &MissionYaml) -> Result<()> {
     write_mission(folder, mission)

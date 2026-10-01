@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { uiStore } from "../state/uiStore";
 import { openPath } from "../utils/opener";
 import { copyToClipboard } from "@ivy-interactive/components";
 import {
@@ -1856,6 +1857,10 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
             isOpen={activeDialog === "suggestChanges"}
             onClose={() => setActiveDialog(null)}
             plan={selectedPlan}
+            onMissionChangeRequested={(missionId) => {
+              setDraftComments([]);
+              uiStore.setActiveNav("missions", { mission: missionId });
+            }}
             onJobStarted={(response) => {
               /*
                * `SuggestChangesDialog.HandleSubmit`'s `_draftCommentsState.Set(new List<DraftComment>())`,

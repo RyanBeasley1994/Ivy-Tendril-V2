@@ -381,7 +381,8 @@
       "open": "Open",
       "stop": "Stop forwarding {{port}}",
       "portLabel": "Server port",
-      "add": "Forward"
+      "add": "Forward",
+      "none": "No ports forwarded yet."
     }
   },
   "git": {

@@ -60,6 +60,15 @@
     "planning": "The planner is researching the goal and writing milestones…",
     "review": "Validated. The integration plan is in Review; create its pull request from there."
   },
+  "changeRequests": {
+    "title": "Change requests",
+    "milestones": "Planned as {{ids}}",
+    "state": {
+      "Pending": "Planning",
+      "Planned": "In progress",
+      "Done": "Done"
+    }
+  },
   "milestones": {
     "title": "Milestones",
     "none": "Milestones appear here once the planner has written them.",

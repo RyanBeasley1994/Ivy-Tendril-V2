@@ -713,3 +713,75 @@ async fn a_chat_on_a_mission_plan_is_briefed_and_runs_in_its_worktree() {
     assert!(b.contains("## The plan") && b.contains("## Tasks"), "{b}");
     assert!(b.contains("## Serving the app") && b.contains("http://localhost:<port>"), "the chat knows how to serve: {b}");
 }
+
+/// Runs the open milestone through execute and an accepting judge, then the final phase to Review.
+async fn run_to_review(w: &World, folder: &Path) {
+    let branch = read_mission(folder).unwrap().branch.unwrap();
+    while read_mission(folder).unwrap().state == MissionState::Running {
+        let (job, args) = w.jobs.last();
+        match &args {
+            JobArgs::ExecutePlan(_) | JobArgs::RetryPlan(_) => {
+                execute(w, &plan_folder_of(&args), &branch, "work");
+                w.jobs.finish(&job, JobStatus::Completed, 0.0);
+            }
+            JobArgs::OrchestrateMission(a) if a.phase == "Judge" => {
+                service::decide(folder, DecisionAction::Accept, Some(&job), "ok", None, None).unwrap();
+                w.jobs.finish(&job, JobStatus::Completed, 0.0);
+            }
+            other => panic!("unexpected job while running: {other:?}"),
+        }
+        w.driver.reconcile(folder).await.unwrap();
+    }
+    let (final_job, args) = w.jobs.last();
+    assert!(matches!(&args, JobArgs::OrchestrateMission(a) if a.phase == "Final"));
+    service::decide(folder, DecisionAction::Accept, Some(&final_job), "green", None, None).unwrap();
+    w.jobs.finish(&final_job, JobStatus::Completed, 0.0);
+    w.driver.reconcile(folder).await.unwrap();
+    assert_eq!(read_mission(folder).unwrap().state, MissionState::Review);
+}
+
+#[tokio::test]
+async fn a_change_request_in_review_sends_the_mission_back_through_its_own_milestones() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    run_to_review(&w, &folder).await;
+    let integration = w.paths.plans_dir.join(read_mission(&folder).unwrap().integration_plan.unwrap());
+    assert_eq!(read_plan_yaml(&integration).unwrap().0.state, "Review");
+
+    // Not while it is still running a job, not with no text.
+    assert!(service::request_changes(&folder, &w.paths.plans_dir, "  ").is_err());
+
+    let cr = service::request_changes(&folder, &w.paths.plans_dir, "Rename the button to Save").unwrap();
+    assert_eq!(cr, "C1");
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.state, MissionState::Planning);
+    assert_eq!(read_plan_yaml(&integration).unwrap().0.state, "Blocked", "the plan is held again");
+
+    // Revise: the orchestrator plans fix-ups for the request, which run without a fresh approval.
+    w.driver.reconcile(&folder).await.unwrap();
+    let (revise, args) = w.jobs.last();
+    assert!(matches!(&args, JobArgs::OrchestrateMission(a) if a.phase == "Revise"));
+    service::set_milestones(&folder, &w.paths.plans_dir, vec![milestone("Rename button")], MilestoneScope::Pending).unwrap();
+    w.jobs.finish(&revise, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.state, MissionState::Running, "paused: {:?}; log: {:#?}", m.pause_reason, m.log.iter().rev().take(5).collect::<Vec<_>>());
+    assert_eq!(m.milestone("M1").unwrap().state, MilestoneState::Passed, "accepted work is kept");
+    let c1 = &m.change_requests[0];
+    assert_eq!(c1.state, ChangeRequestState::Planned);
+    assert_eq!(c1.milestones, vec!["M2".to_string()]);
+
+    // The fix-up runs, is judged, the mission is validated again and returns to Review.
+    run_to_review(&w, &folder).await;
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.change_requests[0].state, ChangeRequestState::Done);
+    assert_eq!(read_plan_yaml(&integration).unwrap().0.state, "Review");
+}
+
+#[tokio::test]
+async fn changes_can_only_be_requested_once_the_mission_is_in_review() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let err = service::request_changes(&folder, &w.paths.plans_dir, "x").unwrap_err().to_string();
+    assert!(err.contains("in Review"), "{err}");
+}
