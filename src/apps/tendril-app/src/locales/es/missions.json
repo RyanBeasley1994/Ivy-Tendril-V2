@@ -106,7 +106,9 @@
     "Execute": "Ejecución",
     "Retry": "Reintento",
     "Judge": "Evaluación",
-    "Final": "Validación"
+    "Final": "Validación",
+    "Revise": "Planificando cambios",
+    "Steer": "Respondiendo a tu mensaje"
   },
   "create": {
     "needsProject": "Elige un proyecto para la misión: se ejecuta en sus repositorios desde el primer paso."

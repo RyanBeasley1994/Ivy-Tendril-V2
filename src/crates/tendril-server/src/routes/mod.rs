@@ -191,6 +191,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/missions/:id/request-changes",
             post(missions::request_changes_handler),
         )
+        .route("/api/missions/:id/message", post(missions::message_handler))
         .route(
             "/api/missions/:id/resume",
             post(missions::resume_mission_handler),

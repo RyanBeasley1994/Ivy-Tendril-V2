@@ -211,6 +211,12 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
     }
   };
 
+  const sendMessage = async (text: string) => {
+    if (!detail) return;
+    setDetail(await bridge.missionAction(detail.id, "message", { text }));
+    void refresh();
+  };
+
   /** An action on any mission in the list (its right-click menu), not only the one on screen. */
   const actOn = async (id: string, action: MissionAction) => {
     setBusy(action);
@@ -310,6 +316,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
             busy={busy}
             t={t}
             onAction={(a) => void act(a)}
+            onSendMessage={sendMessage}
             onChangeAgent={(role, agent) => void changeAgent(role, agent)}
             onSelectPlan={onSelectPlan}
             onSelectJob={onSelectJob}
@@ -777,6 +784,7 @@ const MissionDetail: React.FC<{
   busy: string | null;
   t: TFunction<"missions">;
   onAction: (action: MissionAction) => void;
+  onSendMessage: (text: string) => Promise<void>;
   onChangeAgent: (role: MissionRoleName, agent: string) => void;
   onSelectPlan: (planId: string) => void;
   onSelectJob: (jobId: string) => void;
@@ -786,6 +794,7 @@ const MissionDetail: React.FC<{
   busy,
   t,
   onAction,
+  onSendMessage,
   onChangeAgent,
   onSelectPlan,
   onSelectJob,
@@ -1034,6 +1043,30 @@ const MissionDetail: React.FC<{
 
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-4">
+        {(mission.quickFixes?.length ?? 0) > 0 && (
+          <section className="flex min-w-0 flex-col gap-2" data-testid="mission-quick-fixes">
+            <h2 className="m-0 text-[13px] font-semibold">{t("quickFixes.title")}</h2>
+            <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+              {mission.quickFixes!.map((q) => (
+                <li
+                  key={q.at}
+                  className="flex items-baseline gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[12.5px]"
+                >
+                  <Check size={12} strokeWidth={3} className="shrink-0 text-success" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">{withCode(q.summary)}</span>
+                  {(q.commits?.length ?? 0) > 0 && (
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {q.commits!.map((c) => c.slice(0, 7)).join(" ")}
+                    </span>
+                  )}
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {formatAge(Date.now() - new Date(q.at).getTime())}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {(mission.changeRequests?.length ?? 0) > 0 && (
           <section className="flex min-w-0 flex-col gap-2" data-testid="mission-change-requests">
             <h2 className="m-0 text-[13px] font-semibold">{t("changeRequests.title")}</h2>
@@ -1105,6 +1138,18 @@ const MissionDetail: React.FC<{
         </div>
 
         <div className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-0">
+          {!isTerminal(mission.state) && (
+            <OrchestratorThread
+              mission={mission}
+              t={t}
+              onSend={onSendMessage}
+              onQuickChange={
+                mission.integrationPlan
+                  ? () => onSelectPlan(planIdOf(mission.integrationPlan!))
+                  : undefined
+              }
+            />
+          )}
           {current && (
             <LiveAgentCard
               mission={mission}
@@ -1714,6 +1759,119 @@ const MilestoneRow: React.FC<{
         </div>
       )}
     </li>
+  );
+};
+
+/* ------------------------------------------------------------ orchestrator */
+
+/**
+ * Talking to the orchestrator: the operator's messages and its replies, and a box to write one. When a
+ * message is read depends on where the mission is, and the hint under the box says so.
+ */
+const OrchestratorThread: React.FC<{
+  mission: Mission;
+  t: TFunction<"missions">;
+  onSend: (text: string) => Promise<void>;
+  /** Opens the integration plan, whose chat makes a small change directly in Review. */
+  onQuickChange?: () => void;
+}> = ({ mission, t, onSend, onQuickChange }) => {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const messages = mission.messages ?? [];
+  const inReview =
+    mission.state === "Review" || (mission.state === "Paused" && mission.pausedFrom === "Review");
+  const hint = inReview
+    ? t("thread.hint.review")
+    : mission.state === "AwaitingApproval"
+      ? t("thread.hint.approval")
+      : t("thread.hint.running");
+
+  const send = async () => {
+    const value = text.trim();
+    if (!value) return;
+    setSending(true);
+    setError(null);
+    try {
+      await onSend(value);
+      setText("");
+    } catch (err) {
+      setError(describeBridgeError(err));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <section
+      className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
+      data-testid="orchestrator-thread"
+    >
+      <h3 className="m-0 text-[13px] font-semibold">{t("thread.title")}</h3>
+      {messages.length > 0 && (
+        <ol className="m-0 flex max-h-80 list-none flex-col gap-2.5 overflow-y-auto p-0">
+          {messages.map((q) => (
+            <li key={q.id} className="flex flex-col gap-1.5">
+              <div className="self-end rounded-xl rounded-br-sm bg-primary/[0.12] px-3 py-2 text-[12.5px] leading-snug text-foreground">
+                {q.text}
+              </div>
+              {q.becameChangeRequest ? (
+                <p className="m-0 font-mono text-[11px] text-muted-foreground">
+                  {t("thread.becameChangeRequest", { id: q.becameChangeRequest })}
+                </p>
+              ) : q.reply ? (
+                <div className="self-start rounded-xl rounded-bl-sm border border-border bg-muted/40 px-3 py-2 text-[12.5px] leading-snug text-foreground/90">
+                  <span className="mb-0.5 block font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                    {t("thread.orchestrator")}
+                  </span>
+                  {withCode(q.reply)}
+                </div>
+              ) : (
+                <p className="m-0 inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                  <CircleDashed size={11} aria-hidden="true" />
+                  {t("thread.waiting")}
+                </p>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      <form
+        className="flex flex-col gap-1.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+      >
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          rows={3}
+          placeholder={t("thread.placeholder")}
+          className="w-full resize-y rounded-lg border border-border bg-background px-2.5 py-2 text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground focus:border-input"
+          data-testid="orchestrator-message"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="m-0 min-w-[10rem] flex-1 text-[11px] leading-snug text-muted-foreground">{hint}</p>
+          {inReview && onQuickChange && (
+            <GhostButton size="sm" type="button" onClick={onQuickChange}>
+              {t("thread.quickChange")}
+            </GhostButton>
+          )}
+          <PrimaryButton size="sm" type="submit" disabled={sending || text.trim() === ""}>
+            {sending ? <Spinner size="sm" /> : null}
+            {inReview ? t("thread.sendChange") : t("thread.send")}
+          </PrimaryButton>
+        </div>
+        {error && <p className="m-0 text-xs text-destructive">{error}</p>}
+      </form>
+    </section>
   );
 };
 

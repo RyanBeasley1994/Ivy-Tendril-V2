@@ -188,12 +188,23 @@ impl MissionDriver {
     async fn step(&self, folder: &Path) -> Result<bool> {
         let mission = read_mission(folder)?;
         if let Some(wait) = mission.rate_limit.clone() {
-            if matches!(mission.state, MissionState::Running | MissionState::Planning | MissionState::Validating) {
+            if matches!(
+                mission.state,
+                MissionState::Running | MissionState::Planning | MissionState::Validating | MissionState::AwaitingApproval
+            ) {
                 if Utc::now() < wait.until {
                     return Ok(false);
                 }
                 return self.resume_after_rate_limit(folder, &mission, &wait).await;
             }
+        }
+        // The operator wrote to the orchestrator about a plan they have not approved yet: answer now,
+        // rather than at a decision point that will not come until they approve.
+        let steering = mission.state == MissionState::AwaitingApproval
+            && (mission.open_messages().next().is_some()
+                || mission.current_job.as_ref().is_some_and(|j| j.step == MissionStep::Steer));
+        if steering {
+            return self.step_steer(folder, &mission).await;
         }
         match mission.state {
             MissionState::AwaitingApproval
@@ -496,6 +507,45 @@ impl MissionDriver {
         Ok(true)
     }
 
+    /// The `Steer` phase: the orchestrator reads the operator's messages on a plan awaiting approval,
+    /// revises the milestones if they ask for it, replies, and the plan waits for approval again.
+    async fn step_steer(&self, folder: &Path, mission: &MissionYaml) -> Result<bool> {
+        let Some((_, job)) = self.current(mission).await? else {
+            let args = self.orchestrator_args(folder, mission, "Steer", None)?;
+            return self
+                .start_job(folder, args, MissionStep::Steer, None, "Orchestrator answering your message".into(), |_| {})
+                .await;
+        };
+        let Some(job) = job else {
+            return self.lost_job(folder);
+        };
+        if is_live(job.status) {
+            return Ok(false);
+        }
+        let mission = Self::settle(folder, &job)?;
+        if Self::park_if_rate_limited(folder, &job, MissionStep::Steer, None)? {
+            return Ok(true);
+        }
+        self.publish_plan_to_integration(&mission);
+        let failed = job.status != JobStatus::Completed;
+        let failure = Self::job_failure(&job);
+        update_mission(folder, |m| {
+            // A message the run did not answer must not start it again forever: say so on it.
+            let note = if failed {
+                format!("The orchestrator could not answer this: {failure}")
+            } else {
+                "The orchestrator finished without replying to this message.".to_string()
+            };
+            for q in m.messages.iter_mut().filter(|q| q.is_open()) {
+                q.reply = Some(note.clone());
+                q.replied_at = Some(Utc::now());
+            }
+            m.log(None, if failed { format!("Answering the message failed: {failure}") } else { "Answered; the plan waits for approval".to_string() });
+            Ok(())
+        })?;
+        Ok(true)
+    }
+
     /// The current job's row is gone (cleared from the Jobs view, say). Forget it and redo the step.
     fn lost_job(&self, folder: &Path) -> Result<bool> {
         update_mission(folder, |m| {
@@ -588,7 +638,7 @@ impl MissionDriver {
                     Ok(true)
                 }
                 MissionStep::Judge => self.apply_judgement(folder, &mission, &milestone, &job).await,
-                MissionStep::Plan | MissionStep::Final | MissionStep::Revise => {
+                MissionStep::Plan | MissionStep::Final | MissionStep::Revise | MissionStep::Steer => {
                     // Left over from another state (a resume, a hand edit). Forget it.
                     Ok(true)
                 }

@@ -1285,7 +1285,7 @@ export const tauriClient = {
     this: void,
     id: string,
     action: MissionAction,
-    body?: { reason?: string; changeRequest?: string },
+    body?: { reason?: string; changeRequest?: string; text?: string },
   ): Promise<Mission> {
     return invoke<Mission>("cmd_mission_action", { id, action, body });
   },

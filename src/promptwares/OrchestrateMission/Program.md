@@ -12,7 +12,7 @@ Tendril's mission driver runs you at each decision point and carries out what yo
 
 The firmware header contains:
 
-- **MissionPhase** — `Plan`, `Judge`, `Final` or `Revise`. Follow only that phase's section below.
+- **MissionPhase** — `Plan`, `Judge`, `Final`, `Revise` or `Steer`. Follow only that phase's section below.
 - **MissionId** / **MissionFolder** — the mission, and the folder holding its `mission.yaml`
 - **MilestoneId** — the milestone to judge (`Judge` only)
 - **TendrilPlanFolder** / **TendrilPlanId** — the mission's **integration plan**: its branch is the mission branch, and it carries the final pull request
@@ -28,6 +28,14 @@ tendril mission get <MissionId>
 It prints the goal, the budget, every milestone (state, attempts, plan folder, branch, acceptance criteria, feedback) and the log. The plan structure and CLI commands are in the **Reference Documents** section of your firmware.
 
 Report progress to the Jobs UI as you go: `tendril job status TendrilJobId --message="..."`.
+
+**Operator messages, every phase.** `tendril mission get` lists **Messages** from the operator. Before your phase's work, read each one without a reply and act on it within your phase: in Plan or Steer, shape the milestones around it; in Judge or Final, weigh it in your decision and, if it changes what should come next, rewrite the pending milestones (`--scope=pending`) alongside your decision. Then answer each one, saying what you did or why you did not:
+
+```bash
+tendril mission reply <MissionId> <MessageId> --text="<what you changed, or why not>"
+```
+
+A message never stops a worker mid-run; you are the one who sees it, at the next decision point.
 
 ## Phase: Plan
 
@@ -110,6 +118,16 @@ The mission was validated and the operator reviewed it, then asked for changes. 
    ```
 
 6. Exit. The milestones run straight away (the operator's request is the approval), each is judged, and the mission is validated again before it returns to Review.
+
+## Phase: Steer
+
+The plan is written and waiting for the operator's approval, and they have sent you a message about it — a question, a correction, a change of direction.
+
+1. `tendril job status TendrilJobId --message="Reading your message..."`
+2. Read the open message(s) and the current milestones (`tendril mission get`).
+3. If it asks for a change to the plan, rewrite the milestones with `--scope=all` (the same rules as the Plan phase: tasks, contracts, acceptance criteria, full specs). If it is a question, research as needed and answer it; change nothing it does not ask for.
+4. Reply to each message (`tendril mission reply`), saying what changed in the plan.
+5. Exit. The mission goes on waiting for approval, now with the revised plan.
 
 ## Phase: Judge
 

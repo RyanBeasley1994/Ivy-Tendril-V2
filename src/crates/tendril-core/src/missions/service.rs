@@ -708,6 +708,137 @@ pub fn request_changes(folder: &Path, plans_dir: &Path, text: &str) -> Result<St
     Ok(id)
 }
 
+/// What became of an operator's message.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostedMessage {
+    pub id: String,
+    /// `immediate` (a plan awaiting approval: the orchestrator is started on it now), `next` (read at
+    /// the orchestrator's next decision point), or `changeRequest` (the mission was in Review).
+    pub delivery: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub change_request: Option<String>,
+}
+
+/// The operator writes to the orchestrator. Every orchestrator phase reads open messages first and
+/// answers each one (`tendril mission reply`), reshaping the milestones still to run if asked to; a
+/// running worker is never interrupted. On a plan awaiting approval the orchestrator is started on
+/// it straight away; on a mission in Review the message becomes a change request.
+pub fn post_message(folder: &Path, plans_dir: &Path, text: &str) -> Result<PostedMessage> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(TendrilError::Validation("A message needs some text".into()));
+    }
+    let mission = crate::missions::store::read_mission(folder)?;
+    if mission.state.is_terminal() {
+        return Err(TendrilError::Mission(format!("The mission is {}; there is no one to message", mission.state)));
+    }
+    let in_review = mission.state == MissionState::Review
+        || (mission.state == MissionState::Paused && mission.paused_from == Some(MissionState::Review));
+    if in_review {
+        let cr = request_changes(folder, plans_dir, text)?;
+        let id = update_mission(folder, |m| {
+            let id = format!("Q{}", m.messages.len() + 1);
+            m.messages.push(OperatorMessage {
+                id: id.clone(),
+                at: Utc::now(),
+                text: text.to_string(),
+                reply: None,
+                replied_at: None,
+                became_change_request: Some(cr.clone()),
+            });
+            Ok(id)
+        })?;
+        return Ok(PostedMessage { id, delivery: "changeRequest".into(), change_request: Some(cr) });
+    }
+    let delivery = if mission.state == MissionState::AwaitingApproval { "immediate" } else { "next" };
+    let id = update_mission(folder, |m| {
+        let id = format!("Q{}", m.messages.len() + 1);
+        m.messages.push(OperatorMessage {
+            id: id.clone(),
+            at: Utc::now(),
+            text: text.to_string(),
+            reply: None,
+            replied_at: None,
+            became_change_request: None,
+        });
+        m.log(None, format!("Operator message {id}: {}", text.lines().next().unwrap_or_default()));
+        Ok(id)
+    })?;
+    Ok(PostedMessage { id, delivery: delivery.into(), change_request: None })
+}
+
+/// The orchestrator answers an operator message.
+pub fn reply_to_message(folder: &Path, message_id: &str, text: &str) -> Result<()> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(TendrilError::Validation("A reply needs some text".into()));
+    }
+    update_mission(folder, |m| {
+        let msg = m
+            .messages
+            .iter_mut()
+            .find(|q| q.id.eq_ignore_ascii_case(message_id.trim()))
+            .ok_or_else(|| TendrilError::Mission(format!("No message {message_id}")))?;
+        msg.reply = Some(text.to_string());
+        msg.replied_at = Some(Utc::now());
+        let id = msg.id.clone();
+        m.log(None, format!("Orchestrator replied to {id}"));
+        Ok(())
+    })
+}
+
+/// Records a quick fix made in Review from the plan's chat: what changed and its commits, on the
+/// mission and on its integration plan (so the pull request carries them). The mission stays in
+/// Review; a change that needs planning goes through [`request_changes`] instead.
+pub fn record_quick_fix(folder: &Path, plans_dir: &Path, summary: &str, commits: &[String]) -> Result<()> {
+    let summary = summary.trim();
+    if summary.is_empty() {
+        return Err(TendrilError::Validation("Say what the quick fix changed (--summary)".into()));
+    }
+    let integration = std::cell::RefCell::new(None);
+    update_mission(folder, |m| {
+        let in_review = m.state == MissionState::Review
+            || (m.state == MissionState::Paused && m.paused_from == Some(MissionState::Review));
+        if !in_review {
+            return Err(TendrilError::Mission(format!(
+                "Quick fixes are for a mission in Review; it is {}. Message the orchestrator instead.",
+                m.state
+            )));
+        }
+        m.quick_fixes.push(QuickFix {
+            at: Utc::now(),
+            summary: summary.to_string(),
+            commits: commits.iter().map(|c| c.trim().to_string()).filter(|c| !c.is_empty()).collect(),
+        });
+        m.log(None, format!("Quick fix in Review: {summary}"));
+        *integration.borrow_mut() = m.integration_plan.clone();
+        Ok(())
+    })?;
+    if let Some(plan) = integration.into_inner() {
+        let folder = plans_dir.join(plan);
+        if let Ok((mut yaml, _)) = read_plan_yaml(&folder) {
+            for c in commits {
+                let c = c.trim().to_string();
+                if !c.is_empty() && !yaml.commits.contains(&c) {
+                    yaml.commits.push(c);
+                }
+            }
+            let _ = write_plan_yaml(&folder, &yaml);
+        }
+        // The pull request is written from the summary; a fix made after it was must still appear.
+        let summary_path = folder.join("Artifacts").join("summary.md");
+        if let Ok(mut text) = std::fs::read_to_string(&summary_path) {
+            if !text.contains("## Quick fixes in review") {
+                text.push_str("\n\n## Quick fixes in review\n");
+            }
+            text.push_str(&format!("\n- {summary}"));
+            let _ = std::fs::write(&summary_path, text);
+        }
+    }
+    Ok(())
+}
+
 /// Writes a fresh mission file, for the few callers that replace it whole.
 pub fn save(folder: &Path, mission: &MissionYaml) -> Result<()> {
     write_mission(folder, mission)

@@ -259,6 +259,8 @@ pub enum MissionStep {
     Final,
     /// `OrchestrateMission`, phase `Revise`: turns an operator's change request into fix-up milestones.
     Revise,
+    /// `OrchestrateMission`, phase `Steer`: answers the operator's messages on a plan awaiting approval.
+    Steer,
 }
 
 impl MissionStep {
@@ -270,6 +272,7 @@ impl MissionStep {
             Self::Judge => "Judge",
             Self::Final => "Final",
             Self::Revise => "Revise",
+            Self::Steer => "Steer",
         }
     }
 }
@@ -332,7 +335,7 @@ impl MissionAgents {
     /// The agent a step runs on.
     pub fn for_step(&self, step: MissionStep) -> Option<&RoleAgent> {
         match step {
-            MissionStep::Plan | MissionStep::Revise => self.planner.as_ref(),
+            MissionStep::Plan | MissionStep::Revise | MissionStep::Steer => self.planner.as_ref(),
             MissionStep::Execute | MissionStep::Retry => self.worker.as_ref(),
             MissionStep::Judge => self.judge.as_ref(),
             MissionStep::Final => self.validator.as_ref(),
@@ -515,6 +518,45 @@ pub struct MissionYaml {
     /// mission back through planning, its fix-up milestones and validation to Review.
     #[serde(rename = "changeRequests", default, skip_serializing_if = "Vec::is_empty")]
     pub change_requests: Vec<MissionChangeRequest>,
+    /// The operator's messages to the orchestrator and its replies, oldest first. Read at every
+    /// orchestrator phase; one on a plan awaiting approval is answered straight away (`Steer`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub messages: Vec<OperatorMessage>,
+    /// Small changes made in Review straight from the plan's chat, on the mission branch, without
+    /// sending the mission back through planning.
+    #[serde(rename = "quickFixes", default, skip_serializing_if = "Vec::is_empty")]
+    pub quick_fixes: Vec<QuickFix>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QuickFix {
+    pub at: DateTime<Utc>,
+    pub summary: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub commits: Vec<String>,
+}
+
+/// A message from the operator to the orchestrator, and its answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OperatorMessage {
+    /// `Q1`, `Q2`, …
+    pub id: String,
+    pub at: DateTime<Utc>,
+    pub text: String,
+    /// The orchestrator's reply, once it has read and acted on the message.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reply: Option<String>,
+    #[serde(rename = "repliedAt", default, skip_serializing_if = "Option::is_none")]
+    pub replied_at: Option<DateTime<Utc>>,
+    /// What came of it, when it was not a plain reply: `change request C2`.
+    #[serde(rename = "becameChangeRequest", default, skip_serializing_if = "Option::is_none")]
+    pub became_change_request: Option<String>,
+}
+
+impl OperatorMessage {
+    pub fn is_open(&self) -> bool {
+        self.reply.is_none() && self.became_change_request.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -589,7 +631,14 @@ impl MissionYaml {
             rate_limit: None,
             rate_limit_streak: 0,
             change_requests: Vec::new(),
+            messages: Vec::new(),
+            quick_fixes: Vec::new(),
         }
+    }
+
+    /// Messages the orchestrator has not answered yet.
+    pub fn open_messages(&self) -> impl Iterator<Item = &OperatorMessage> {
+        self.messages.iter().filter(|m| m.is_open())
     }
 
     /// The change request waiting to be planned, if any.

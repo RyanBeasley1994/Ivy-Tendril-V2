@@ -75,6 +75,32 @@ pub enum MissionCommands {
         file: Option<PathBuf>,
     },
 
+    #[command(about = "Send the orchestrator a message: read at its next decision point (now, before approval)")]
+    Message {
+        id: String,
+        #[arg(long)]
+        text: String,
+    },
+
+    #[command(about = "Record a quick fix made in Review from the plan's chat, with its commits")]
+    QuickFix {
+        id: String,
+        #[arg(long)]
+        summary: String,
+        /// A commit the fix made. Repeatable.
+        #[arg(long = "commit")]
+        commits: Vec<String>,
+    },
+
+    #[command(about = "Answer an operator message (orchestrator)")]
+    Reply {
+        id: String,
+        /// The message id, e.g. Q2.
+        message: String,
+        #[arg(long)]
+        text: String,
+    },
+
     #[command(about = "Mark a milestone task done as you finish it, e.g. M2.3 (worker)")]
     Task {
         /// The mission id.
@@ -382,6 +408,30 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
             nudge(tendril_home, &service::folder_name(&folder)).await;
             println!("Change request {} recorded; the mission is planning it.", cr);
         }
+        MissionCommands::Message { id, text } => {
+            let folder = resolve(&id)?;
+            let posted = service::post_message(&folder, &paths.plans_dir, &text)?;
+            nudge(tendril_home, &service::folder_name(&folder)).await;
+            match posted.delivery.as_str() {
+                "changeRequest" => println!(
+                    "The mission was in Review, so {} became change request {}.",
+                    posted.id,
+                    posted.change_request.unwrap_or_default()
+                ),
+                "immediate" => println!("Message {} sent; the orchestrator is answering it now.", posted.id),
+                _ => println!("Message {} sent; the orchestrator reads it at its next decision point.", posted.id),
+            }
+        }
+        MissionCommands::QuickFix { id, summary, commits } => {
+            let folder = resolve(&id)?;
+            service::record_quick_fix(&folder, &paths.plans_dir, &summary, &commits)?;
+            println!("Quick fix recorded on mission {}.", service::folder_name(&folder));
+        }
+        MissionCommands::Reply { id, message, text } => {
+            let folder = resolve(&id)?;
+            service::reply_to_message(&folder, &message, &text)?;
+            println!("Reply recorded on {}.", message);
+        }
         MissionCommands::Task { id, task, undo } => {
             let folder = resolve(&id)?;
             service::set_task_done(&folder, &task, !undo)?;
@@ -458,6 +508,38 @@ fn print_mission(file: &MissionFile, paths: &MissionPaths) {
         );
     }
     println!("\nGoal:\n{}\n", m.goal.trim());
+    if !m.messages.is_empty() {
+        println!("Messages:");
+        for q in &m.messages {
+            let status = if let Some(cr) = &q.became_change_request {
+                format!("became change request {cr}")
+            } else if q.reply.is_some() {
+                "answered".to_string()
+            } else {
+                "NEEDS A REPLY".to_string()
+            };
+            println!("  {} [{}] {}", q.id, status, q.at.format("%Y-%m-%d %H:%M"));
+            for line in q.text.lines() {
+                println!("    > {}", line);
+            }
+            if let Some(r) = &q.reply {
+                println!("    reply: {}", r);
+            }
+        }
+        println!();
+    }
+    if !m.quick_fixes.is_empty() {
+        println!("Quick fixes in Review:");
+        for q in &m.quick_fixes {
+            println!(
+                "  {} {}{}",
+                q.at.format("%Y-%m-%d %H:%M"),
+                q.summary,
+                if q.commits.is_empty() { String::new() } else { format!(" ({})", q.commits.join(", ")) }
+            );
+        }
+        println!();
+    }
     if !m.change_requests.is_empty() {
         println!("Change requests:");
         for c in &m.change_requests {

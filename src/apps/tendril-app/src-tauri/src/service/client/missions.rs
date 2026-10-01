@@ -6,8 +6,8 @@ use super::{path_segment, TendrilClient};
 use crate::error::BridgeError;
 
 /// The control routes a mission accepts, so a typo in the frontend cannot reach an arbitrary path.
-pub const MISSION_ACTIONS: [&str; 7] =
-    ["approve", "pause", "resume", "cancel", "complete", "reconcile", "request-changes"];
+pub const MISSION_ACTIONS: [&str; 8] =
+    ["approve", "pause", "resume", "cancel", "complete", "reconcile", "request-changes", "message"];
 
 /// Mission writes are followed by a driver step in the same request, and a step can create the
 /// mission branch (`git fetch`) or a milestone plan before it answers - well past the client's 10s

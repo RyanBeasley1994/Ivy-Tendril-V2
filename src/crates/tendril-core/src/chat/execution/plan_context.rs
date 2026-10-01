@@ -82,9 +82,10 @@ pub fn plan_chat_context(tendril_home: &Path, plan_folder_name: &str) -> Option<
                 .map(|(_, out, _)| out.trim().to_string())
                 .unwrap_or_default();
             b.push_str(&format!(
-                "You are running in the plan's worktree `{}`{}: this is the code the plan changed. Inspect it, run its commands and tests here. Do not reset, rebase or delete it, and ask before committing to it.\n\n",
+                "You are running in the plan's worktree `{}`{}: this is the code the plan changed. Inspect it, run its commands and tests here. Do not reset, rebase or delete it.{}\n\n",
                 dir.display(),
-                if branch.is_empty() { String::new() } else { format!(" on branch `{branch}`") }
+                if branch.is_empty() { String::new() } else { format!(" on branch `{branch}`") },
+                if plan.state == "Review" { "" } else { " Ask before committing to it." }
             ));
             if let Ok((0, log, _)) = run_git(&["log", "--oneline", "-n", "15"], dir) {
                 if !log.trim().is_empty() {
@@ -170,6 +171,38 @@ pub fn plan_chat_context(tendril_home: &Path, plan_folder_name: &str) -> Option<
             }
             b.push('\n');
         }
+    }
+
+    // A plan in Review can take a small change straight from this chat, rather than going back through
+    // a retry, or for a mission, through planning and milestones.
+    if plan.state == "Review" && working_directory.is_some() {
+        let mission_id = mission_link(&plan).and_then(|l| {
+            Path::new(&l.folder)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.chars().take(5).collect::<String>())
+        });
+        b.push_str("## Quick changes\n");
+        b.push_str(
+            "The plan is in Review. When the operator asks for a small, clear change (a label, a style, a missed edge case, a one-file fix), just make it here, in this worktree, on this branch:\n\n1. Make the change, keeping to the project's conventions and the plan's contracts.\n2. Run the checks the change touches (the relevant verification commands, or the tests for the files you edited) and show the result.\n3. Commit once, with a message saying what and why: `git commit -am \"Quick fix: <what>\"`.\n",
+        );
+        b.push_str(&format!(
+            "4. Record it: `tendril plan add-commit {id} <sha> --reason \"<what changed>\"`{}.\n5. Tell the operator what changed and what you ran.\n\n",
+            match &mission_id {
+                Some(mid) => format!(
+                    ", then on the mission: `tendril mission quick-fix {mid} --summary \"<what changed>\" --commit <sha>` (it stays in Review and the pull request will list it)"
+                ),
+                None => String::new(),
+            }
+        ));
+        b.push_str(&format!(
+            "If the change is bigger than that (new behaviour, several areas, a different approach), do not do it here: say so, and {}.\n\n",
+            if mission_id.is_some() {
+                "suggest **Request Changes**, which plans it into milestones the mission runs, judges and revalidates"
+            } else {
+                "suggest **Request Changes**, which retries the plan with the request"
+            }
+        ));
     }
 
     // How to serve the app, so "can you run it so I can check?" is something the chat can do: the

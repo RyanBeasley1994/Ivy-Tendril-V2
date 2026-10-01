@@ -1182,7 +1182,7 @@ export const httpClient: TendrilClient = {
     this: void,
     id: string,
     action: MissionAction,
-    body?: { reason?: string; changeRequest?: string },
+    body?: { reason?: string; changeRequest?: string; text?: string },
   ): Promise<Mission> {
     return sendJson<Mission>(`/api/missions/${segment(id)}/${action}`, {
       method: "POST",

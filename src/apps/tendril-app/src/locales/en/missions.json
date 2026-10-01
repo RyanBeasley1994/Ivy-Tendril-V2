@@ -60,6 +60,24 @@
     "planning": "The planner is researching the goal and writing milestones…",
     "review": "Validated. The integration plan is in Review; create its pull request from there."
   },
+  "thread": {
+    "title": "Talk to the orchestrator",
+    "placeholder": "Suggest a change, ask why, or redirect the mission…",
+    "send": "Send",
+    "sendChange": "Request change",
+    "quickChange": "Quick change in chat",
+    "orchestrator": "Orchestrator",
+    "waiting": "Waiting for the orchestrator to read this",
+    "becameChangeRequest": "Became change request {{id}}",
+    "hint": {
+      "approval": "It answers now and revises the plan before you approve.",
+      "running": "Read at its next decision point (after the current step); it never interrupts a worker.",
+      "review": "For a small fix, use Quick change: the plan's chat makes it right in the worktree, keeping the mission in Review. Send here for a bigger change; it becomes a change request with its own milestones."
+    }
+  },
+  "quickFixes": {
+    "title": "Quick fixes in Review"
+  },
   "changeRequests": {
     "title": "Change requests",
     "milestones": "Planned as {{ids}}",
@@ -133,7 +151,9 @@
     "Execute": "Executing",
     "Retry": "Retrying",
     "Judge": "Judging",
-    "Final": "Validating"
+    "Final": "Validating",
+    "Revise": "Planning changes",
+    "Steer": "Answering your message"
   },
   "create": {
     "needsProject": "Pick a project for a mission: it runs in that project's repos from the first step."

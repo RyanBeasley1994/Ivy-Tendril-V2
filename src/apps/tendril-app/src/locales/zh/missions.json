@@ -105,7 +105,9 @@
     "Execute": "执行",
     "Retry": "重试",
     "Judge": "评审",
-    "Final": "验证"
+    "Final": "验证",
+    "Revise": "规划修改",
+    "Steer": "正在回复你的消息"
   },
   "create": {
     "needsProject": "请为使命选择一个项目：它从第一步起就在该项目的仓库中运行。"

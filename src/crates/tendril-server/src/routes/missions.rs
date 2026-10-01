@@ -122,6 +122,29 @@ pub async fn request_changes_handler(
     mission_json(&state, &f)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct MessageBody {
+    pub text: String,
+}
+
+/// `POST /api/missions/:id/message` — the operator writes to the orchestrator. Answers the mission,
+/// with the message's delivery (`immediate`, `next` or `changeRequest`) under `posted`.
+pub async fn message_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(body): Json<MessageBody>,
+) -> Response {
+    let f = match folder(&state, &id) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    if let Err(e) = service::post_message(&f, &state.plans_dir, &body.text) {
+        return error_response(e);
+    }
+    reconcile(&state, &f).await;
+    mission_json(&state, &f)
+}
+
 #[derive(Debug, Default, Deserialize)]
 pub struct PauseRequest {
     pub reason: Option<String>,

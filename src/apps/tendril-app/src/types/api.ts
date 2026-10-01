@@ -879,7 +879,7 @@ export type MissionState =
 
 export type MilestoneState = "Pending" | "Executing" | "Judging" | "Passed" | "Skipped";
 
-export type MissionStep = "Plan" | "Execute" | "Retry" | "Judge" | "Final";
+export type MissionStep = "Plan" | "Execute" | "Retry" | "Judge" | "Final" | "Revise" | "Steer";
 
 /** The harness one role runs on. Unset model/effort fall back to the agent's profile. */
 export interface RoleAgent {
@@ -996,6 +996,10 @@ export interface Mission {
   rateLimit?: MissionRateLimit;
   /** What the operator asked to change after review, oldest first. */
   changeRequests?: MissionChangeRequest[];
+  /** The conversation with the orchestrator, oldest first. */
+  messages?: OperatorMessage[];
+  /** Small changes made in Review from the plan's chat, without replanning. */
+  quickFixes?: { at: string; summary: string; commits?: string[] }[];
 }
 
 export interface CreateMissionRequest {
@@ -1015,7 +1019,19 @@ export type MissionAction =
   | "cancel"
   | "complete"
   | "reconcile"
-  | "request-changes";
+  | "request-changes"
+  | "message";
+
+/** The operator's message to the orchestrator, and its reply. */
+export interface OperatorMessage {
+  id: string;
+  at: string;
+  text: string;
+  reply?: string;
+  repliedAt?: string;
+  /** Sent while the mission was in Review, so it became this change request instead. */
+  becameChangeRequest?: string;
+}
 
 export type ChangeRequestState = "Pending" | "Planned" | "Done";
 

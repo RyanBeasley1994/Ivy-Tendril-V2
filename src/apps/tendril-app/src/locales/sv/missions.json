@@ -106,7 +106,9 @@
     "Execute": "Utförande",
     "Retry": "Nytt försök",
     "Judge": "Granskning",
-    "Final": "Validering"
+    "Final": "Validering",
+    "Revise": "Planerar ändringar",
+    "Steer": "Svarar på ditt meddelande"
   },
   "create": {
     "needsProject": "Välj ett projekt för uppdraget: det körs i projektets repon från första steget."

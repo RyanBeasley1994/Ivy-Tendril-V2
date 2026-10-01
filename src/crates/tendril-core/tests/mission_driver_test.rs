@@ -785,3 +785,112 @@ async fn changes_can_only_be_requested_once_the_mission_is_in_review() {
     let err = service::request_changes(&folder, &w.paths.plans_dir, "x").unwrap_err().to_string();
     assert!(err.contains("in Review"), "{err}");
 }
+
+#[tokio::test]
+async fn a_message_before_approval_is_answered_now_and_the_plan_waits_again() {
+    let w = world();
+    let created = service::create(
+        &w.paths,
+        &w.settings,
+        NewMission { title: "T".into(), goal: "G".into(), project: "P".into(), ..Default::default() },
+    )
+    .unwrap();
+    let folder = PathBuf::from(&created.folder_path);
+    w.driver.reconcile(&folder).await.unwrap();
+    let (plan_job, _) = w.jobs.last();
+    service::set_milestones(&folder, &w.paths.plans_dir, vec![milestone("Backend")], MilestoneScope::All).unwrap();
+    w.jobs.finish(&plan_job, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    assert_eq!(read_mission(&folder).unwrap().state, MissionState::AwaitingApproval);
+
+    let posted = service::post_message(&folder, &w.paths.plans_dir, "Split it into backend and frontend").unwrap();
+    assert_eq!((posted.id.as_str(), posted.delivery.as_str()), ("Q1", "immediate"));
+    w.driver.reconcile(&folder).await.unwrap();
+    let (steer, args) = w.jobs.last();
+    assert!(matches!(&args, JobArgs::OrchestrateMission(a) if a.phase == "Steer"));
+
+    // The orchestrator revises the plan and replies.
+    service::set_milestones(&folder, &w.paths.plans_dir, vec![milestone("Backend"), milestone("Frontend")], MilestoneScope::All).unwrap();
+    service::reply_to_message(&folder, "Q1", "Split into M1 backend and M2 frontend").unwrap();
+    w.jobs.finish(&steer, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.state, MissionState::AwaitingApproval, "still the operator's to approve");
+    assert_eq!(m.milestones.len(), 2);
+    assert_eq!(m.messages[0].reply.as_deref(), Some("Split into M1 backend and M2 frontend"));
+    let count = w.jobs.count();
+    assert!(!w.driver.reconcile(&folder).await.unwrap(), "an answered message starts nothing");
+    assert_eq!(w.jobs.count(), count);
+}
+
+#[tokio::test]
+async fn a_message_while_running_waits_for_the_next_decision_point() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (exec, args) = w.jobs.last();
+    assert!(matches!(args, JobArgs::ExecutePlan(_)));
+    let posted = service::post_message(&folder, &w.paths.plans_dir, "Use Postgres, not SQLite").unwrap();
+    assert_eq!(posted.delivery, "next");
+    let count = w.jobs.count();
+    w.driver.reconcile(&folder).await.unwrap();
+    assert_eq!(w.jobs.count(), count, "the running worker is not interrupted");
+    assert!(read_mission(&folder).unwrap().messages[0].is_open());
+
+    // The judge is the next decision point; it sees the message.
+    w.jobs.finish(&exec, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    let (_, args) = w.jobs.last();
+    assert!(matches!(&args, JobArgs::OrchestrateMission(a) if a.phase == "Judge"));
+    assert!(read_mission(&folder).unwrap().open_messages().next().is_some());
+}
+
+#[tokio::test]
+async fn a_message_in_review_becomes_a_change_request() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    run_to_review(&w, &folder).await;
+    let posted = service::post_message(&folder, &w.paths.plans_dir, "The button should say Save").unwrap();
+    assert_eq!(posted.delivery, "changeRequest");
+    assert_eq!(posted.change_request.as_deref(), Some("C1"));
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.state, MissionState::Planning);
+    assert_eq!(m.messages[0].became_change_request.as_deref(), Some("C1"));
+}
+
+#[tokio::test]
+async fn a_quick_fix_in_review_keeps_the_mission_in_review_and_reaches_the_pull_request() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    run_to_review(&w, &folder).await;
+    let integration = w.paths.plans_dir.join(read_mission(&folder).unwrap().integration_plan.unwrap());
+    std::fs::create_dir_all(integration.join("Artifacts")).unwrap();
+    std::fs::write(integration.join("Artifacts/summary.md"), "# Summary\n\nDone.").unwrap();
+
+    // The Review chat is told it can make the change itself, and how to record it.
+    std::fs::write(
+        w.paths.tendril_home.join("config.yaml"),
+        format!("planFolder: {}\n", w.paths.plans_dir.display()),
+    )
+    .unwrap();
+    let name = integration.file_name().unwrap().to_string_lossy().to_string();
+    let b = tendril_core::chat::execution::plan_context::plan_chat_context(&w.paths.tendril_home, &name)
+        .unwrap()
+        .briefing;
+    assert!(b.contains("## Quick changes") && b.contains("tendril mission quick-fix 00001"), "{b}");
+    assert!(!b.contains("Ask before committing"), "a plan in Review may be committed to: {b}");
+
+    service::record_quick_fix(&folder, &w.paths.plans_dir, "Button says Save", &["abc1234".into()]).unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.state, MissionState::Review, "no trip back through planning");
+    assert_eq!(m.quick_fixes[0].summary, "Button says Save");
+    assert!(read_plan_yaml(&integration).unwrap().0.commits.contains(&"abc1234".to_string()));
+    let summary = std::fs::read_to_string(integration.join("Artifacts/summary.md")).unwrap();
+    assert!(summary.contains("## Quick fixes in review") && summary.contains("- Button says Save"), "{summary}");
+}
+
+#[tokio::test]
+async fn quick_fixes_are_only_for_a_mission_in_review() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    assert!(service::record_quick_fix(&folder, &w.paths.plans_dir, "x", &[]).is_err());
+}
