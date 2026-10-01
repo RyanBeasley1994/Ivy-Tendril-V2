@@ -127,6 +127,9 @@ fn create_plan_failure_reason(output_lines: &[String]) -> String {
 /// as background tasks and never read the result.
 fn verify_execute_plan(job: &JobItem) -> Deliverable {
     let plan_folder = PathBuf::from(&job.plan_file);
+    // A mission milestone works on the shared mission branch: its commits are read from there, so a
+    // worker that committed but skipped `plan add-commit` is not failed for the bookkeeping.
+    let milestone = crate::missions::shared_worktree::harvest_milestone_commits(&plan_folder).is_some();
     let Ok((plan, _)) = read_plan_yaml(&plan_folder) else {
         return Deliverable::Missing {
             reason: format!(
@@ -145,11 +148,22 @@ fn verify_execute_plan(job: &JobItem) -> Deliverable {
     if plan.commits.is_empty() {
         shortfalls.push("exited 0 with no commits recorded".to_string());
     }
-    let incomplete = incomplete_verifications(&plan);
+    let incomplete = if milestone {
+        // The mission's judge verifies a milestone against its criteria and runs the checks it doubts,
+        // so a check the worker ran but did not record is not a failed run. A recorded Fail still is.
+        plan.verifications
+            .iter()
+            .filter(|v| v.status == crate::models::VerificationStatus::Fail)
+            .map(|v| v.name.clone())
+            .collect()
+    } else {
+        incomplete_verifications(&plan)
+    };
     if !incomplete.is_empty() {
         shortfalls.push(format!(
-            "left verification(s) {} Pending",
-            incomplete.join(", ")
+            "left verification(s) {} {}",
+            incomplete.join(", "),
+            if milestone { "Failed" } else { "Pending" }
         ));
     }
 

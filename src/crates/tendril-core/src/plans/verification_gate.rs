@@ -83,7 +83,16 @@ pub fn resolve_post_execution_state(
         return PlanStatus::Failed;
     }
 
-    if !incomplete_verifications(plan).is_empty() {
+    // A mission milestone is judged by the mission's orchestrator, which verifies it itself: only a
+    // check recorded as failed sends it to Failed here, not one the worker ran but left unrecorded.
+    let milestone = crate::missions::model::mission_link(plan)
+        .is_some_and(|l| l.role == crate::missions::model::MissionRole::Milestone);
+    let blocking = if milestone {
+        plan.verifications.iter().any(|v| v.status == VerificationStatus::Fail)
+    } else {
+        !incomplete_verifications(plan).is_empty()
+    };
+    if blocking {
         return PlanStatus::Failed;
     }
 

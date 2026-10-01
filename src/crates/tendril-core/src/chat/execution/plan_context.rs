@@ -215,6 +215,14 @@ pub fn plan_chat_context(tendril_home: &Path, plan_folder_name: &str) -> Option<
         .map(|p| p.review_actions.iter().filter(|a| !a.command.trim().is_empty()).collect())
         .unwrap_or_default();
     let ports = plan.allocated_ports.clone().unwrap_or_default();
+    if plan.state == "Review" {
+        if let Some(prompt) = project_cfg.map(|p| p.review_prompt.trim()).filter(|p| !p.is_empty()) {
+            b.push_str("## Review instructions\n");
+            b.push_str("The project asks for this whenever one of its plans is in Review (it was sent when the plan got here; if it has not been done yet in this chat, do it):\n\n");
+            b.push_str(prompt);
+            b.push_str("\n\n");
+        }
+    }
     if !actions.is_empty() || !ports.is_empty() || working_directory.is_some() {
         b.push_str("## Serving the app\n");
         b.push_str(

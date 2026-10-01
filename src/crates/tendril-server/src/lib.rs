@@ -3,6 +3,7 @@ pub mod event_buffer;
 pub mod local_file_guard;
 pub mod master;
 pub mod pr_sync;
+pub mod review_prompter;
 pub mod pty;
 pub mod routes;
 pub mod share_exposure;

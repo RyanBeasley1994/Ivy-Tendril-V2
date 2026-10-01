@@ -194,6 +194,8 @@ export interface ProjectEntry {
   name: string;
   color: string;
   context: string;
+  /** Sent into a plan's chat when it reaches Review, e.g. "start the dev environment". */
+  reviewPrompt: string;
   repos: RepoRef[];
   verifications: ProjectVerificationRef[];
   reviewActions: ReviewActionConfigEntry[];
@@ -364,6 +366,7 @@ export function readProjectEntries(cfg: TendrilConfig | null): ProjectEntry[] {
       name: asString(entry.name),
       color: asString(entry.color),
       context: asString(entry.context),
+      reviewPrompt: asString(entry.reviewPrompt),
       repos: readRepos(entry.repos),
       verifications: readVerifications(entry.verifications),
       reviewActions: readReviewActions(entry.reviewActions),

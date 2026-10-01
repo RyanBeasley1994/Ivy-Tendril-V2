@@ -383,6 +383,10 @@ pub struct ProjectConfig {
     pub verifications: Vec<ProjectVerificationRef>,
     #[serde(default)]
     pub context: String,
+    /// What the AI does when one of the project's plans reaches Review, e.g. "start the dev
+    /// environment so I can test". Sent into the plan's chat; empty means nothing is sent.
+    #[serde(rename = "reviewPrompt", default, skip_serializing_if = "String::is_empty")]
+    pub review_prompt: String,
     #[serde(rename = "stackHash", skip_serializing_if = "Option::is_none")]
     pub stack_hash: Option<String>,
     #[serde(rename = "reviewActions", default)]

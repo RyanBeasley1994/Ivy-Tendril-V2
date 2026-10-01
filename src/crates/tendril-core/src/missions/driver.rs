@@ -703,7 +703,7 @@ impl MissionDriver {
         let plan_name = folder_name(&plan_folder);
         let mission_id = folder_name(folder).chars().take(5).collect::<String>();
         let note = format!(
-            "This plan is milestone {} of the mission \"{}\". It runs in the mission's single shared worktree, on the local mission branch `{}`, which already holds every earlier milestone. Never create another worktree or branch, never reset, and never delete this one. Work through the plan's Tasks in order and run `tendril mission task {} <TaskId>` as you finish each one. Make exactly one commit for the whole milestone when every task is done. Honour the Contract section exactly. Do not push, and do not open a pull request; the mission lands everything in one pull request at the end. Acceptance criteria the orchestrator will judge this against:\n{}",
+            "This plan is milestone {} of the mission \"{}\". It runs in the mission's single shared worktree, on the local mission branch `{}`, which already holds every earlier milestone. Never create another worktree or branch, never reset, and never delete this one. Work through the plan's Tasks in order and run `tendril mission task {} <TaskId>` as you finish each one. Make exactly one commit for the whole milestone when every task is done, then record it with `tendril plan add-commit` and record each verification you ran with `tendril plan set-verification` (and its report), as ExecutePlan always does. Honour the Contract section exactly. Do not push, and do not open a pull request; the mission lands everything in one pull request at the end. Acceptance criteria the orchestrator will judge this against:\n{}",
             milestone.id,
             mission.title,
             branch,

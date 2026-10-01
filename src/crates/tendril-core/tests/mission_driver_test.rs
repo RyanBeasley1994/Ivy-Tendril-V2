@@ -894,3 +894,33 @@ async fn quick_fixes_are_only_for_a_mission_in_review() {
     let folder = approved_mission(&w, None, None).await;
     assert!(service::record_quick_fix(&folder, &w.paths.plans_dir, "x", &[]).is_err());
 }
+
+#[tokio::test]
+async fn a_milestone_that_committed_but_kept_no_records_still_delivered() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let (_, args) = w.jobs.last();
+    let m1_plan = plan_folder_of(&args);
+    execute(&w, &m1_plan, &read_mission(&folder).unwrap().branch.unwrap(), "m1: the whole milestone");
+    let (yaml, _) = read_plan_yaml(&m1_plan).unwrap();
+    assert!(yaml.commits.is_empty(), "the worker recorded nothing");
+    assert!(yaml.verifications.iter().any(|v| v.status == tendril_core::models::VerificationStatus::Pending));
+
+    let mut job = JobItem::new("job-x".into(), "ExecutePlan".into(), m1_plan.to_string_lossy().to_string(), "P".into());
+    let outcome = tendril_core::jobs::deliverable::verify_deliverable(&w.paths.plans_dir, &mut job, &[]);
+    assert_eq!(outcome, tendril_core::jobs::deliverable::Deliverable::Present, "the commit is on the branch");
+    let (yaml, _) = read_plan_yaml(&m1_plan).unwrap();
+    assert_eq!(yaml.commits.len(), 1, "read back from the shared branch");
+    assert_eq!(
+        tendril_core::plans::verification_gate::resolve_post_execution_state(&yaml, &m1_plan, None),
+        PlanStatus::Review,
+        "the judge, not this gate, verifies a milestone"
+    );
+
+    // A check the worker recorded as failed still fails the run.
+    let mut failed = yaml.clone();
+    failed.verifications[0].status = tendril_core::models::VerificationStatus::Fail;
+    tendril_core::plans::writer::write_plan_yaml(&m1_plan, &failed).unwrap();
+    let outcome = tendril_core::jobs::deliverable::verify_deliverable(&w.paths.plans_dir, &mut job, &[]);
+    assert!(matches!(outcome, tendril_core::jobs::deliverable::Deliverable::Missing { .. }));
+}

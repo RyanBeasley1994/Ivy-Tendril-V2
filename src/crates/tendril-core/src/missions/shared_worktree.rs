@@ -93,3 +93,33 @@ fn link_into_plan(plan_folder: &Path, repo: &Path, shared: &Path) {
         let _ = shared;
     }
 }
+
+/// For a mission milestone's plan: the commits its run made on the shared mission branch (everything
+/// since the milestone's base commit), recorded on the plan if the worker did not record them itself.
+/// The work is on the branch either way; this keeps the plan's own record honest. `None` for a plan
+/// that is not a milestone's.
+pub fn harvest_milestone_commits(plan_folder: &Path) -> Option<Vec<String>> {
+    let (mut plan, _) = read_plan_yaml(plan_folder).ok()?;
+    let link = mission_link(&plan).filter(|l| l.role == MissionRole::Milestone)?;
+    let mission = read_mission(Path::new(&link.folder)).ok()?;
+    let branch = mission.branch.clone()?;
+    let milestone = mission.milestone(link.milestone.as_deref()?)?;
+    let mut found = Vec::new();
+    for (repo, base) in &milestone.base_commits {
+        let repo = Path::new(repo);
+        if let Some(tip) = crate::missions::git::branch_tip(repo, &branch) {
+            found.extend(crate::missions::git::commits_between(repo, base, &tip));
+        }
+    }
+    let mut changed = false;
+    for c in &found {
+        if !plan.commits.contains(c) {
+            plan.commits.push(c.clone());
+            changed = true;
+        }
+    }
+    if changed {
+        let _ = crate::plans::writer::write_plan_yaml(plan_folder, &plan);
+    }
+    Some(found)
+}

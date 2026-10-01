@@ -27,6 +27,11 @@
       "label": "Context",
       "placeholder": "What an agent should know about this project..."
     },
+    "reviewPrompt": {
+      "label": "When a plan reaches Review",
+      "hint": "Sent to the plan's chat as soon as it reaches Review, so the AI gets it ready before you look. Leave empty to send nothing.",
+      "placeholder": "e.g. Start the dev environment (pnpm dev) and seed test data, then give me the URL"
+    },
     "saved": "Project saved"
   },
   "repositories": {

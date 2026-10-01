@@ -172,13 +172,17 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
   const [isDeleting, setIsDeleting] = React.useState(false);
   /** Which `ImportRepoAssetsDialog` is open — V1 opens one per table, for skills or MCP servers. */
   const [importing, setImporting] = React.useState<"skills" | "mcpServers" | null>(null);
-  const [basic, setBasic] = React.useState({ color: project.color, context: project.context });
+  const [basic, setBasic] = React.useState({
+    color: project.color,
+    context: project.context,
+    reviewPrompt: project.reviewPrompt,
+  });
   const [security, setSecurity] = React.useState<ProjectSecurityForm>(project.security);
 
   // Re-seeded whenever the project on disk changes, so switching sidebar rows or re-reading after a
   // save shows what config.yaml holds rather than the previous project's values.
   React.useEffect(() => {
-    setBasic({ color: project.color, context: project.context });
+    setBasic({ color: project.color, context: project.context, reviewPrompt: project.reviewPrompt });
     setSecurity(project.security);
     setError(null);
     setRepoDraft("");
@@ -496,7 +500,9 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
   const enforcement = enforcementFor(agent);
   const agentLabel = AGENT_LABELS[normalizeAgentName(agent)] ?? agent;
   const securityChanged = JSON.stringify(security) !== JSON.stringify(project.security);
-  const basicChanged = basic.color !== project.color || basic.context !== project.context;
+  const basicChanged = basic.color !== project.color ||
+    basic.context !== project.context ||
+    basic.reviewPrompt !== project.reviewPrompt;
   const setSecurityField = <K extends keyof ProjectSecurityForm>(
     key: K,
     value: ProjectSecurityForm[K],
@@ -530,7 +536,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
-            void patch({ color: basic.color, context: basic.context }, t("basic.saved"));
+            void patch(
+              { color: basic.color, context: basic.context, reviewPrompt: basic.reviewPrompt },
+              t("basic.saved"),
+            );
           }}
         >
           {/* V1's `projectColor.ToColorInput().Variant(ColorInputVariant.SwatchPicker)`
@@ -553,6 +562,14 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
             rows="tall"
             placeholder={t("basic.context.placeholder")}
             onChange={(value) => setBasic((prev) => ({ ...prev, context: value }))}
+          />
+          <LinesField
+            id="project-review-prompt"
+            label={t("basic.reviewPrompt.label")}
+            value={basic.reviewPrompt}
+            hint={t("basic.reviewPrompt.hint")}
+            placeholder={t("basic.reviewPrompt.placeholder")}
+            onChange={(value) => setBasic((prev) => ({ ...prev, reviewPrompt: value }))}
           />
           <Button type="submit" disabled={!basicChanged}>
             {t("common:actions.save")}

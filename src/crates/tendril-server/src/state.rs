@@ -469,6 +469,13 @@ impl AppState {
             job_manager.subscribe_events(),
         );
 
+        // A project's review prompt runs in a plan's chat when the plan reaches Review.
+        crate::review_prompter::spawn_review_prompter(
+            tendril_home.clone(),
+            plans_dir.clone(),
+            Arc::clone(&chat_manager),
+        );
+
         // Reconcile tracked pull requests on a timer. The task captures clones rather than the
         // `AppState` it is being constructed inside, so nothing here has to be `Arc`ed early.
         let pr_sync_running = Arc::new(AtomicBool::new(false));
