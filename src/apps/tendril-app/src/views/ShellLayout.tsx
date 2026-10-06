@@ -24,7 +24,8 @@ import {
   DropdownMenuTrigger,
 } from "@ivy-interactive/components/ui";
 import { Construction, GitPullRequest, Snowflake, Info } from "lucide-react";
-import type { ServiceInfo } from "../types/api";
+import type { Job, ProjectSummary, ServiceInfo } from "../types/api";
+import { SidebarManagers } from "./shell/SidebarManagers";
 import { OfflineBanner } from "../components/OfflineBanner";
 // Lazy for the same budget, behind a placeholder of its own height so the page never shifts when
 // it arrives.
@@ -322,6 +323,10 @@ interface ShellLayoutProps {
    * chat page, which is the right answer for any host that has no terminal pane to offer.
    */
   onOpenChat?: () => void;
+  /** The manager status cards at the foot of the sidebar. */
+  projects?: ProjectSummary[];
+  jobs?: Job[];
+  onOpenProject?: (name: string) => void;
   children: React.ReactNode;
 }
 
@@ -364,6 +369,9 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   onSelectSidebarItem,
   onPlanSearch,
   onNewChat,
+  projects,
+  jobs,
+  onOpenProject,
   onOpenChat,
   children,
 }) => {
@@ -640,6 +648,14 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                     handleListEvent(list, evt, args)
                   }
                 />
+                {onOpenProject && (
+                  <SidebarManagers
+                    projects={projects ?? []}
+                    jobs={jobs ?? []}
+                    activeProject={activeNav.startsWith("project-") ? activeNav.slice("project-".length) : null}
+                    onOpenProject={onOpenProject}
+                  />
+                )}
                 <React.Suspense fallback={null}>
                   <SidebarStatus serviceInfo={serviceInfo} connectionStatus={connectionStatus} />
                 </React.Suspense>

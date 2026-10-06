@@ -7,6 +7,8 @@ export type ProjectTab = "overview" | "missions" | "tasks" | "runtime" | "memory
 export interface ProjectIntent {
   tab?: ProjectTab;
   missionId?: string;
+  /** Text to draft into the manager's composer, not send. */
+  draft?: string;
 }
 
 let pending: ProjectIntent | null = null;

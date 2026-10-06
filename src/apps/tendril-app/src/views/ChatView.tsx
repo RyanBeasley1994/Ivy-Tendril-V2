@@ -106,6 +106,13 @@ interface ChatViewProps {
    * The project manager's briefing is the one caller: it is instructions, not something said.
    */
   hideMessage?: (message: ChatMessageDto) => boolean;
+  /**
+   * Offered every prompt that starts with `/` before it is sent. Returning true means the host
+   * handled it (a `/clear`, say) and nothing is sent to the agent.
+   */
+  onCommand?: (text: string) => Promise<boolean> | boolean;
+  /** The `/` commands `onCommand` understands, offered in a menu as the operator types one. */
+  commands?: { name: string; description: string }[];
 }
 
 /** The transcription socket the shared composer defaults to; the mic here speaks to the same one. */
@@ -142,6 +149,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   samplePrompts: samplePromptsOverride,
   draftPrompt,
   hideMessage,
+  onCommand,
+  commands,
 }) => {
   const { t } = useTranslation("chat");
   const [storeState, setStoreState] = useState<ChatState>(() => store.getState());
@@ -481,6 +490,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!text && attachments.length === 0) return;
     const currentAttachments = attachments.length > 0 ? [...attachments] : undefined;
 
+    if (onCommand && text.startsWith("/") && (await onCommand(text))) {
+      resetComposer();
+      return;
+    }
+
     if (isGenerating) {
       resetComposer();
       try {
@@ -510,8 +524,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
+  const typedCommand = inputPrompt.trimStart().toLowerCase();
+  const commandMatches =
+    commands && typedCommand.startsWith("/") && !typedCommand.includes(" ")
+      ? commands.filter((c) => c.name.toLowerCase().startsWith(typedCommand))
+      : [];
+
   /** Enter sends, ⌘/Ctrl+Enter sends, Shift+Enter is a newline. */
   const handleComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Tab" && commandMatches.length > 0 && !e.shiftKey) {
+      e.preventDefault();
+      applyComposerText(commandMatches[0].name);
+      return;
+    }
     if (e.key !== "Enter" || e.shiftKey || e.altKey) return;
     e.preventDefault();
     void handleSendMessage();
@@ -1056,6 +1081,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         {t("composer.clearAttachments")}
                       </button>
                     )}
+                  </div>
+                )}
+
+                {commandMatches.length > 0 && (
+                  <div role="listbox" aria-label="Commands" className="mb-2 flex flex-col gap-0.5 rounded-lg border border-border bg-muted/60 p-1">
+                    {commandMatches.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        role="option"
+                        aria-selected="false"
+                        onClick={() => {
+                          applyComposerText(c.name);
+                          textareaRef.current?.focus();
+                        }}
+                        className="flex items-baseline gap-3 rounded-md px-2.5 py-1.5 text-left hover:bg-secondary"
+                      >
+                        <span className="font-mono text-[12.5px] text-foreground">{c.name}</span>
+                        <span className="text-[12px] text-muted-foreground">{c.description}</span>
+                        <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">Tab</span>
+                      </button>
+                    ))}
                   </div>
                 )}
 

@@ -158,7 +158,7 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
 };
 
 /** Where the shell starts, and where an address with no app leaves it. */
-export const DEFAULT_APP_ID = "projects";
+export const DEFAULT_APP_ID = "dashboard";
 
 /**
  * V1's `appRepository.GetAppOrDefault(appId)`. The two id families V2 renders as pages without an app

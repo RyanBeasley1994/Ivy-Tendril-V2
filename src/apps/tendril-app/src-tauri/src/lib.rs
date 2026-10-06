@@ -273,6 +273,7 @@ pub fn run() {
             // Project memory files and repo-asset import (Settings > project).
             cmd_get_project_manager,
             cmd_project_owners,
+            cmd_managers_status,
             cmd_project_docker,
             cmd_list_project_memory,
             cmd_get_project_memory,

@@ -6,6 +6,7 @@ import { bridge } from "../../api/bridge";
 import { projectStatus, type ProjectStatus } from "../../utils/projectStatus";
 import { formatAge } from "../../utils/commandCenter";
 import { useRecentProjects } from "../../state/recentProjects";
+import { useManagerActivity } from "../../state/managerActivity";
 import { Page, PageHeader } from "../../components/page/Page";
 import { Dot, Kbd, Pill, PrimaryButton, Seg } from "../../components/page/kit";
 import { fuzzyScore } from "./ProjectPalette";
@@ -138,7 +139,7 @@ const ProjectCard: React.FC<{
 
       <div className="grid grid-cols-4 gap-3 border-t border-border/60 pt-3">
         <Stat label="Missions" value={status.live.length} />
-        <Stat label="Tasks" value={status.runningJobs.length} />
+        <Stat label="Tasks" value={status.taskCount} />
         <Stat label="Spend" value={`$${status.cost.toFixed(2)}`} />
         <Stat label="Active" value={ago(status.updated)} />
       </div>
@@ -149,6 +150,7 @@ const ProjectCard: React.FC<{
 export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProject, onAddProject }) => {
   const missions = useMissions();
   const recents = useRecentProjects();
+  const activity = useManagerActivity();
   const [query, setQuery] = React.useState("");
   const [{ sort, group }, setPrefs] = React.useState(loadPrefs);
   const [owners, setOwners] = React.useState<Record<string, string | null>>({});
@@ -172,10 +174,10 @@ export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProjec
     () =>
       projects.map((project) => ({
         project,
-        status: projectStatus(project.name, missions, jobs),
+        status: projectStatus(project.name, missions, jobs, activity[project.name]?.working ?? false),
         owner: owners[project.name] ?? null,
       })),
-    [projects, missions, jobs, owners],
+    [projects, missions, jobs, owners, activity],
   );
 
   const visible = React.useMemo(() => {

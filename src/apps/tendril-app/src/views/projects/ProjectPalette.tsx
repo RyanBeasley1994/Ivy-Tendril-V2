@@ -8,6 +8,7 @@ import { useRecentProjects } from "../../state/recentProjects";
 import { setProjectIntent, type ProjectTab } from "../../state/projectIntent";
 import { Dot, Kbd } from "../../components/page/kit";
 import { useMissions } from "./ProjectsHomeView";
+import { useManagerActivity } from "../../state/managerActivity";
 
 interface Props {
   projects: ProjectSummary[];
@@ -58,6 +59,7 @@ const PANELS: { tab: ProjectTab; label: string }[] = [
 export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject, onClose, onNavigate }) => {
   const missions = useMissions(15_000);
   const recents = useRecentProjects();
+  const activity = useManagerActivity();
   const [query, setQuery] = React.useState("");
   const [index, setIndex] = React.useState(0);
   const [owners, setOwners] = React.useState<Record<string, string | null>>({});
@@ -79,7 +81,7 @@ export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject
   const items = React.useMemo<Item[]>(() => {
     const byName = new Map(projects.map((p) => [p.name, p]));
     const mkProject = (p: ProjectSummary, section: string, icon: React.ReactNode): Item => {
-      const s = projectStatus(p.name, missions, jobs);
+      const s = projectStatus(p.name, missions, jobs, activity[p.name]?.working ?? false);
       return {
         id: `project:${section}:${p.name}`,
         section,
@@ -144,7 +146,7 @@ export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject
       });
     }
     return result;
-  }, [projects, missions, jobs, owners, query, recents, currentProject, open, onNavigate, onClose]);
+  }, [projects, missions, jobs, activity, owners, query, recents, currentProject, open, onNavigate, onClose]);
 
   React.useEffect(() => setIndex(0), [query]);
   React.useEffect(() => {

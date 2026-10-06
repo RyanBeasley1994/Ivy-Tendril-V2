@@ -7,6 +7,7 @@ import { bridge } from "../../api/bridge";
 import { usePortForwards } from "../../api/portForwards";
 import { chatStore } from "../../state/chatStore";
 import { recordRecentProject } from "../../state/recentProjects";
+import { useManagerActivity } from "../../state/managerActivity";
 import { subscribeProjectIntent, takeProjectIntent, type ProjectTab } from "../../state/projectIntent";
 import { isLiveMission, projectStatus } from "../../utils/projectStatus";
 import { formatAge } from "../../utils/commandCenter";
@@ -67,8 +68,14 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
   const [tab, setTab] = React.useState<Tab>("overview");
   const [side, setSide] = React.useState<Side>("chat");
   const [runId, setRunId] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState<{ text: string; token: number } | undefined>();
   const missions = useMissions(10_000);
-  const status = React.useMemo(() => projectStatus(project.name, missions, jobs), [project.name, missions, jobs]);
+  const activity = useManagerActivity();
+  const managerWorking = activity[project.name]?.working ?? false;
+  const status = React.useMemo(
+    () => projectStatus(project.name, missions, jobs, managerWorking),
+    [project.name, missions, jobs, managerWorking],
+  );
 
   React.useEffect(() => recordRecentProject(project.name), [project.name]);
 
@@ -77,6 +84,11 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
     const apply = () => {
       const intent = takeProjectIntent();
       if (!intent) return;
+      if (intent.draft) {
+        setSide("chat");
+        setDraft({ text: intent.draft, token: Date.now() });
+        return;
+      }
       setSide("panels");
       if (intent.tab) setTab(intent.tab);
       setRunId(intent.missionId ?? null);
@@ -98,7 +110,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
   const tabs: { value: Tab; label: string; count?: number }[] = [
     { value: "overview", label: "Overview" },
     { value: "missions", label: "Missions", count: status.live.length },
-    { value: "tasks", label: "Tasks", count: status.runningJobs.length },
+    { value: "tasks", label: "Tasks", count: status.taskCount },
     { value: "runtime", label: "Runtime" },
     { value: "memory", label: "Memory" },
   ];
@@ -111,8 +123,8 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
           Projects
         </GhostButton>
         <h1 className="m-0 text-[18px] font-semibold tracking-[-0.02em] text-foreground">{project.name}</h1>
-        <Pill tone={status.live.length || status.runningJobs.length ? "ok" : "mute"} dot live={status.live.length > 0}>
-          {status.live.length || status.runningJobs.length ? "Working" : "Idle"}
+        <Pill tone={status.busy ? "ok" : "mute"} dot live={status.busy}>
+          {status.busy ? "Working" : "Idle"}
         </Pill>
         {/* Below `lg` there is room for one half at a time. */}
         <Seg<Side>
@@ -135,7 +147,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
           )}
           aria-label="Manager chat"
         >
-          <ManagerChat project={project} onOpenPlan={onOpenPlan} />
+          <ManagerChat project={project} onOpenPlan={onOpenPlan} draft={draft} />
         </section>
 
         <section
@@ -283,7 +295,7 @@ const SummaryStrip: React.FC<{ status: Status }> = ({ status }) => (
     </div>
     <div className="flex gap-5 font-mono text-[11px] text-muted-foreground">
       <span><b className="font-medium text-foreground">{status.live.length}</b> missions</span>
-      <span><b className="font-medium text-foreground">{status.runningJobs.length}</b> tasks</span>
+      <span><b className="font-medium text-foreground">{status.taskCount}</b> tasks</span>
       <span><b className="font-medium text-foreground">{status.milestonesPassed}/{status.milestonesTotal}</b> milestones</span>
       <span className="ml-auto"><b className="font-medium text-foreground">${status.cost.toFixed(2)}</b> spent</span>
     </div>
@@ -453,8 +465,15 @@ const MissionsPanel: React.FC<{ project: ProjectSummary; missions: Mission[]; on
 
 const TasksPanel: React.FC<{ status: Status; onOpenJob: (id: string) => void }> = ({ status, onOpenJob }) => (
   <PanelBody>
-    <Card title="Running tasks" meta={<Pill>{status.runningJobs.length}</Pill>} bodyClassName="divide-y divide-border/60">
-      {status.runningJobs.length === 0 && <Empty>Nothing running.</Empty>}
+    <Card title="Running tasks" meta={<Pill>{status.taskCount}</Pill>} bodyClassName="divide-y divide-border/60">
+      {status.taskCount === 0 && <Empty>Nothing running.</Empty>}
+      {status.managerWorking && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5">
+          <span className="text-success"><Dot live /></span>
+          <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">Manager is working in chat</span>
+          <Pill tone="ok" dot live>Running</Pill>
+        </div>
+      )}
       {status.runningJobs.map((job) => (
         <button
           key={job.id}
@@ -490,7 +509,12 @@ const RuntimePanel: React.FC<{ project: ProjectSummary }> = ({ project }) => {
         ))}
       </Card>
       <Card title="Docker" meta={<Box className="size-3.5 text-muted-foreground" aria-hidden="true" />} bodyClassName="divide-y divide-border/60">
-        {docker && !docker.available && <Empty>{docker.reason || "Docker is not available."}</Empty>}
+        {docker && !docker.available && (
+          <div className="flex flex-col gap-1 px-4 py-5 text-[12.5px]">
+            <span className="text-foreground">Docker isn't reachable from the daemon.</span>
+            <span className="text-muted-foreground">{docker.reason || "Docker is not available."}</span>
+          </div>
+        )}
         {docker?.available && docker.containers.length === 0 && <Empty>No containers for this project.</Empty>}
         {docker?.containers.map((c) => (
           <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
@@ -525,17 +549,42 @@ const MemoryPanel: React.FC<{ project: ProjectSummary }> = ({ project }) => {
 
 /* ------------------------------------------------------------- manager chat */
 
+const MANAGER_COMMANDS = [{ name: "/clear", description: "Start the conversation over" }];
+
 /** The briefing and engine notes are instructions the manager reads, not part of the conversation. */
 const isManagerNote = (m: ChatMessage): boolean =>
   m.role === "system" &&
   (m.content.startsWith("# You are the Factory Manager") || m.content.startsWith("Engine switched by the operator"));
 
-const ManagerChat: React.FC<{ project: ProjectSummary; onOpenPlan: (planId: string) => void }> = ({
-  project,
-  onOpenPlan,
-}) => {
+const ManagerChat: React.FC<{
+  project: ProjectSummary;
+  onOpenPlan: (planId: string) => void;
+  draft?: { text: string; token: number };
+}> = ({ project, onOpenPlan, draft }) => {
   const [error, setError] = React.useState<string | null>(null);
   const [ready, setReady] = React.useState(false);
+  const sessionId = React.useRef<string | null>(null);
+
+  /** `/clear` starts the manager's conversation over: the session is replaced, briefing included. */
+  const onCommand = React.useCallback(
+    async (text: string): Promise<boolean> => {
+      if (text.trim().toLowerCase() !== "/clear") return false;
+      const id = sessionId.current;
+      if (!id) return true;
+      try {
+        if (chatStore.isSessionGenerating(id)) await chatStore.cancelGeneration();
+        await chatStore.deleteSession(id);
+        const fresh = await bridge.getProjectManager(project.name);
+        sessionId.current = fresh.id;
+        await chatStore.fetchSessions();
+        await chatStore.selectSession(fresh.id);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+      return true;
+    },
+    [project.name],
+  );
 
   React.useEffect(() => {
     let live = true;
@@ -544,6 +593,7 @@ const ManagerChat: React.FC<{ project: ProjectSummary; onOpenPlan: (planId: stri
     (async () => {
       try {
         const session = await bridge.getProjectManager(project.name);
+        sessionId.current = session.id;
         await chatStore.init();
         await chatStore.fetchSessions();
         await chatStore.selectSession(session.id);
@@ -566,6 +616,9 @@ const ManagerChat: React.FC<{ project: ProjectSummary; onOpenPlan: (planId: stri
       greeting={`Manager · ${project.name}`}
       headline="What should we build?"
       hideMessage={isManagerNote}
+      onCommand={onCommand}
+      commands={MANAGER_COMMANDS}
+      draftPrompt={draft}
     />
   );
 };

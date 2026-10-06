@@ -155,6 +155,7 @@ const ProjectView = React.lazy(() =>
   import("./views/projects/ProjectView").then((m) => ({ default: m.ProjectView })),
 );
 import { ProjectPalette } from "./views/projects/ProjectPalette";
+import { setProjectIntent } from "./state/projectIntent";
 const MissionsView = React.lazy(() =>
   import("./views/MissionsView").then((m) => ({ default: m.MissionsView })),
 );
@@ -1045,6 +1046,12 @@ export const App: React.FC = () => {
       );
     }
 
+    const openProjectFrom = (name: string, options?: { missionId?: string; draft?: string }) => {
+      if (options?.missionId) setProjectIntent({ tab: "missions", missionId: options.missionId });
+      else if (options?.draft) setProjectIntent({ draft: options.draft });
+      uiStore.setActiveNav(`project-${name}`);
+    };
+
     if (activeNav.startsWith("project-")) {
       const name = activeNav.slice("project-".length);
       const project = projects.find((p) => p.name === name);
@@ -1082,6 +1089,7 @@ export const App: React.FC = () => {
             onSelectMission={(missionId) =>
               uiStore.setActiveNav("missions", { mission: missionId })
             }
+            onOpenProject={openProjectFrom}
             projects={projects}
             serviceOnline={serviceState.status === "online"}
             onNavigate={(nav) => uiStore.setActiveNav(nav)}
@@ -1272,6 +1280,8 @@ export const App: React.FC = () => {
           <DashboardView
             plans={reviewablePlans}
             jobs={jobsState.jobs}
+            projects={projects}
+            onOpenProject={openProjectFrom}
             onSelectJob={handleSelectJob}
             onSelectMission={(missionId) =>
               uiStore.setActiveNav("missions", { mission: missionId })
@@ -1379,6 +1389,9 @@ export const App: React.FC = () => {
         jobCount={jobCount}
         runningJobCount={jobsState.jobs.filter((j) => j.status === "Running").length}
         chatCount={chatSessionsCount}
+        projects={projects}
+        jobs={jobsState.jobs}
+        onOpenProject={(name) => uiStore.setActiveNav(`project-${name}`)}
         sidebarList={sidebarList}
         onSelectSidebarItem={handleSelectSidebarItem}
         // V1's `showPlanSearchDialog`. It has to be a search over the plan database rather than a

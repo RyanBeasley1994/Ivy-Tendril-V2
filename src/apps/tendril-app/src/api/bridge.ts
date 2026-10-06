@@ -1005,6 +1005,15 @@ export const tauriClient = {
      a memory file is addressed by its bare name, and a repo is re-scanned on import rather than
      trusted from the client. */
 
+  /** Whether each project's manager is mid-turn, and when its conversation last moved. */
+  async getManagersStatus(this: void): Promise<Record<string, { working: boolean; updatedAt: string | null }>> {
+    return invokeOrFetch<Record<string, { working: boolean; updatedAt: string | null }>>(
+      "cmd_managers_status",
+      {},
+      "/api/projects/managers",
+    );
+  },
+
   /** Project name to the owner of its first repo's `origin` remote (null when there is none). */
   async getProjectOwners(this: void): Promise<Record<string, string | null>> {
     return invokeOrFetch<Record<string, string | null>>("cmd_project_owners", {}, "/api/projects/owners");

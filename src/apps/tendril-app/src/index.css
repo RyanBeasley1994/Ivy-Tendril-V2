@@ -10,6 +10,10 @@
   display: none;
 }
 
+.tsh-root[data-collapsed="true"] .tcc-sidebar-managers {
+  display: none;
+}
+
 .tsh-root[data-collapsed="true"] .tcc-service-line {
   justify-content: center;
   padding: 0;

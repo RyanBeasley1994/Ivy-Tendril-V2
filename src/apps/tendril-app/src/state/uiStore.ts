@@ -1,6 +1,7 @@
 import { bridge } from "../api/bridge";
 import { readAppearance } from "./appearance";
 import {
+  DEFAULT_APP_ID,
   navigation,
   toAddressArgs,
   type AddressArgs,
@@ -127,7 +128,8 @@ class UiStore {
 
     // The address is where navigation lives, so it wins; the persisted page is only the fallback for
     // an address that names no app, which is a cold start on "/".
-    navigation.start(this.prefs.lastPageNav);
+    // A cold start always lands on the Dashboard; the page you left is not resumed.
+    navigation.start(DEFAULT_APP_ID);
     this.listeners.forEach((l) => l());
   }
 

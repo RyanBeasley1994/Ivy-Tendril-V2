@@ -37,6 +37,19 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
+    /// Whether each project's manager is mid-turn, and when its conversation last moved.
+    pub async fn managers_status(&self) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            "/api/projects/managers",
+            None,
+            "MANAGERS_STATUS_FAILED",
+            "read the managers' status",
+            None,
+        )
+        .await
+    }
+
     /// Project name to the owner of its first repo's `origin` remote.
     pub async fn project_owners(&self) -> Result<serde_json::Value, BridgeError> {
         self.project_assets_request(

@@ -115,12 +115,16 @@ pub async fn project_docker(
     let output = match output {
         Ok(o) if o.status.success() => o,
         Ok(o) => {
-            return Json(json!({
-                "available": false,
-                "reason": String::from_utf8_lossy(&o.stderr).trim().to_string(),
-                "containers": [],
-            }))
-            .into_response()
+            let stderr = String::from_utf8_lossy(&o.stderr).trim().to_string();
+            // The common case on a hosted daemon: the CLI is there but the socket is not.
+            let reason = if stderr.contains("docker.sock") || stderr.contains("Cannot connect") {
+                "The daemon cannot reach Docker. It is probably running inside a container with no \
+                 Docker socket; mount /var/run/docker.sock into it to list containers here."
+                    .to_string()
+            } else {
+                stderr
+            };
+            return Json(json!({ "available": false, "reason": reason, "containers": [] })).into_response();
         }
         Err(_) => {
             return Json(json!({
@@ -214,4 +218,23 @@ mod owner_tests {
         assert_eq!(remote_owner("ssh://git@github.com/acme/app").as_deref(), Some("acme"));
         assert_eq!(remote_owner("/home/dev/app"), None);
     }
+}
+
+/// `GET /api/projects/managers` — whether each project's manager is in the middle of a turn, and when
+/// its conversation last moved. A manager that has never been opened is simply not working.
+pub async fn managers_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let settings = load_config(&state.config_path).unwrap_or_default();
+    let mut out = serde_json::Map::new();
+    for project in &settings.projects {
+        let id = manager_session_id(&project.name);
+        let working = state.chat_manager.is_generating(&id).await;
+        let updated = state
+            .chat_manager
+            .get_session(&id)
+            .await
+            .ok()
+            .map(|s| s.updated_at.to_rfc3339());
+        out.insert(project.name.clone(), json!({ "working": working, "updatedAt": updated }));
+    }
+    Json(Value::Object(out))
 }
