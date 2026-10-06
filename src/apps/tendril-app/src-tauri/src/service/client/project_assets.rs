@@ -37,6 +37,19 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
+    /// Project name to the owner of its first repo's `origin` remote.
+    pub async fn project_owners(&self) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            "/api/projects/owners",
+            None,
+            "PROJECT_OWNERS_FAILED",
+            "read the projects' owners",
+            None,
+        )
+        .await
+    }
+
     /// The project's Factory Manager chat session, created on first use.
     pub async fn get_project_manager(
         &self,

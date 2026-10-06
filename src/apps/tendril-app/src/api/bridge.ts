@@ -1005,6 +1005,11 @@ export const tauriClient = {
      a memory file is addressed by its bare name, and a repo is re-scanned on import rather than
      trusted from the client. */
 
+  /** Project name to the owner of its first repo's `origin` remote (null when there is none). */
+  async getProjectOwners(this: void): Promise<Record<string, string | null>> {
+    return invokeOrFetch<Record<string, string | null>>("cmd_project_owners", {}, "/api/projects/owners");
+  },
+
   /** The project's Factory Manager chat session (created on first use). */
   async getProjectManager(this: void, projectName: string): Promise<{ id: string; title: string }> {
     return invokeOrFetch<{ id: string; title: string }>(

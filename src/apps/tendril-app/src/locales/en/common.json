@@ -121,7 +121,7 @@
     "gotoChat": "Switch to Chat",
     "gotoInbox": "Open GitHub issue inbox",
     "newPlan": "Open new plan intake modal",
-    "planSearch": "Search plans",
+    "planSearch": "Jump to project",
     "showShortcuts": "Show keyboard shortcuts"
   },
   "updateCheck": {

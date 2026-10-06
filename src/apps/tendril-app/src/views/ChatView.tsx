@@ -8,6 +8,7 @@ import {
 import { IconButton, Spinner, TooltipScope } from "@ivy-interactive/components/ui";
 import { usePublishSidebarList } from "../state/sidebarListStore";
 import { chatStore, type ChatState, type ChatStore } from "../state/chatStore";
+import type { ChatMessage as ChatMessageDto } from "../types/chat";
 import { chatLauncher } from "../state/chatLauncher";
 import type { ChatMode } from "../state/appearance";
 import { jobsStore } from "../state/jobsStore";
@@ -100,6 +101,11 @@ interface ChatViewProps {
    * string compares equal and nothing would move.
    */
   draftPrompt?: { text: string; token: number };
+  /**
+   * Messages the host keeps in the conversation (the model still reads them) but does not show.
+   * The project manager's briefing is the one caller: it is instructions, not something said.
+   */
+  hideMessage?: (message: ChatMessageDto) => boolean;
 }
 
 /** The transcription socket the shared composer defaults to; the mic here speaks to the same one. */
@@ -135,6 +141,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   headline: headlineOverride,
   samplePrompts: samplePromptsOverride,
   draftPrompt,
+  hideMessage,
 }) => {
   const { t } = useTranslation("chat");
   const [storeState, setStoreState] = useState<ChatState>(() => store.getState());
@@ -573,7 +580,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
     requestComposerFocus();
   };
 
-  const messages = activeSession?.messages ?? [];
+  // The store appends to the session's array in place, so the stream key stands in for its identity.
+  const messages = useMemo(
+    () => {
+      const all = activeSession?.messages ?? [];
+      return hideMessage ? all.filter((m) => !hideMessage(m)) : all;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeSession?.messages, streamContentKey, hideMessage],
+  );
 
   // The optimistic user message is superseded by the server's copy, which arrives under a
   // different id, so the pin has to follow the content across the swap or it loses its target.
@@ -846,7 +861,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
           {/* Message Thread List */}
           <div className="flex-1 overflow-hidden relative">
-            {!activeSession || activeSession.messages.length === 0 ? (
+            {!activeSession || messages.length === 0 ? (
               <ChatEmptyState
                 embedded={embedded}
                 greeting={greeting}

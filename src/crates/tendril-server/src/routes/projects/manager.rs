@@ -13,7 +13,9 @@ use axum::Json;
 use chrono::Utc;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use tendril_core::chat::manager_brief::{manager_briefing, manager_session_id};
+use tendril_core::chat::manager_brief::{
+    briefing_is_current, is_briefing, manager_briefing, manager_session_id,
+};
 use tendril_core::chat::ChatMessage;
 use tendril_core::config::{expand_variables, load_config};
 use uuid::Uuid;
@@ -70,6 +72,23 @@ pub async fn get_or_create_project_manager(
                 };
                 if let Err(e) = state.chat_manager.add_message(&id, briefing).await {
                     return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
+                }
+            }
+            if !created {
+                // A manager opened before the briefing changed gets the current one in place.
+                if let Some(old) = session
+                    .messages
+                    .iter()
+                    .find(|m| m.role == "system" && is_briefing(&m.content))
+                {
+                    if !briefing_is_current(&old.content) {
+                        let fresh =
+                            manager_briefing(&project.name, &project.repos, &project.context);
+                        let _ = state
+                            .chat_manager
+                            .replace_message_content(&id, &old.id, &fresh)
+                            .await;
+                    }
                 }
             }
             let session = state.chat_manager.get_session(&id).await.unwrap_or(session);
@@ -140,4 +159,59 @@ pub async fn project_docker(
         })
         .collect();
     Json(json!({ "available": true, "containers": containers })).into_response()
+}
+
+/// The owner segment of a git remote: `github.com/<owner>/<repo>` in https, ssh and scp forms.
+fn remote_owner(url: &str) -> Option<String> {
+    let url = url.trim();
+    let path = if let Some((_, rest)) = url.split_once("://") {
+        rest.split_once('/')?.1
+    } else if let Some((_, rest)) = url.split_once(':') {
+        rest
+    } else {
+        return None;
+    };
+    let mut segments = path.split('/').filter(|s| !s.is_empty());
+    let owner = segments.next()?;
+    // `owner/repo` needs a repo after it; a lone segment is not an owner.
+    segments.next()?;
+    Some(owner.to_string())
+}
+
+/// `GET /api/projects/owners` — project name to the owner of its first repo's `origin` remote
+/// (`null` when the repo is local-only or has no remote).
+pub async fn project_owners(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let settings = load_config(&state.config_path).unwrap_or_default();
+    let home = state.tendril_home.to_string_lossy().to_string();
+    let mut owners = serde_json::Map::new();
+    for project in &settings.projects {
+        let owner = match project.repos.first() {
+            Some(repo) => {
+                let path = expand_variables(&repo.path, &home);
+                tokio::process::Command::new("git")
+                    .args(["-C", &path, "remote", "get-url", "origin"])
+                    .output()
+                    .await
+                    .ok()
+                    .filter(|o| o.status.success())
+                    .and_then(|o| remote_owner(&String::from_utf8_lossy(&o.stdout)))
+            }
+            None => None,
+        };
+        owners.insert(project.name.clone(), json!(owner));
+    }
+    Json(Value::Object(owners))
+}
+
+#[cfg(test)]
+mod owner_tests {
+    use super::remote_owner;
+
+    #[test]
+    fn parses_common_remote_forms() {
+        assert_eq!(remote_owner("https://github.com/acme/app.git\n").as_deref(), Some("acme"));
+        assert_eq!(remote_owner("git@github.com:acme/app.git").as_deref(), Some("acme"));
+        assert_eq!(remote_owner("ssh://git@github.com/acme/app").as_deref(), Some("acme"));
+        assert_eq!(remote_owner("/home/dev/app"), None);
+    }
 }

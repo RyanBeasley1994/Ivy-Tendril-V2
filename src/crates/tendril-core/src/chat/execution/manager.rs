@@ -215,6 +215,22 @@ impl ChatExecutionManager {
         Ok(session)
     }
 
+    /// Replaces the text of one message in place, keeping its id and position.
+    pub async fn replace_message_content(
+        &self,
+        session_id: &str,
+        message_id: &str,
+        content: &str,
+    ) -> Result<()> {
+        let mut session = self.get_session(session_id).await?;
+        if let Some(message) = session.messages.iter_mut().find(|m| m.id == message_id) {
+            message.content = content.to_string();
+        }
+        save_session(&self.tendril_home, &session)?;
+        self.sessions.write().await.insert(session_id.to_string(), session);
+        Ok(())
+    }
+
     pub async fn rename_session(&self, id: &str, new_title: &str) -> Result<ChatSession> {
         let updated = storage_rename(&self.tendril_home, id, new_title)?;
         self.sessions

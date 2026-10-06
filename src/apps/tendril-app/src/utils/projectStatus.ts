@@ -17,6 +17,12 @@ export interface ProjectStatus {
   /** One line a person would say about where things stand, built only from real mission state. */
   headline: string;
   attention: string[];
+  /** What is being worked on right now: the active milestone, else a running task. */
+  currentTask: string | null;
+  /** Latest mission update, RFC 3339; null when the project has no missions. */
+  updated: string | null;
+  /** Anything running at all, mission or task. */
+  busy: boolean;
 }
 
 export const projectStatus = (project: string, allMissions: Mission[], allJobs: Job[]): ProjectStatus => {
@@ -48,7 +54,17 @@ export const projectStatus = (project: string, allMissions: Mission[], allJobs: 
   else if (attention.length) headline = "Working, with things worth a look.";
   else headline = `${live.length} mission${live.length === 1 ? "" : "s"} running. No action required.`;
 
+  const running = live.flatMap((m) => m.milestones.map((ms) => ({ m, ms }))).find(({ ms }) => ms.state === "Executing" || ms.state === "Judging");
+  const currentTask =
+    running?.ms.title ??
+    (runningJobs[0] ? (runningJobs[0].planTitle ?? runningJobs[0].prompt ?? runningJobs[0].type) : null) ??
+    (live[0] ? live[0].title : null);
+  const updated = missions.map((m) => m.updated).sort().at(-1) ?? null;
+
   return {
+    currentTask,
+    updated,
+    busy: live.some((m) => m.state !== "Paused" && m.state !== "AwaitingApproval") || runningJobs.length > 0,
     missions,
     live,
     jobs,

@@ -78,9 +78,6 @@ const NewPlanModal = React.lazy(() =>
   import("./views/NewPlanModal").then((m) => ({ default: m.NewPlanModal })),
 );
 
-const CommandPalette = React.lazy(() =>
-  import("./views/dialogs/CommandPalette").then((m) => ({ default: m.CommandPalette })),
-);
 const PlanSearchDialog = React.lazy(() =>
   import("./views/dialogs/PlanSearchDialog").then((m) => ({ default: m.PlanSearchDialog })),
 );
@@ -157,6 +154,7 @@ const ProjectsHomeView = React.lazy(() =>
 const ProjectView = React.lazy(() =>
   import("./views/projects/ProjectView").then((m) => ({ default: m.ProjectView })),
 );
+import { ProjectPalette } from "./views/projects/ProjectPalette";
 const MissionsView = React.lazy(() =>
   import("./views/MissionsView").then((m) => ({ default: m.MissionsView })),
 );
@@ -1564,25 +1562,15 @@ export const App: React.FC = () => {
           dialog chunk is fetched at that moment. A pick is routed through the very handler a sidebar
           row click uses, so opening a plan means the same navigation either way - `plan-<id>` with
           `{ planId }` as its args - and this dialog reaches into no view's state. */}
+      {/* ⌘K: jump to a project. The old plan/job palette it replaced is no longer reachable from here. */}
       {isPaletteOpen && (
-        <React.Suspense fallback={null}>
-          <CommandPalette
-            plans={plansState.plans}
-            jobs={jobsState.jobs}
-            onClose={() => setIsPaletteOpen(false)}
-            onOpenPlan={(planId) => void handleSelectPlan(planId)}
-            onOpenJob={handleSelectJob}
-            onNavigate={(nav) => uiStore.setActiveNav(nav)}
-            onNewPlan={(description) => {
-              setNewPlanPrefill(description ? { description } : {});
-              setIsNewPlanOpen(true);
-            }}
-            onNewChat={() => void handleNewChat()}
-            onStopAll={() => setStopAllOpen(true)}
-            onShowShortcuts={() => setIsShortcutsOpen(true)}
-            onSearchAllPlans={() => setIsPlanSearchOpen(true)}
-          />
-        </React.Suspense>
+        <ProjectPalette
+          projects={projects}
+          jobs={jobsState.jobs}
+          currentProject={activeNav.startsWith("project-") ? activeNav.slice("project-".length) : null}
+          onClose={() => setIsPaletteOpen(false)}
+          onNavigate={(nav) => uiStore.setActiveNav(nav)}
+        />
       )}
 
       {isPlanSearchOpen && (

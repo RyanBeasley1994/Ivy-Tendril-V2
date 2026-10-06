@@ -352,6 +352,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/projects/:name/manager",
             post(projects::get_or_create_project_manager),
         )
+        .route("/api/projects/owners", get(projects::project_owners))
         .route("/api/projects/:name/docker", get(projects::project_docker))
         .route(
             "/api/projects/:name/engine",

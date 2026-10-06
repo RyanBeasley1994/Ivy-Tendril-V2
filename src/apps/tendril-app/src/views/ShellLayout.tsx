@@ -10,7 +10,6 @@ import {
   ShellSidebarSection,
   ShellTabs,
   ShellNewPlanButton,
-  ShellAgentButton,
   ShellSettingsButton,
   type ShellNavItemDto,
   type ShellTabDto,
@@ -380,7 +379,10 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
      rail, the section and the flyout all read it -- is what keeps those three from disagreeing. */
   const retained =
     sidebarList && usesSidebarList(sidebarList.appId, activeNav) ? sidebarList : null;
-  const list = withNavSelection(retained, activeNav);
+  // No conversation or plan list in the sidebar: chats live inside each project, and the section
+  // below is only the search button, which opens the project palette.
+  const list: ShellSidebarList | null = null as ShellSidebarList | null;
+  void withNavSelection(retained, activeNav);
 
   /* V1 folds a `CollapsedMenu` list into the Chat row's rail flyout (`chatButton.List(...)`)
      instead of leaving it on the rail as narrow ID chips, and `ShellSidebarSection` drops its own
@@ -611,28 +613,6 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                   events={["OnClick"]}
                   eventHandler={onNewPlan}
                 />
-                {/* V1's chatButton: label "Chat", the MessageCircle glyph, active while the
-                    chat page is showing, with session count badge. */}
-                <ShellAgentButton
-                  id="shell-chat-btn"
-                  label={t("sidebar.chat")}
-                  icon="MessageCircle"
-                  badge={chatCount && chatCount > 0 ? String(chatCount) : undefined}
-                  isActive={activeNav === "chat" || activeNav === "agent"}
-                  listTitle={railFlyoutList?.title}
-                  items={railFlyoutList?.items}
-                  selectedId={railFlyoutList?.selectedId ?? undefined}
-                  events={chatEvents}
-                  eventHandler={(evt: string, _id: string, args?: unknown[]) => {
-                    if (evt === "OnOpen") {
-                      // The host decides *what* Chat opens; the shell only reports the press.
-                      if (onOpenChat) onOpenChat();
-                      else onSelectNav("chat");
-                      return;
-                    }
-                    handleListEvent(railFlyoutList, evt, args);
-                  }}
-                />
                 <ShellNav
                   id="shell-nav"
                   items={navItems}
@@ -652,7 +632,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                   items={list?.items ?? []}
                   selectedId={list?.selectedId ?? undefined}
                   searchable={list ? list.searchable !== false : true}
-                  searchLabel={list?.searchLabel}
+                  searchLabel="Jump to project"
                   newLabel={list?.newLabel}
                   collapsedMenu={list?.collapsedMenu ?? false}
                   events={sectionEvents}
