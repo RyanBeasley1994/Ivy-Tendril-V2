@@ -84,6 +84,12 @@ export const PlanChatPanel: React.FC<{
     folderName: folder,
     sessionTitle,
   });
+  // A different plan gets a scope of its own: refining the old one in place would leave it carrying
+  // the previous plan's id (and folder, until the new one's lands), so the new plan's store would
+  // find, and file new conversations under, the previous plan.
+  if (scopeRef.current.planId !== plan.id) {
+    scopeRef.current = { planId: plan.id, folderName: folder, sessionTitle };
+  }
   scopeRef.current.folderName = folder ?? scopeRef.current.folderName;
   scopeRef.current.sessionTitle = sessionTitle;
 

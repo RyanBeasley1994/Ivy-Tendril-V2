@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { uiStore } from "../state/uiStore";
-import { openPath } from "../utils/opener";
+import { openPath, openUrl } from "../utils/opener";
 import { copyToClipboard } from "@ivy-interactive/components";
 import {
   PlanChangesView,
@@ -904,8 +904,19 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
    */
   const commitCount = planDetail ? (planDetail.commits?.length ?? 0) : null;
   const isPrUpdate = (planDetail?.sourceUrl ?? "").includes("/pull/");
-  const prIsPrimary = commitCount !== 0;
-  const deleteIsPrimary = !prIsPrimary && completionBlocked;
+  /**
+   * The pull request the plan already opened. Once there is one, Create PR would only open a second:
+   * the CTA becomes View PR, opening it in the browser, and Complete Plan moves beside it. (A plan
+   * that came from a PR keeps Update PR, which pushes to that PR, with View PR beside it.)
+   */
+  const openPrUrl = planDetail?.prs?.length ? planDetail.prs[planDetail.prs.length - 1] : null;
+  const viewPrIsPrimary = openPrUrl !== null && !isPrUpdate;
+  const prIsPrimary = commitCount !== 0 && !viewPrIsPrimary;
+  const deleteIsPrimary = !prIsPrimary && !viewPrIsPrimary && completionBlocked;
+  const prNumber = openPrUrl?.match(/\/pull\/(\d+)/)?.[1];
+  const viewPr = () => {
+    if (openPrUrl) void openUrl(openPrUrl);
+  };
 
   /**
    * `ContentView.AddPrimaryAction`'s PR-update branch, which deliberately skips the Create PR dialog:
@@ -943,21 +954,29 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     }
   };
 
-  const primaryLabel = prIsPrimary
-    ? isPrUpdate
-      ? t("primary.updatePr")
-      : t("primary.createPr")
-    : deleteIsPrimary
-      ? t("primary.deletePlan")
-      : t("primary.completePlan");
-  const primaryDisabled = prIsPrimary
-    ? !canPr.allowed || pendingAction !== null
-    : deleteIsPrimary
-      ? !canDeletePlan.allowed || pendingAction !== null
-      : pendingAction !== null;
+  const primaryLabel = viewPrIsPrimary
+    ? prNumber
+      ? t("primary.viewPrNumber", { number: prNumber })
+      : t("primary.viewPr")
+    : prIsPrimary
+      ? isPrUpdate
+        ? t("primary.updatePr")
+        : t("primary.createPr")
+      : deleteIsPrimary
+        ? t("primary.deletePlan")
+        : t("primary.completePlan");
+  const primaryDisabled = viewPrIsPrimary
+    ? false
+    : prIsPrimary
+      ? !canPr.allowed || pendingAction !== null
+      : deleteIsPrimary
+        ? !canDeletePlan.allowed || pendingAction !== null
+        : pendingAction !== null;
   const firePrimary = () => {
     if (primaryDisabled) return;
-    if (prIsPrimary) {
+    if (viewPrIsPrimary) {
+      viewPr();
+    } else if (prIsPrimary) {
       if (isPrUpdate) void updatePr();
       else setActiveDialog("createPr");
     } else if (deleteIsPrimary) {
@@ -1074,6 +1093,10 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
   });
 
   const secondaryActions: PlanActionDto[] = [];
+  if (viewPrIsPrimary)
+    secondaryActions.push({ tag: "CompletePlan", label: t("primary.completePlan"), icon: "CircleCheck" });
+  else if (openPrUrl)
+    secondaryActions.push({ tag: "ViewPr", label: t("primary.viewPr"), icon: "ExternalLink" });
   if (canPartial.allowed)
     secondaryActions.push({
       tag: "PartialDelivery",
@@ -1092,7 +1115,13 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
               : primaryLabel,
         // `Icons.GitPullRequest`, `Icons.Ban`, `Icons.CircleCheck`, in `AddPrimaryAction`'s order.
         // `Ban` was Skip Plan's; the branch now deletes, so it takes Delete's `Trash` instead.
-        icon: prIsPrimary ? "GitPullRequest" : deleteIsPrimary ? "Trash" : "CircleCheck",
+        icon: viewPrIsPrimary
+          ? "ExternalLink"
+          : prIsPrimary
+            ? "GitPullRequest"
+            : deleteIsPrimary
+              ? "Trash"
+              : "CircleCheck",
         shortcut: PRIMARY_SHORTCUT,
         disabled: primaryDisabled,
         loading: pendingAction !== null,
@@ -1118,6 +1147,9 @@ export const ReviewView: React.FC<ReviewViewProps> = ({
     switch (tag) {
       case "CompletePlan":
         void completePlan();
+        return;
+      case "ViewPr":
+        viewPr();
         return;
       case "RequestChanges":
         setActiveDialog("suggestChanges");

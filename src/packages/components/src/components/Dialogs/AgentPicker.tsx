@@ -77,6 +77,42 @@ export const AgentPicker: React.FC<{
   const all = [{ value: "", label: defaultLabel }, ...options];
   const current = all.find((o) => o.value === value) ?? all[0];
 
+  /*
+   * A settings row's panel is placed against the viewport rather than its row: those rows sit in
+   * cards that clip their overflow, which cut the list off below the chip. Fixed, it escapes the
+   * clip while staying in the DOM (so still inside any focus scope), and it opens upward when there
+   * is not room below. The composer's panel stays in flow: it opens upward inside a dialog, whose
+   * transform would make `fixed` relative to the dialog anyway.
+   */
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const [placement, setPlacement] = React.useState<React.CSSProperties | null>(null);
+  React.useLayoutEffect(() => {
+    if (!open || side !== "bottom") {
+      setPlacement(null);
+      return;
+    }
+    const place = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const estimated = 44 + all.length * 36 + 12;
+      const below = window.innerHeight - rect.bottom;
+      const up = below < estimated + 8 && rect.top > below;
+      const right = Math.max(8, window.innerWidth - rect.right);
+      setPlacement(
+        up
+          ? { position: "fixed", right, bottom: window.innerHeight - rect.top + 8, maxHeight: rect.top - 16 }
+          : { position: "fixed", right, top: rect.bottom + 8, maxHeight: below - 16 },
+      );
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, side, all.length]);
+
   return (
     <div ref={wrapRef} className="relative min-w-0" onKeyDown={onKeyDown} data-testid="harness-pickers">
       <button
@@ -85,6 +121,7 @@ export const AgentPicker: React.FC<{
         aria-expanded={open}
         aria-label={`${label}: ${current.label}`}
         title={label}
+        ref={buttonRef}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className={cn(chipClass, "disabled:cursor-not-allowed disabled:opacity-50")}
@@ -102,7 +139,9 @@ export const AgentPicker: React.FC<{
             "w-60",
             side === "bottom" && "bottom-auto top-full mb-0 mt-2",
             side === "bottom" && "left-auto right-0",
+            placement && "m-0 overflow-y-auto",
           )}
+          style={placement ?? (side === "bottom" ? { visibility: "hidden" } : undefined)}
         >
           <div className="px-2.5 pb-1 pt-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
             {label}

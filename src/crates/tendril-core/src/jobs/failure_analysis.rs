@@ -128,6 +128,7 @@ pub fn extract_failure_reason(lines: &[String], job_type: &str, exit_code: Optio
         if stderr_lines.len() >= 3 {
             break;
         }
+        let line = spoken_text(line);
         if let Some(rest) = line.strip_prefix("[stderr] ") {
             let content = rest.trim();
             if !content.is_empty() && !is_progress_message(content) {
@@ -141,6 +142,7 @@ pub fn extract_failure_reason(lines: &[String], job_type: &str, exit_code: Optio
 
     // Fall back to the last line that says something.
     for line in lines.iter().rev() {
+        let line = spoken_text(line);
         let trimmed = line.trim();
         if !trimmed.is_empty() && !is_progress_message(trimmed) {
             return cap(sanitize_for_display(trimmed));
@@ -148,6 +150,20 @@ pub fn extract_failure_reason(lines: &[String], job_type: &str, exit_code: Optio
     }
 
     fallback()
+}
+
+/// The text an eventwire `text` event carries, or the line itself. The runner relays a provider's
+/// stderr as `{"kind":"text","text":"[stderr] …"}`, so without this a failure reason scraped from it
+/// is the whole JSON line rather than what it says.
+fn spoken_text(line: &str) -> std::borrow::Cow<'_, str> {
+    if let Some(v) = parse_json_object(line) {
+        if is_kind(&v, "text") {
+            if let Some(text) = v.get("text").and_then(|t| t.as_str()) {
+                return std::borrow::Cow::Owned(text.to_string());
+            }
+        }
+    }
+    std::borrow::Cow::Borrowed(line)
 }
 
 /// Strips ANSI escapes and control characters, collapses runs of spaces, and drops a leading
@@ -464,6 +480,17 @@ mod tests {
 
     fn lines(items: &[&str]) -> Vec<String> {
         items.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn stderr_relayed_as_an_eventwire_text_event_reads_as_its_text() {
+        let out = lines(&[
+            r#"{"delta":true,"kind":"text","text":"[stderr] Error loading config.toml: Failed to read config file /home/dev/.codex/config.toml: Permission denied (os error 13)","timestamp":"2026-10-02T10:09:04Z"}"#,
+        ]);
+        assert_eq!(
+            extract_failure_reason(&out, "OrchestrateMission", Some(1)),
+            "Error loading config.toml: Failed to read config file /home/dev/.codex/config.toml: Permission denied (os error 13)"
+        );
     }
 
     #[test]

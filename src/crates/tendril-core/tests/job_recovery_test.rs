@@ -582,7 +582,7 @@ async fn detached_job_supervised_to_completion() {
 async fn domain_reconciliation_create_pr_intact() {
     let home = HomeFixture::new("rec-createpr-intact");
     // `Review`: where a plan sits while its `CreatePr` job runs — `ExecutePlan` already moved it
-    // there, and nothing moves it again until the agent itself marks it `Completed`.
+    // there.
     let mut plan = plan_with(PlanStatus::Review, &[]);
     plan.prs
         .push("https://github.com/example/repo/pull/42".to_string());
@@ -604,9 +604,9 @@ async fn domain_reconciliation_create_pr_intact() {
 
     let job = reload(&home, "00001");
     assert_eq!(job.status, JobStatus::Completed);
-    // `plan_state_on_success` deliberately excludes CreatePr — the plan's own transition to
-    // `Completed` is written by the agent, not the job engine — so recovery must leave it untouched.
-    assert_eq!(plan_state(&folder), "Review");
+    // A recorded PR and no failed check settle the plan as the native path would, so a job the
+    // daemon lost after the PR opened does not leave the plan in Review behind it.
+    assert_eq!(plan_state(&folder), "Completed");
 }
 
 /// The stuck-job check must not reap a detached job whose process is still actively running, even

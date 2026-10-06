@@ -294,9 +294,22 @@ fn success_states_route_execution_jobs_through_the_gate() {
         plan_state_on_success("CreateIssue", &passing, &passing_folder),
         Some(PlanStatus::Completed)
     );
-    // CreatePr sets Completed itself, from inside the promptware.
+    // CreatePr with no PR recorded leaves the plan alone; with one, it completes it unless a check
+    // failed, as the native path does, so an agent that stops after opening the PR still settles it.
     assert_eq!(
         plan_state_on_success("CreatePr", &passing, &passing_folder),
+        None
+    );
+    let mut with_pr = passing.clone();
+    with_pr.prs.push("https://github.com/o/r/pull/45".into());
+    assert_eq!(
+        plan_state_on_success("CreatePr", &with_pr, &passing_folder),
+        Some(PlanStatus::Completed)
+    );
+    let mut failed_with_pr = plan_with(PlanStatus::Review, &[("Build", VerificationStatus::Fail)]);
+    failed_with_pr.prs.push("https://github.com/o/r/pull/46".into());
+    assert_eq!(
+        plan_state_on_success("CreatePr", &failed_with_pr, &passing_folder),
         None
     );
     assert_eq!(

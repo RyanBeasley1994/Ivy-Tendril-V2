@@ -33,8 +33,10 @@ pub fn in_flight_plan_state(job_type: &str) -> Option<PlanStatus> {
 /// Where a plan lands when its job exits successfully.
 ///
 /// `ExecutePlan` and `RetryPlan` go through the verification gate, so a plan with a `Pending` or
-/// `Fail` row (or a rejected pre-execution check) cannot reach `Review`. `CreatePr` is absent on
-/// purpose: that promptware sets `Completed` itself.
+/// `Fail` row (or a rejected pre-execution check) cannot reach `Review`. `CreatePr` settles the plan
+/// as the native path does: `Completed` once a PR is recorded and no check failed. Its promptware is
+/// told to do that itself, but an agent that opens the PR and stops there would otherwise leave the
+/// plan in Review behind a PR that exists.
 pub fn plan_state_on_success(
     job_type: &str,
     plan: &PlanYaml,
@@ -45,6 +47,9 @@ pub fn plan_state_on_success(
         "CreatePlan" | "UpdatePlan" | "ExpandPlan" => Some(PlanStatus::Draft),
         "SplitPlan" => Some(PlanStatus::Skipped),
         "CreateIssue" => Some(PlanStatus::Completed),
+        "CreatePr" if !plan.prs.is_empty() && PlanCompletionGuard::failed_verifications(plan).is_empty() => {
+            Some(PlanStatus::Completed)
+        }
         _ => None,
     }
 }

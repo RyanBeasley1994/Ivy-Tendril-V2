@@ -196,6 +196,9 @@ pub fn plan_chat_context(tendril_home: &Path, plan_folder_name: &str) -> Option<
             }
         ));
         b.push_str(&format!(
+            "If you open a pull request for this plan yourself (`gh pr create`), record it so Review shows it rather than offering Create PR: `tendril plan add-pr {id} <url> --reason \"Opened from the review chat\"`.\n\n"
+        ));
+        b.push_str(&format!(
             "If the change is bigger than that (new behaviour, several areas, a different approach), do not do it here: say so, and {}.\n\n",
             if mission_id.is_some() {
                 "suggest **Request Changes**, which plans it into milestones the mission runs, judges and revalidates"
