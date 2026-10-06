@@ -162,6 +162,59 @@ impl ChatExecutionManager {
         Ok(session)
     }
 
+    /// Returns the session with this id, creating it with `title` when it does not exist yet. For
+    /// sessions that must be findable by a name alone, such as a project's manager.
+    pub async fn get_or_create_session_with_id(
+        &self,
+        id: &str,
+        title: &str,
+    ) -> Result<(ChatSession, bool)> {
+        if let Ok(existing) = self.get_session(id).await {
+            return Ok((existing, false));
+        }
+        let now = Utc::now();
+        let session = ChatSession {
+            id: id.to_string(),
+            title: sanitize_title(title),
+            created_at: now,
+            updated_at: now,
+            agent_id: "claude".to_string(),
+            model_id: "default".to_string(),
+            messages: Vec::new(),
+            effort: None,
+            spawned_job_ids: Vec::new(),
+            plan_folder_name: None,
+        };
+        save_session(&self.tendril_home, &session)?;
+        self.sessions
+            .write()
+            .await
+            .insert(id.to_string(), session.clone());
+        Ok((session, true))
+    }
+
+    /// Changes the agent, model and effort a session's next turns run on, including the turns
+    /// the daemon starts itself when a job finishes.
+    pub async fn set_session_agent(
+        &self,
+        id: &str,
+        agent: &str,
+        model: Option<&str>,
+        effort: Option<&str>,
+    ) -> Result<ChatSession> {
+        let mut session = self.get_session(id).await?;
+        session.agent_id = agent.to_string();
+        session.model_id = model.unwrap_or("default").to_string();
+        session.effort = effort.map(str::to_string);
+        session.updated_at = Utc::now();
+        save_session(&self.tendril_home, &session)?;
+        self.sessions
+            .write()
+            .await
+            .insert(id.to_string(), session.clone());
+        Ok(session)
+    }
+
     pub async fn rename_session(&self, id: &str, new_title: &str) -> Result<ChatSession> {
         let updated = storage_rename(&self.tendril_home, id, new_title)?;
         self.sessions

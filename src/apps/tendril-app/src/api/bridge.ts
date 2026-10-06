@@ -80,6 +80,7 @@ import type { ChatAttachment } from "../types/chat";
 import type {
   DiscoveredRepoAsset,
   ProjectMemoryEntry,
+  ProjectDocker,
   ProjectMemoryFile,
   RepoAssetKind,
 } from "../types/projectAssets";
@@ -1003,6 +1004,25 @@ export const tauriClient = {
      `EditProjectMemorySheet`) and `ImportRepoAssetsDialog`'s scan/import. The daemon owns every path:
      a memory file is addressed by its bare name, and a repo is re-scanned on import rather than
      trusted from the client. */
+
+  /** The project's Factory Manager chat session (created on first use). */
+  async getProjectManager(this: void, projectName: string): Promise<{ id: string; title: string }> {
+    return invokeOrFetch<{ id: string; title: string }>(
+      "cmd_get_project_manager",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/manager`,
+      { method: "POST" },
+    );
+  },
+
+  /** The Docker containers belonging to the project; `available` is false without Docker. */
+  async getProjectDocker(this: void, projectName: string): Promise<ProjectDocker> {
+    return invokeOrFetch<ProjectDocker>(
+      "cmd_project_docker",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/docker`,
+    );
+  },
 
   async listProjectMemory(this: void, projectName: string): Promise<ProjectMemoryEntry[]> {
     return invokeOrFetch<ProjectMemoryEntry[]>(

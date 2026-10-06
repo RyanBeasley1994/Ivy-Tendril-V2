@@ -151,6 +151,12 @@ const IceboxView = React.lazy(() =>
 const JobsView = React.lazy(() =>
   import("./views/JobsView").then((m) => ({ default: m.JobsView })),
 );
+const ProjectsHomeView = React.lazy(() =>
+  import("./views/projects/ProjectsHomeView").then((m) => ({ default: m.ProjectsHomeView })),
+);
+const ProjectView = React.lazy(() =>
+  import("./views/projects/ProjectView").then((m) => ({ default: m.ProjectView })),
+);
 const MissionsView = React.lazy(() =>
   import("./views/MissionsView").then((m) => ({ default: m.MissionsView })),
 );
@@ -1041,7 +1047,33 @@ export const App: React.FC = () => {
       );
     }
 
+    if (activeNav.startsWith("project-")) {
+      const name = activeNav.slice("project-".length);
+      const project = projects.find((p) => p.name === name);
+      if (project) {
+        return (
+          <ProjectView
+            project={project}
+            jobs={jobsState.jobs}
+            onBack={() => uiStore.setActiveNav("projects")}
+            onOpenMission={(missionId) => uiStore.setActiveNav("missions", { mission: missionId })}
+            onOpenJob={handleSelectJob}
+            onOpenPlan={handleSelectPlan}
+          />
+        );
+      }
+    }
+
     switch (activeNav) {
+      case "projects":
+        return (
+          <ProjectsHomeView
+            projects={projects}
+            jobs={jobsState.jobs}
+            onOpenProject={(name) => uiStore.setActiveNav(`project-${name}`)}
+          />
+        );
+
       case "dashboard":
         return (
           <DashboardView

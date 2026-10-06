@@ -347,6 +347,16 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/projects/:name/hooks/:hook",
             delete(projects::remove_project_hook),
         )
+        // The project's Factory Manager chat session, and the Docker containers that belong to it.
+        .route(
+            "/api/projects/:name/manager",
+            post(projects::get_or_create_project_manager),
+        )
+        .route("/api/projects/:name/docker", get(projects::project_docker))
+        .route(
+            "/api/projects/:name/engine",
+            get(projects::get_project_engine).put(projects::set_project_engine),
+        )
         // A project's memory files (`<TENDRIL_HOME>/Projects/<Project>/Memory/*.md`), V1's
         // `ProjectMemoryTableView` + `EditProjectMemorySheet`; see `projects::memory`.
         .route(

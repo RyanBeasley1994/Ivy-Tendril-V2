@@ -197,6 +197,21 @@ fn notifier_recipients(
         }
     }
 
+    // The project's manager hears about every job in its project, so it can retry, re-plan and
+    // evaluate without the operator relaying anything.
+    if let Some(folder_name) = event_plan_folder(event, plans_dir) {
+        if let Ok((plan, _)) =
+            tendril_core::plans::reader::read_plan_yaml(&plans_dir.join(&folder_name))
+        {
+            let manager_id = tendril_core::chat::manager_brief::manager_session_id(&plan.project);
+            let manager_file = tendril_core::chat::storage::get_chats_dir(tendril_home)
+                .join(format!("{manager_id}.json"));
+            if manager_file.exists() && !recipients.contains(&manager_id) {
+                recipients.push(manager_id);
+            }
+        }
+    }
+
     if let Some(chat_session_id) = event
         .chat_session_id
         .as_deref()

@@ -9,6 +9,22 @@ use crate::error::BridgeError;
 use serde_json::json;
 
 #[tauri::command]
+pub async fn cmd_get_project_manager(
+    project_name: String,
+) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .get_project_manager(&project_name)
+        .await
+}
+
+#[tauri::command]
+pub async fn cmd_project_docker(project_name: String) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .project_docker(&project_name)
+        .await
+}
+
+#[tauri::command]
 pub async fn cmd_list_project_memory(
     project_name: String,
 ) -> Result<serde_json::Value, BridgeError> {

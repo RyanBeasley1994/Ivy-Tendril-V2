@@ -89,6 +89,8 @@ export const CONTENT_FULL_BLEED_CLASS = "flex min-h-0 flex-1 flex-col overflow-h
  */
 const pageIcon = (navId: string): string | undefined => {
   switch (navId) {
+    case "projects":
+      return "FolderGit2";
     case "dashboard":
       return "ChartBar";
     case "chat":
@@ -114,6 +116,7 @@ const pageIcon = (navId: string): string | undefined => {
     case "settings":
       return "Settings";
     default:
+      if (navId.startsWith("project-")) return "FolderGit2";
       if (navId.startsWith("plan-")) return "FileText";
       if (navId.startsWith("job-")) return "Activity";
       return "File";
@@ -151,44 +154,24 @@ export const buildNavItems = (
     count !== undefined && count > 0 ? String(count) : undefined;
 
   const overview = t("sidebar.navGroup.overview");
-  const work = t("sidebar.navGroup.work");
   const observe = t("sidebar.navGroup.observe");
 
-  // Grouped the way the command-center sidebar reads: where you land, what is in flight, and what
-  // it adds up to. Jobs sits beside Plans and Review because it is work, not analysis.
+  // Plans, Review, Missions and Jobs are the manager's to sort, so they are reached from inside a
+  // project (and still addressable by URL). Whatever is waiting on a person shows as the Projects badge.
   return [
+    {
+      id: "projects",
+      label: t("sidebar.nav.projects"),
+      icon: "FolderGit2",
+      badge: badge((badges.plans ?? 0) + (badges.review ?? 0) + (badges.recommendations ?? 0)),
+      group: overview,
+    },
     { id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "LayoutGrid", group: overview },
-    {
-      id: "plans",
-      label: t("sidebar.nav.plans"),
-      icon: "Feather",
-      badge: badge(badges.plans),
-      group: work,
-    },
-    {
-      id: "review",
-      label: t("sidebar.nav.review"),
-      icon: "ThumbsUp",
-      badge: badge(badges.review),
-      group: work,
-    },
-    { id: "missions", label: t("sidebar.nav.missions"), icon: "Rocket", group: work },
-    {
-      id: "jobs",
-      label: t("sidebar.nav.jobs"),
-      icon: "Activity",
-      badge: badge(badges.jobs),
-      group: work,
-    },
-    {
-      id: "recommendations",
-      label: t("sidebar.nav.recommendations"),
-      icon: "Lightbulb",
-      badge: badge(badges.recommendations),
-      group: observe,
-    },
     { id: "insights", label: t("sidebar.nav.insights"), icon: "ChartBar", group: observe },
-  ].map((item) => ({ ...item, isActive: item.id === activeNav }));
+  ].map((item) => ({
+    ...item,
+    isActive: item.id === activeNav || (item.id === "projects" && activeNav.startsWith("project-")),
+  }));
 };
 
 /**

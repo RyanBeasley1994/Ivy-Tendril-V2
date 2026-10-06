@@ -60,6 +60,9 @@ const oneDecimal = (value: number): string => formatNumber(Number(value.toFixed(
 export function formatTokensCompact(tokens: number): string {
   if (!Number.isFinite(tokens) || tokens < 0) return NO_VALUE;
   // The unit is the catalog's (`160.0k` in English), so a language can spell it its own way.
+  if (tokens >= 1_000_000_000) {
+    return t("format.tokensCompact.billion", { value: oneDecimal(tokens / 1_000_000_000) });
+  }
   if (tokens >= 1_000_000) {
     return t("format.tokensCompact.million", { value: oneDecimal(tokens / 1_000_000) });
   }

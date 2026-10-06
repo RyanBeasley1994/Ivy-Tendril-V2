@@ -271,6 +271,8 @@ pub fn run() {
             cmd_vault_merge,
             cmd_vault_delete_project,
             // Project memory files and repo-asset import (Settings > project).
+            cmd_get_project_manager,
+            cmd_project_docker,
             cmd_list_project_memory,
             cmd_get_project_memory,
             cmd_put_project_memory,

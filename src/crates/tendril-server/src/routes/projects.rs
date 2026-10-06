@@ -10,7 +10,9 @@
 
 mod cloning;
 mod crud;
+mod engine;
 mod hooks;
+mod manager;
 mod memory;
 mod payloads;
 mod repo_assets;
@@ -22,7 +24,9 @@ pub use crud::{
     create_project, delete_project, get_project, get_project_issues, get_project_issues_metadata,
     list_projects, purge_project, update_project,
 };
+pub use engine::{get_project_engine, set_project_engine};
 pub use hooks::{add_project_hook, remove_project_hook};
+pub use manager::{get_or_create_project_manager, project_docker};
 pub use memory::{
     delete_project_memory, get_project_memory, list_project_memory, put_project_memory,
 };

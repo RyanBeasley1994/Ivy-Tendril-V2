@@ -113,6 +113,7 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
   // itself (`.tdb-inner { padding: 16px 16px 24px }`). Padding it here padded it twice and nested a
   // second scroll container inside the first.
   dashboard: app("dashboard", () => i18n.t("common:appTitles.dashboard"), { fullBleed: true }),
+  projects: app("projects", () => i18n.t("common:appTitles.projects"), { fullBleed: true }),
   plans: app("plans", () => i18n.t("common:appTitles.plans"), { fullBleed: true }),
   review: app("review", () => i18n.t("common:appTitles.review"), { fullBleed: true }),
   recommendations: app("recommendations", () => i18n.t("common:appTitles.recommendations")),
@@ -157,7 +158,7 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
 };
 
 /** Where the shell starts, and where an address with no app leaves it. */
-export const DEFAULT_APP_ID = "plans";
+export const DEFAULT_APP_ID = "projects";
 
 /**
  * V1's `appRepository.GetAppOrDefault(appId)`. The two id families V2 renders as pages without an app
@@ -177,6 +178,9 @@ export const appDescriptor = (appId: string | null | undefined): AppDescriptor |
       title: i18n.t("common:appTitles.plan", { id: appId.slice("plan-".length) }),
       fullBleed: true,
     };
+  }
+  if (appId.startsWith("project-")) {
+    return { id: appId, title: appId.slice("project-".length), fullBleed: true };
   }
   if (appId.startsWith("job-")) {
     // Not full-bleed: V1 shows a job's output in a sheet over the Jobs table, and a sheet is inset.

@@ -23,9 +23,10 @@ export const stalledMinutes = (job: Job, now: number = Date.now()): number | nul
   return idle != null && idle >= STALL_MINUTES ? idle : null;
 };
 
-/** Token counts the way the panels print them: 912, 41k, 1.2M. */
+/** Token counts the way the panels print them: 912, 41k, 1.2M, 1.9B. */
 export const formatTokens = (tokens: number | undefined): string | null => {
   if (tokens == null || !Number.isFinite(tokens)) return null;
+  if (tokens >= 1_000_000_000) return `${(tokens / 1_000_000_000).toFixed(tokens >= 10_000_000_000 ? 0 : 1)}B`;
   if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(tokens >= 10_000_000 ? 0 : 1)}M`;
   if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}k`;
   return String(Math.round(tokens));

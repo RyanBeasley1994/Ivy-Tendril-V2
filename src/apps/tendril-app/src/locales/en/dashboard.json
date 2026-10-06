@@ -72,7 +72,8 @@
     },
     "tokensCompact": {
       "thousand": "{{value}}k",
-      "million": "{{value}}M"
+      "million": "{{value}}M",
+      "billion": "{{value}}B"
     }
   },
   "insights": {

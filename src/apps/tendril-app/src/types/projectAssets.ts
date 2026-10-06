@@ -29,3 +29,18 @@ export interface ProjectMemoryFile {
   fileName: string;
   content: string;
 }
+
+export interface DockerContainer {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+}
+
+export interface ProjectDocker {
+  available: boolean;
+  reason?: string;
+  containers: DockerContainer[];
+}

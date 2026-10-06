@@ -37,6 +37,38 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
+    /// The project's Factory Manager chat session, created on first use.
+    pub async fn get_project_manager(
+        &self,
+        project_name: &str,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::POST,
+            &format!("/api/projects/{}/manager", path_segment(project_name)),
+            None,
+            "PROJECT_MANAGER_FAILED",
+            "open the project's manager",
+            None,
+        )
+        .await
+    }
+
+    /// The Docker containers that belong to the project.
+    pub async fn project_docker(
+        &self,
+        project_name: &str,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/docker", path_segment(project_name)),
+            None,
+            "PROJECT_DOCKER_FAILED",
+            "list the project's containers",
+            None,
+        )
+        .await
+    }
+
     pub async fn list_project_memory(
         &self,
         project_name: &str,
