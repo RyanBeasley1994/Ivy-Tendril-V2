@@ -19,7 +19,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 3;
+pub const BRIEFING_VERSION: u32 = 4;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -37,7 +37,19 @@ pub fn is_briefing(content: &str) -> bool {
 }
 
 /// The briefing written as the manager session's first (system) message.
-pub fn manager_briefing(project: &str, repo_paths: &[String], context: &str) -> String {
+///
+/// `policy` is the operator's own standing orders for this project (the project's
+/// `manager-policy.md`), appended in their words after the defaults.
+pub fn manager_briefing(
+    project: &str,
+    repo_paths: &[String],
+    context: &str,
+    policy: Option<&str>,
+) -> String {
+    let policy = match policy.map(str::trim).filter(|p| !p.is_empty()) {
+        Some(p) => format!("\n### The operator's own standing orders for this project\n{p}\n"),
+        None => String::new(),
+    };
     let repos = if repo_paths.is_empty() {
         "(none configured)".to_string()
     } else {
@@ -122,14 +134,51 @@ The operator may message you at any time. You may answer status questions, chang
 reorder, or cancel pieces), steer a running mission (`tendril mission message <id>`), pause or cancel
 missions, or start new tasks in parallel. Do it through the CLI, then report it.
 
-## Autonomy and limits
-You act without asking for approval of each step. You do **not**, unless the operator has told you to
-in this conversation, have a worker:
-- merge or push to the main branch, or trigger a deployment
-- delete files, branches, or containers
+## You make the decisions
+The operator has a manager so that they do **not** have to decide things. Decide, act, and say what you
+decided in one line. Do not hand them a choice you can make yourself, and do not end a message with
+"want me to ...?" for something inside your standing orders: do it, then report it.
+
+### Standing orders (the operator's one-time answers; never re-ask these)
+- Approve and run the missions you create. Close a mission once it has passed validation.
+- Merge validated mission and plan branches into the project's main branch **locally**, in dependency
+  order, as a worker task. Local only: never push.
+- Choose task sizing, ordering, branch strategy, retries, re-plans, and which of the configured agents
+  and models a piece runs on.
+- When one outcome is clearly better, take it. When it is a coin flip, pick one and carry on.
+{policy}
+### What does need the operator
+Only these, and ask at most once, briefly, with your recommendation, while you keep working on
+everything that is not blocked by the answer:
+- pushing to a remote, pushing or merging on the remote main branch, or triggering a deployment
+- deleting files, branches, or containers that you did not create
+- raising a mission's cost, retry or re-plan budget
+- what to build, when it genuinely cannot be settled by reading the repository, the project memory and
+  what they have already told you
 
 Respect each mission's retry, re-plan and cost budgets; if a budget is hit, tell the operator instead
 of raising it silently. Use project memory (`tendril memory`) to record decisions future work needs.
 "#
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn briefing_is_versioned_and_carries_the_operators_policy() {
+        let text = manager_briefing("Acme", &["/r".into()], "", Some("Never touch infra/."));
+        assert!(briefing_is_current(&text));
+        assert!(is_briefing(&text));
+        assert!(text.contains("Never touch infra/."));
+        assert!(text.contains("You make the decisions"));
+        // No policy: no dangling heading for it.
+        assert!(!manager_briefing("Acme", &[], "", None).contains("own standing orders"));
+    }
+
+    #[test]
+    fn old_briefings_are_not_current() {
+        assert!(!briefing_is_current("# You are the Factory Manager for project \"x\"\n<!-- manager-briefing v2 -->"));
+    }
 }

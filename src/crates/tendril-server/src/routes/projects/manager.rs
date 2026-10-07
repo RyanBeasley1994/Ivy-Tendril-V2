@@ -47,6 +47,16 @@ fn find_project(state: &AppState, name: &str) -> Result<ProjectInfo, Response> {
         .ok_or_else(|| error(StatusCode::NOT_FOUND, format!("Project '{name}' not found")))
 }
 
+/// The operator's own standing orders for a project's manager, from
+/// `<TENDRIL_HOME>/Projects/<Project>/manager-policy.md`, when they have written one.
+fn read_policy(state: &AppState, project: &str) -> Option<String> {
+    std::fs::read_to_string(
+        tendril_core::config::get_project_root_dir(&state.tendril_home, project)
+            .join("manager-policy.md"),
+    )
+    .ok()
+}
+
 pub async fn get_or_create_project_manager(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
@@ -63,7 +73,12 @@ pub async fn get_or_create_project_manager(
                 let briefing = ChatMessage {
                     id: Uuid::new_v4().to_string(),
                     role: "system".to_string(),
-                    content: manager_briefing(&project.name, &project.repos, &project.context),
+                    content: manager_briefing(
+                        &project.name,
+                        &project.repos,
+                        &project.context,
+                        read_policy(&state, &project.name).as_deref(),
+                    ),
                     timestamp: Utc::now(),
                     agent_id: None,
                     model_id: None,
@@ -82,8 +97,12 @@ pub async fn get_or_create_project_manager(
                     .find(|m| m.role == "system" && is_briefing(&m.content))
                 {
                     if !briefing_is_current(&old.content) {
-                        let fresh =
-                            manager_briefing(&project.name, &project.repos, &project.context);
+                        let fresh = manager_briefing(
+                            &project.name,
+                            &project.repos,
+                            &project.context,
+                            read_policy(&state, &project.name).as_deref(),
+                        );
                         let _ = state
                             .chat_manager
                             .replace_message_content(&id, &old.id, &fresh)
