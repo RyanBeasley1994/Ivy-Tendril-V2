@@ -35,6 +35,12 @@ enum Commands {
 
     #[command(
         subcommand,
+        about = "A project's manager: wake it later to check on something"
+    )]
+    Manager(commands::manager::ManagerCommands),
+
+    #[command(
+        subcommand,
         about = "A project's long-term memory: what agents and you have learned about it"
     )]
     Memory(commands::memory::MemoryCommands),
@@ -274,6 +280,9 @@ async fn dispatch(
         Commands::Job(cmd) => commands::job::handle_job_command(cmd, tendril_home).await?,
         Commands::Mission(cmd) => {
             commands::mission::handle_mission_command(cmd, tendril_home).await?
+        }
+        Commands::Manager(cmd) => {
+            commands::manager::handle_manager_command(cmd, tendril_home).await?
         }
         Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,

@@ -155,6 +155,7 @@ const ProjectView = React.lazy(() =>
   import("./views/projects/ProjectView").then((m) => ({ default: m.ProjectView })),
 );
 import { ProjectPalette } from "./views/projects/ProjectPalette";
+import { startManagerNotifier } from "./state/managerNotifier";
 import { setProjectIntent } from "./state/projectIntent";
 const MissionsView = React.lazy(() =>
   import("./views/MissionsView").then((m) => ({ default: m.MissionsView })),
@@ -452,14 +453,11 @@ export const App: React.FC = () => {
       .then((unsub) => (unsubChangeStatus = unsub))
       .catch(() => {});
 
-    // Notifications: read the setting, ask for OS permission if it is on, then announce every job
-    // that exits. The daemon's WebSocket carries chat and PR events but not job lifecycle ones, so
-    // the exits have to be noticed by polling the list — `jobsStore` diffs each snapshot and only
-    // reports transitions, so the tick costs one request and raises nothing when nothing changed.
+    // Notifications: read the setting and ask for OS permission if it is on. Only a manager that
+    // needs something, or whose work is complete, notifies; one job or mission finishing does not.
+    // The job list is still polled below, because the screens that show it depend on it.
     notificationsStore.init().catch(() => {});
-    const unsubExit = jobsStore.onJobExit((notification) =>
-      notificationsStore.notifyJobExit(notification),
-    );
+    const stopManagerNotifier = startManagerNotifier();
     const pollTimer = window.setInterval(() => {
       if (serviceStore.getState().status !== "online") return;
       jobsStore.fetchJobs().catch(() => {});
@@ -471,7 +469,7 @@ export const App: React.FC = () => {
       if (unsubPlan) unsubPlan();
       if (unsubChange) unsubChange();
       if (unsubChangeStatus) unsubChangeStatus();
-      unsubExit();
+      stopManagerNotifier();
       window.clearInterval(pollTimer);
     };
   }, []);

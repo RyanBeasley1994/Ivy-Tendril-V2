@@ -154,6 +154,11 @@ pub struct PlanCreateArgs {
     pub priority: Option<i32>,
     #[arg(long)]
     pub verification: Vec<String>,
+    #[arg(
+        long,
+        help = "Skip the project's verifications (lint, tests, build) for this plan: for docs, research and merge-only plans that change no code"
+    )]
+    pub no_verifications: bool,
     #[arg(long)]
     pub depends_on: Vec<String>,
     #[arg(long)]

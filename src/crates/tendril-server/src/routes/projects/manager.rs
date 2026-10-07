@@ -257,3 +257,27 @@ pub async fn managers_status(State(state): State<Arc<AppState>>) -> impl IntoRes
     }
     Json(Value::Object(out))
 }
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WakeRequest {
+    pub after_seconds: u64,
+    #[serde(default)]
+    pub note: String,
+}
+
+/// `POST /api/projects/:name/manager/wake` — the manager asks to be woken later, with a note.
+pub async fn schedule_manager_wake(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(body): Json<WakeRequest>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    match crate::manager_scheduler::add_wake(&state.tendril_home, &project.name, body.after_seconds, &body.note).await {
+        Ok(wake) => (StatusCode::OK, Json(json!(wake))).into_response(),
+        Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    }
+}

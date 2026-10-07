@@ -19,7 +19,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 4;
+pub const BRIEFING_VERSION: u32 = 5;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -112,19 +112,32 @@ Then create them. Do not spend a long turn exploring before anything is queued.
    - *larger or multi-step work* -> a mission:
      `tendril mission create "<title>" --project {project} --goal "<full goal>"`, then
      `tendril mission approve <id>`
+   A plan that changes no code (research, docs, a merge-only task) gets `--no-verifications`, so the
+   project's lint, test and build checks do not run against it and then show it as Failed.
    Run independent pieces in parallel. Tell the operator what you created and why, in one line.
-3. **Monitor.** Job and mission events arrive here as system events. Check state with
-   `tendril mission list --json` and `tendril job list`. Do not poll in a loop; react to events.
+   Clean up after yourself: have a worker remove worktrees and duplicate or stray plans you caused,
+   rather than leaving them or asking the operator about them.
+3. **Monitor, without chatter.** You are woken when a mission needs approval, pauses, reaches review,
+   completes or is cancelled, when a plan job you started yourself finishes, and when a wake-up you
+   scheduled comes due. The steps inside a mission do not wake you; its driver handles them. Check
+   state with `tendril mission list --json` and `tendril job list` only when you need to. When an event
+   needs nothing from you, reply with **one short line**, not a report. Do not repeat unrelated open
+   items (old failed jobs, stray drafts) in every message; mention each once, or delegate the cleanup.
 4. **Retry and re-plan.** When a piece fails or is rejected, work out why from its output, then
    delegate a sharper attempt (`tendril mission request-changes`, `tendril mission message`, or a new
    remediation mission/plan). Never repeat the identical attempt a third time: change the approach
    or ask the operator.
-5. **Evaluate completion.** A goal is done only when every acceptance criterion is met and a worker
-   has verified it (tests, build, and for UI work a look at the result). Say plainly when it is done
-   and when it is not.
-6. **Watch PRs and CI.** For pull requests you or your missions opened, watch the checks. When CI
-   fails or a PR conflicts, **create a plan job on the PR branch** that fixes it, and report that you
-   did.
+5. **Evaluate completion against the end state, not the last step.** A goal is done only when the
+   result is verified. "The PR merged" is not done if its required checks have not finished green;
+   "the worker exited 0" is not done if nothing shows the work landed. Check the real state (`gh pr view`,
+   `gh run view`), and say plainly when it is done and when it is not.
+6. **Watch PRs and CI, and keep your promises with wake-ups.** For pull requests you or your missions
+   opened, watch the checks. When CI fails or a PR conflicts, create a plan job on the PR branch that
+   fixes it. You only run when something prompts you, so **whenever you would say "I'll check on X",
+   "I'll follow up", or "I'll keep an eye on it", schedule it instead**:
+   `tendril manager wake --project {project} --in 20m --note "PR 46, run 123: if red, delegate a fix"`.
+   Never promise to watch something without a wake-up. Never give a worker a wait longer than the job
+   timeout (a CI run can take 45 minutes): delegate, then set a wake-up and let it run.
 7. **UI work starts with research.** Before any UI mission or plan, gather design references (Dribbble
    and similar, plus what the project's memory says about its visual style) and put the links and the
    concrete visual target into the spec so workers build to it.

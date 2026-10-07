@@ -82,6 +82,14 @@ class NotificationsStore {
     }
   }
 
+  /**
+   * A manager needs something, or its work is complete. Never coalesced: each is a decision or a
+   * result the operator should see on its own.
+   */
+  public notifyManager(notification: JobNotification): void {
+    void this.deliver(notification);
+  }
+
   /** The coalesced path: a wave of jobs exiting together is one notification, not one per job. */
   public notifyJobExit(notification: JobNotification): void {
     this.ensureSummarizer().add(notification);

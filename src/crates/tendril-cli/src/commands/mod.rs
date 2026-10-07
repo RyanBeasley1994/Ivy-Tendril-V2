@@ -10,6 +10,7 @@ pub mod hash_password;
 pub mod job;
 pub mod mcp;
 pub mod memory;
+pub mod manager;
 pub mod mission;
 pub mod models;
 pub mod plan;

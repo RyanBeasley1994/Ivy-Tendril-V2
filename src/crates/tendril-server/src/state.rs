@@ -206,7 +206,10 @@ fn notifier_recipients(
             let manager_id = tendril_core::chat::manager_brief::manager_session_id(&plan.project);
             let manager_file = tendril_core::chat::storage::get_chats_dir(tendril_home)
                 .join(format!("{manager_id}.json"));
-            if manager_file.exists() && !recipients.contains(&manager_id) {
+            // A job that is part of a mission is the mission driver's to handle. The manager hears
+            // about the mission itself (see `manager_scheduler`), not about each of its steps.
+            let inside_mission = tendril_core::missions::model::mission_link(&plan).is_some();
+            if !inside_mission && manager_file.exists() && !recipients.contains(&manager_id) {
                 recipients.push(manager_id);
             }
         }

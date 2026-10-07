@@ -199,7 +199,13 @@ pub(super) fn create(
             if project.repos.is_empty() {
                 anyhow::bail!("Project '{}' has no repos configured.", args.project);
             }
-            seed_plan_from_project(project, verifications)
+            let (repos, mut seeded) = seed_plan_from_project(project, verifications);
+            if args.no_verifications {
+                for v in &mut seeded {
+                    v.status = VerificationStatus::Skipped;
+                }
+            }
+            (repos, seeded)
         }
         None => anyhow::bail!("Project '{}' not found.", args.project),
     };
