@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod api_keys;
 pub mod attachments;
 pub mod auth;
 pub mod changes;
@@ -178,6 +179,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/config/branch-preview",
             post(config::branch_preview_handler),
         )
+        // Keys for the public API, managed from Settings
+        .route("/api/api-keys", get(api_keys::list_handler).post(api_keys::create_handler))
+        .route("/api/api-keys/:id", delete(api_keys::revoke_handler))
         // Browser push for the installed web app
         .route("/api/push/status", get(push::status_handler))
         .route("/api/push/subscribe", post(push::subscribe_handler))

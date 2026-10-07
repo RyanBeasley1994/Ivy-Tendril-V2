@@ -37,6 +37,37 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
+    /// The public API's keys (never their secrets).
+    pub async fn list_api_keys(&self) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(reqwest::Method::GET, "/api/api-keys", None, "API_KEYS_FAILED", "list the API keys", None)
+            .await
+    }
+
+    /// Creates a key. The response holds the secret, which is shown once and never stored in the clear.
+    pub async fn create_api_key(&self, name: &str, write: bool) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::POST,
+            "/api/api-keys",
+            Some(serde_json::json!({ "name": name, "write": write })),
+            "API_KEY_CREATE_FAILED",
+            "create the API key",
+            None,
+        )
+        .await
+    }
+
+    pub async fn revoke_api_key(&self, id: &str) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::DELETE,
+            &format!("/api/api-keys/{}", path_segment(id)),
+            None,
+            "API_KEY_REVOKE_FAILED",
+            "revoke the API key",
+            None,
+        )
+        .await
+    }
+
     /// The screenshots and recordings a mission's workers attached, grouped by milestone.
     pub async fn mission_evidence(&self, mission_id: &str) -> Result<serde_json::Value, BridgeError> {
         self.project_assets_request(

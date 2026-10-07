@@ -9,6 +9,22 @@ use crate::error::BridgeError;
 use serde_json::json;
 
 #[tauri::command]
+pub async fn cmd_list_api_keys() -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.list_api_keys().await
+}
+
+// No `tracing` line: the response carries the key itself.
+#[tauri::command]
+pub async fn cmd_create_api_key(name: String, write: bool) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.create_api_key(&name, write).await
+}
+
+#[tauri::command]
+pub async fn cmd_revoke_api_key(id: String) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.revoke_api_key(&id).await
+}
+
+#[tauri::command]
 pub async fn cmd_mission_evidence(id: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?.mission_evidence(&id).await
 }

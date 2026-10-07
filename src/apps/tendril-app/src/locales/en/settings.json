@@ -439,5 +439,23 @@
     "insecure": "Push needs a secure address. Open Forge over HTTPS (for example with `tailscale serve`) and try again.",
     "needsInstall": "On iPhone, add Forge to your Home Screen first (Share, then Add to Home Screen), open it from there, and turn notifications on.",
     "unsupported": "This browser does not support push notifications."
+  },
+  "apiKeys": {
+    "title": "API keys",
+    "hint": "Let scripts and other apps list your projects, read progress and message a manager at {{base}}. A key is shown once; revoke it any time.",
+    "nameLabel": "Key name",
+    "namePlaceholder": "e.g. hermes",
+    "writeLabel": "Allow messaging managers",
+    "create": "Create key",
+    "created": "Key \"{{name}}\" created",
+    "once": "Copy it now: it cannot be shown again.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyCurl": "Copy a test command",
+    "loading": "Loading…",
+    "none": "No keys yet.",
+    "scopeRead": "read-only",
+    "scopeWrite": "read + message",
+    "revoke": "Revoke key"
   }
 }

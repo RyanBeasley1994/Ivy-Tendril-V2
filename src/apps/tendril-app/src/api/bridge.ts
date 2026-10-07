@@ -90,6 +90,15 @@ import type {
   DirectoryListing,
 } from "../types/api";
 import type { ChatAttachment } from "../types/chat";
+
+/** A public-API key as the daemon lists it: never the secret, which only creation returns. */
+export interface ApiKeyRecord {
+  id: string;
+  name: string;
+  scope: "read" | "write";
+  prefix: string;
+  created: string;
+}
 import type {
   DiscoveredRepoAsset,
   ProjectMemoryEntry,
@@ -1020,6 +1029,32 @@ export const tauriClient = {
      `EditProjectMemorySheet`) and `ImportRepoAssetsDialog`'s scan/import. The daemon owns every path:
      a memory file is addressed by its bare name, and a repo is re-scanned on import rather than
      trusted from the client. */
+
+  /* --- Public API keys ---------------------------------------------------------------------------
+     `/api/api-keys`. The secret is in the create response only; the list never carries it. */
+
+  async listApiKeys(this: void): Promise<ApiKeyRecord[]> {
+    const res = await invokeOrFetch<{ keys: ApiKeyRecord[] }>("cmd_list_api_keys", {}, "/api/api-keys");
+    return res.keys ?? [];
+  },
+
+  async createApiKey(this: void, name: string, write: boolean): Promise<{ key: string; record: ApiKeyRecord }> {
+    return invokeOrFetch<{ key: string; record: ApiKeyRecord }>(
+      "cmd_create_api_key",
+      { name, write },
+      "/api/api-keys",
+      { method: "POST", body: JSON.stringify({ name, write }) },
+    );
+  },
+
+  async revokeApiKey(this: void, id: string): Promise<void> {
+    await invokeOrFetch<{ ok: boolean }>(
+      "cmd_revoke_api_key",
+      { id },
+      `/api/api-keys/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+  },
 
   /* --- Git page ----------------------------------------------------------------------------------
      `/api/git/**`. A repository is only ever named by the opaque id the daemon gave it. */

@@ -64,6 +64,7 @@ import { LevelsSection } from "./settings/LevelsSection";
 import { SecurityTunnelingSection } from "./settings/SecurityTunnelingSection";
 import { RemoteServerSection } from "./settings/RemoteServerSection";
 import { PhoneNotificationsSection } from "./settings/PhoneNotificationsSection";
+import { ApiKeysSection } from "./settings/ApiKeysSection";
 
 interface SettingsViewProps {
   serviceInfo: ServiceInfo | null;
@@ -1139,6 +1140,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {securitySelected && !isEditingConfig && !isAddingProject && (
                 <>
                   <RemoteServerSection />
+                  <ApiKeysSection />
                   <SecurityTunnelingSection />
                 </>
               )}
