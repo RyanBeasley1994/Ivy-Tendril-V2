@@ -410,7 +410,7 @@ type MissionFilter = "active" | "attention" | "done" | "cancelled" | "all";
 
 const FILTERS: { value: MissionFilter; label: string; test: (m: Mission) => boolean }[] = [
   { value: "active", label: "Active", test: (m) => isLiveMission(m) },
-  { value: "attention", label: "Needs you", test: (m) => m.state === "AwaitingApproval" || m.state === "Paused" || m.state === "Review" },
+  { value: "attention", label: "Needs you", test: (m) => m.state === "AwaitingApproval" || m.state === "Paused" },
   { value: "done", label: "Done", test: (m) => m.state === "Completed" },
   { value: "cancelled", label: "Cancelled", test: (m) => m.state === "Cancelled" },
   { value: "all", label: "All", test: () => true },

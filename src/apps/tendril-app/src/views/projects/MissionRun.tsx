@@ -65,7 +65,7 @@ export const buildGraph = (m: Mission): GraphNode[] => {
     {
       id: "review",
       title: "Review",
-      sub: m.state === "Completed" ? "merged" : m.state === "Review" ? "needs you" : "waiting",
+      sub: m.state === "Completed" ? "merged" : m.state === "Review" ? "ready to merge" : "waiting",
       state: m.state === "Completed" ? "done" : m.state === "Review" ? "active" : "waiting",
     },
   ];

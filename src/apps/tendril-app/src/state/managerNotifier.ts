@@ -52,7 +52,7 @@ export const startManagerNotifier = (): (() => void) => {
     const asked = reply ? lastParagraph(reply.content).endsWith("?") : false;
     // Retries and re-plans are the manager's to handle; only a mission waiting on a person counts.
     const waiting = status.missions.find(
-      (m) => m.state === "AwaitingApproval" || m.state === "Paused" || m.state === "Review",
+      (m) => m.state === "AwaitingApproval" || m.state === "Paused",
     );
     const blocked = waiting !== undefined;
     const stillWorking = status.live.some((m) => m.state === "Running" || m.state === "Planning" || m.state === "Validating") || status.runningJobs.length > 0;
@@ -72,7 +72,7 @@ export const startManagerNotifier = (): (() => void) => {
         ? clip(
             asked
               ? lastParagraph(plain(reply?.content ?? "")) || text
-              : `"${waiting?.title}" is ${waiting?.state === "Review" ? "ready for review" : waiting?.state === "Paused" ? "paused" : "waiting for approval"}.`,
+              : `"${waiting?.title}" is ${waiting?.state === "Paused" ? "paused" : "waiting for approval"}.`,
           )
         : clip(text || status.headline);
     notificationsStore.notifyManager({

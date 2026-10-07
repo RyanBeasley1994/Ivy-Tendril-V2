@@ -165,7 +165,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const waiting = rows.flatMap(({ project, status }) =>
     status.missions
-      .filter((m) => m.state === "AwaitingApproval" || m.state === "Paused" || m.state === "Review")
+      .filter((m) => m.state === "AwaitingApproval" || m.state === "Paused")
       .map((m) => ({ project: project.name, mission: m })),
   );
 
@@ -263,7 +263,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <span className="truncate text-[13px] font-medium text-foreground">{mission.title}</span>
                 <span className="truncate font-mono text-[10.5px] text-muted-foreground">
-                  {project} · {mission.state === "AwaitingApproval" ? "awaiting approval" : mission.state === "Paused" ? mission.pauseReason || "paused" : "ready for review"}
+                  {project} · {mission.state === "AwaitingApproval" ? "awaiting approval" : mission.pauseReason || "paused"}
                 </span>
               </button>
               <div className="flex gap-2">

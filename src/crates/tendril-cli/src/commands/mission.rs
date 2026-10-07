@@ -50,6 +50,9 @@ pub enum MissionCommands {
     #[command(about = "Cancel a mission and stop the job it is running")]
     Cancel { id: String },
 
+    #[command(about = "Mark a mission done: its work has landed (merged, or finished elsewhere) and it can leave the running list")]
+    Complete { id: String },
+
     #[command(about = "Change a mission's limits")]
     Budget(MissionBudgetArgs),
 
@@ -370,6 +373,16 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
                 }
             }
             println!("Cancelled mission {}.", name);
+        }
+        MissionCommands::Complete { id } => {
+            let folder = resolve(&id)?;
+            let name = service::folder_name(&folder);
+            if let DaemonOutcome::Unavailable = ask_daemon(tendril_home, &name, "complete", serde_json::json!({})).await? {
+                if let Some(job) = service::complete(&folder)? {
+                    println!("No daemon is running, so job {} was not stopped.", job);
+                }
+            }
+            println!("Marked mission {} done.", name);
         }
         MissionCommands::Budget(args) => {
             let folder = resolve(&args.id)?;
