@@ -9,7 +9,7 @@ export interface MobileTabBarProps {
   onSelectNav: (navId: string) => void;
   /** Opens a project (its manager chat is the first thing on the page). */
   onOpenProject?: (name: string) => void;
-  badges?: { plans?: number; review?: number };
+  badges?: { managers?: number };
 }
 
 interface Tab {
@@ -44,7 +44,7 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({
       id: "manager",
       icon: MessageCircle,
       label: t("sidebar.nav.manager"),
-      badge: (badges.plans ?? 0) + (badges.review ?? 0),
+      badge: badges.managers,
     },
   ];
   const current = activeNav.startsWith("project-") ? "manager" : activeNav.startsWith("plan-") ? "projects" : activeNav;

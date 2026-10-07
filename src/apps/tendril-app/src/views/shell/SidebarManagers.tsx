@@ -16,7 +16,7 @@ interface Props {
 const MAX_CARDS = 4;
 
 /**
- * One status card per project whose manager is working: what it is doing right now and how far it
+ * One status card per project whose manager is working or needs you: what it is doing right now and how far it
  * has got. Click to jump into that project. Nothing is drawn while every manager is idle.
  */
 export const SidebarManagers: React.FC<Props> = ({ projects, jobs, activeProject, onOpenProject }) => {
@@ -27,9 +27,10 @@ export const SidebarManagers: React.FC<Props> = ({ projects, jobs, activeProject
     () =>
       projects
         .map((project) => ({ project, status: projectStatus(project.name, missions, jobs, activity[project.name]?.working ?? false) }))
-        .filter(({ status }) => status.busy || status.attention.length > 0)
+        .filter(({ project, status }) => status.busy || status.attention.length > 0 || (activity[project.name]?.needsYou ?? 0) > 0)
         .sort(
           (a, b) =>
+            (activity[b.project.name]?.needsYou ?? 0) - (activity[a.project.name]?.needsYou ?? 0) ||
             Number(b.status.busy) - Number(a.status.busy) ||
             (b.status.updated ?? "").localeCompare(a.status.updated ?? ""),
         ),
@@ -65,7 +66,7 @@ export const SidebarManagers: React.FC<Props> = ({ projects, jobs, activeProject
             )}
           </div>
           <div className="truncate text-[11.5px] text-muted-foreground">
-            {status.currentTask ?? (status.attention[0] ?? status.headline)}
+            {status.currentTask ?? (activity[project.name]?.asked ? "Waiting on your answer." : status.attention[0] ?? status.headline)}
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-secondary">
             <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${status.progress}%` }} />
@@ -73,7 +74,9 @@ export const SidebarManagers: React.FC<Props> = ({ projects, jobs, activeProject
           <div className="flex gap-3 font-mono text-[10px] text-muted-foreground">
             <span>{status.live.length} missions</span>
             <span>{status.taskCount} tasks</span>
-            {status.attention.length > 0 && <span className="text-warning">needs you</span>}
+            {(status.attention.length > 0 || (activity[project.name]?.needsYou ?? 0) > 0) && (
+              <span className="text-warning">{activity[project.name]?.asked ? "asked you something" : "needs you"}</span>
+            )}
           </div>
         </button>
       ))}

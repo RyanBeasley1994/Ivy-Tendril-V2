@@ -228,3 +228,51 @@ async fn keys_are_managed_by_the_owner_and_a_key_cannot_manage_keys() {
     assert_eq!(h.call("GET", PROJECTS, Some(&key), None).await.0, StatusCode::UNAUTHORIZED);
     assert_eq!(h.call("DELETE", &format!("/api/api-keys/{id}"), Some(&owner), None).await.0, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn a_projects_evidence_gathers_every_plan_of_that_project_newest_first() {
+    use tendril_core::plans::evidence::add_evidence;
+    use tendril_core::plans::{create_plan, CreatePlanOptions};
+
+    let h = harness();
+    let plans_dir = h.home.join("Plans");
+    let plan = |title: &str, project: &str| {
+        let created = create_plan(
+            &plans_dir,
+            CreatePlanOptions {
+                title: title.to_string(),
+                project: project.to_string(),
+                level: None,
+                initial_prompt: None,
+                source_url: None,
+                execution_profile: None,
+                priority: None,
+                repos: vec![],
+                verifications: vec![],
+                depends_on: vec![],
+                related_plans: vec![],
+                chat_session_id: None,
+            },
+        )
+        .unwrap();
+        std::path::PathBuf::from(created.folder_path)
+    };
+    let png = h.home.join("shot.png");
+    std::fs::write(&png, [0x89, b'P', b'N', b'G']).unwrap();
+
+    let login = plan("Login page", "Demo");
+    let other = plan("Someone else's", "Other");
+    add_evidence(&login, &png, "The login form", "Signed out").unwrap();
+    add_evidence(&other, &png, "Not ours", "").unwrap();
+
+    let owner = h.secret.clone();
+    let (status, body) = h.call("GET", "/api/projects/demo/evidence", Some(&owner), None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let groups = body["groups"].as_array().unwrap();
+    assert_eq!(groups.len(), 1, "only this project's plans: {body}");
+    assert_eq!(groups[0]["title"], "Login page");
+    assert_eq!(groups[0]["items"][0]["caption"], "The login form");
+    assert_eq!(groups[0]["items"][0]["kind"], "image");
+
+    assert_eq!(h.call("GET", "/api/projects/Nope/evidence", Some(&owner), None).await.0, StatusCode::NOT_FOUND);
+}

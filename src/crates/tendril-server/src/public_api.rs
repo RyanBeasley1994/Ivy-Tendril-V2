@@ -206,12 +206,15 @@ fn job_json(j: &tendril_core::models::JobItem) -> Value {
 async fn summary(state: &AppState, name: &str, repos: &[String]) -> Value {
     let p = pulse(state, name).await;
     let active = p.missions.iter().filter(|f| !f.mission.state.is_terminal()).count();
+    let attention = crate::attention::for_project(state, name).await;
     json!({
         "name": name,
         "repos": repos,
         "managerBusy": state.chat_manager.is_generating(&manager_session_id(name)).await,
         "activeMissions": active,
-        "needsYou": p.missions.iter().filter(|f| needs_you(f)).count(),
+        // Missions waiting on you, plus a question the manager asked that you have not answered.
+        "needsYou": attention.count(),
+        "managerAsked": attention.asked,
         "runningJobs": p.jobs.len(),
         "lastManagerReply": last_reply(state, name).await,
     })

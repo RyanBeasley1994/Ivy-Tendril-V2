@@ -169,6 +169,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .map((m) => ({ project: project.name, mission: m })),
   );
 
+  // A manager that asked something and has not been answered is waiting on you too.
+  const asked = rows.filter(({ project }) => managers[project.name]?.asked).map(({ project }) => project.name);
+  const needYou = waiting.length + asked.length;
+
   const activityFeed = rows
     .flatMap(({ project, status }) =>
       status.missions.flatMap((m) => (m.log ?? []).map((entry) => ({ ...entry, project: project.name, mission: m.title, missionId: m.id }))),
@@ -177,7 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .slice(0, 14);
 
   const summary = serviceOnline
-    ? `${working} of ${projects.length} managers working · ${waiting.length} need you`
+    ? `${working} of ${projects.length} managers working · ${needYou} need you`
     : t("header.systemsDown");
 
   return (
@@ -246,14 +250,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Card
           className="min-h-[300px] xl:col-span-4"
           title="Needs you"
-          meta={waiting.length ? <Pill tone="warn">{waiting.length}</Pill> : undefined}
+          meta={needYou ? <Pill tone="warn">{needYou}</Pill> : undefined}
           bodyClassName="divide-y divide-border/60 overflow-y-auto"
         >
-          {waiting.length === 0 && (
+          {needYou === 0 && (
             <div className="px-4 py-10 text-center text-[12.5px] text-muted-foreground">
               Nothing is waiting on you. The managers have it.
             </div>
           )}
+          {asked.map((project) => (
+            <div key={`asked-${project}`} className="flex flex-col gap-2 px-4 py-3">
+              <button type="button" onClick={() => onOpenProject?.(project)} className="flex min-w-0 flex-col gap-0.5 text-left">
+                <span className="truncate text-[13px] font-medium text-foreground">{project} asked you something</span>
+                <span className="truncate font-mono text-[10.5px] text-muted-foreground">waiting on your answer</span>
+              </button>
+              <div className="flex gap-2">
+                <PrimaryButton size="sm" onClick={() => onOpenProject?.(project)}>Answer</PrimaryButton>
+              </div>
+            </div>
+          ))}
           {waiting.map(({ project, mission }) => (
             <div key={mission.id} className="flex flex-col gap-2 px-4 py-3">
               <button

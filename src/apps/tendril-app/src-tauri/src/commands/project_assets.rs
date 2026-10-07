@@ -30,6 +30,11 @@ pub async fn cmd_mission_evidence(id: String) -> Result<serde_json::Value, Bridg
 }
 
 #[tauri::command]
+pub async fn cmd_project_evidence(project_name: String) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.project_evidence(&project_name).await
+}
+
+#[tauri::command]
 pub async fn cmd_get_project_engine(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?.get_project_engine(&project_name).await
 }

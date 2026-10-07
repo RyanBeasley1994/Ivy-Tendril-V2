@@ -288,6 +288,7 @@ pub fn run() {
             cmd_git_pr_prefill,
             cmd_git_create_pr,
             cmd_mission_evidence,
+            cmd_project_evidence,
             cmd_list_api_keys,
             cmd_create_api_key,
             cmd_revoke_api_key,

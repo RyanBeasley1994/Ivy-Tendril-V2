@@ -90,6 +90,7 @@ import type {
   DirectoryListing,
 } from "../types/api";
 import type { ChatAttachment } from "../types/chat";
+import type { ManagerActivity } from "../state/managerActivity";
 
 /** A public-API key as the daemon lists it: never the secret, which only creation returns. */
 export interface ApiKeyRecord {
@@ -1150,6 +1151,15 @@ export const tauriClient = {
     );
   },
 
+  /** Every screenshot and recording attached to any of a project's plans, newest first. */
+  async getProjectEvidence(this: void, project: string): Promise<MissionEvidence> {
+    return invokeOrFetch<MissionEvidence>(
+      "cmd_project_evidence",
+      { projectName: project },
+      `/api/projects/${encodeURIComponent(project)}/evidence`,
+    );
+  },
+
   /** The engine each role of a project runs on; a role not listed runs on the default. */
   async getProjectEngine(this: void, projectName: string): Promise<ProjectEngineRoles> {
     const res = await invokeOrFetch<{ roles: ProjectEngineRoles }>(
@@ -1176,8 +1186,8 @@ export const tauriClient = {
   },
 
   /** Whether each project's manager is mid-turn, and when its conversation last moved. */
-  async getManagersStatus(this: void): Promise<Record<string, { working: boolean; updatedAt: string | null }>> {
-    return invokeOrFetch<Record<string, { working: boolean; updatedAt: string | null }>>(
+  async getManagersStatus(this: void): Promise<ManagerActivity> {
+    return invokeOrFetch<ManagerActivity>(
       "cmd_managers_status",
       {},
       "/api/projects/managers",

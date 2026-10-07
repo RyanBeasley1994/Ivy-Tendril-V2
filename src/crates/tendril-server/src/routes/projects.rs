@@ -11,6 +11,7 @@
 mod cloning;
 mod crud;
 mod engine;
+mod evidence;
 mod hooks;
 mod manager;
 mod memory;
@@ -25,6 +26,7 @@ pub use crud::{
     list_projects, purge_project, update_project,
 };
 pub use engine::{get_project_engine, set_project_engine};
+pub use evidence::project_evidence;
 pub use hooks::{add_project_hook, remove_project_hook};
 pub use manager::{
     get_or_create_project_manager, managers_status, project_docker, project_owners,

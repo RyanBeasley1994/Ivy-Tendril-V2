@@ -1,3 +1,4 @@
+pub mod attention;
 pub mod auth;
 pub mod event_buffer;
 pub mod local_file_guard;

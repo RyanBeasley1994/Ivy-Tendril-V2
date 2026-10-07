@@ -17,6 +17,7 @@ import { ChatView } from "../ChatView";
 import { useMissions } from "./ProjectsHomeView";
 import { MissionGraph, MissionRun } from "./MissionRun";
 import { ModelsPanel } from "./ModelsPanel";
+import { ArtifactsPanel } from "./ArtifactsPanel";
 
 interface Props {
   project: ProjectSummary;
@@ -114,6 +115,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
     { value: "overview", label: "Overview" },
     { value: "missions", label: "Missions", count: status.live.length },
     { value: "tasks", label: "Tasks", count: status.taskCount },
+    { value: "artifacts", label: "Artifacts" },
     { value: "models", label: "Models" },
     { value: "runtime", label: "Runtime" },
     { value: "memory", label: "Memory" },
@@ -205,6 +207,13 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
                 <MissionsPanel project={project} missions={missions} onOpen={openRun} />
               ))}
             {tab === "tasks" && <TasksPanel status={status} onOpenJob={onOpenJob} />}
+            {tab === "artifacts" && (
+              <ArtifactsPanel
+                project={project.name}
+                busy={status.busy}
+                onOpenMission={openRun}
+              />
+            )}
             {tab === "models" && <ModelsPanel project={project} missions={missions} />}
             {tab === "runtime" && <RuntimePanel project={project} />}
             {tab === "memory" && <MemoryPanel project={project} />}

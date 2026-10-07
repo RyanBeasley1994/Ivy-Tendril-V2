@@ -1,6 +1,7 @@
 import React from "react";
 import { ForgeLogo } from "../components/ForgeLogo";
 import { MobileTabBar } from "./shell/MobileTabBar";
+import { useNeedsYouCount } from "../state/managerActivity";
 import { Plus } from "lucide-react";
 import { PRODUCT_NAME } from "../branding";
 import {
@@ -135,6 +136,8 @@ export interface ShellNavBadges {
   review?: number;
   recommendations?: number;
   jobs?: number;
+  /** Things waiting on the operator across every project's manager. */
+  managers?: number;
 }
 
 /**
@@ -159,13 +162,14 @@ export const buildNavItems = (
   const observe = t("sidebar.navGroup.observe");
 
   // Plans, Review, Missions and Jobs are the manager's to sort, so they are reached from inside a
-  // project (and still addressable by URL). Whatever is waiting on a person shows as the Projects badge.
+  // project (and still addressable by URL). The Projects badge counts only what a manager needs from the
+  // person (a mission to approve, a question asked), never work that merely finished.
   return [
     {
       id: "projects",
       label: t("sidebar.nav.projects"),
       icon: "FolderGit2",
-      badge: badge((badges.plans ?? 0) + (badges.review ?? 0) + (badges.recommendations ?? 0)),
+      badge: badge(badges.managers),
       group: overview,
     },
     { id: "git", label: t("sidebar.nav.git"), icon: "GitBranch", group: overview },
@@ -464,6 +468,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
     }
   };
 
+  const managersNeedYou = useNeedsYouCount();
   const navItems = buildNavItems(
     activeNav,
     {
@@ -471,6 +476,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
       review: reviewCount,
       recommendations: recommendationsCount,
       jobs: jobCount,
+      managers: managersNeedYou,
     },
     t,
   );
@@ -590,7 +596,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                 activeNav={activeNav}
                 onSelectNav={onSelectNav}
                 onOpenProject={onOpenProject}
-                badges={{ plans: draftCount, review: reviewCount }}
+                badges={{ managers: managersNeedYou }}
               />
             ),
             // The header is the brand row alone. V1 formats the version as "v <x.y.z>".

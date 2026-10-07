@@ -1,82 +1,21 @@
 import React from "react";
 import { ChevronLeft, ChevronRight, Film, ImageOff, X } from "lucide-react";
 import { cn } from "@ivy-interactive/components/ui";
-import type { EvidenceGroup, EvidenceItem } from "../../types/projectAssets";
+import type { EvidenceItem } from "../../types/projectAssets";
 import { bridge } from "../../api/bridge";
 import { useAttachmentPreview } from "../../hooks/useAttachmentPreview";
 import { describeBridgeError } from "../../types/api";
 import { formatAge } from "../../utils/commandCenter";
-import { Card, Kbd, Pill } from "../../components/page/kit";
+import { Kbd } from "../../components/page/kit";
 
-interface FlatItem extends EvidenceItem {
+export interface FlatItem extends EvidenceItem {
   group: string;
 }
 
-const when = (iso?: string) =>
+export const when = (iso?: string) =>
   iso ? `${formatAge(Math.max(0, Date.now() - new Date(iso).getTime()))} ago` : "";
 
-/** What the mission's workers recorded to prove their changes work, by milestone. */
-export const EvidencePanel: React.FC<{ missionId: string; running: boolean }> = ({ missionId, running }) => {
-  const [groups, setGroups] = React.useState<EvidenceGroup[] | null>(null);
-  const [open, setOpen] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    let live = true;
-    const load = () =>
-      bridge
-        .getMissionEvidence(missionId)
-        .then((e) => live && setGroups(e.groups))
-        .catch(() => live && setGroups((g) => g ?? []));
-    void load();
-    // Evidence arrives while the mission runs; once it stops there is nothing new to fetch.
-    const timer = running ? window.setInterval(load, 15_000) : undefined;
-    return () => {
-      live = false;
-      if (timer) window.clearInterval(timer);
-    };
-  }, [missionId, running]);
-
-  const flat = React.useMemo<FlatItem[]>(
-    () => (groups ?? []).flatMap((g) => g.items.map((i) => ({ ...i, group: g.title }))),
-    [groups],
-  );
-
-  if (groups === null) return null;
-
-  return (
-    <Card title="Evidence" meta={<Pill tone={flat.length ? "ok" : "mute"}>{flat.length}</Pill>} bodyClassName="gap-4 p-4">
-      {flat.length === 0 ? (
-        <p className="m-0 text-[12.5px] text-muted-foreground">
-          {running
-            ? "Nothing recorded yet. Workers attach screenshots and recordings here when they change something you can see."
-            : "No screenshots or recordings were attached to this mission."}
-        </p>
-      ) : (
-        groups.map((g) => (
-          <section key={`${g.milestoneId ?? "final"}-${g.planFolder}`} className="flex flex-col gap-2">
-            <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">{g.title}</div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
-              {g.items.map((item) => {
-                const index = flat.findIndex((f) => f.path === item.path);
-                return <Tile key={item.path} item={item} onOpen={() => setOpen(index)} />;
-              })}
-            </div>
-          </section>
-        ))
-      )}
-      {open !== null && flat[open] && (
-        <Viewer
-          items={flat}
-          index={open}
-          onIndex={setOpen}
-          onClose={() => setOpen(null)}
-        />
-      )}
-    </Card>
-  );
-};
-
-const Tile: React.FC<{ item: EvidenceItem; onOpen: () => void }> = ({ item, onOpen }) => (
+export const Tile: React.FC<{ item: EvidenceItem; onOpen: () => void }> = ({ item, onOpen }) => (
   <button
     type="button"
     onClick={onOpen}
@@ -110,7 +49,7 @@ const Thumb: React.FC<{ path: string }> = ({ path }) => {
 };
 
 /** The full-size view: an image, or a recording loaded only now so a page of clips does not all download. */
-const Viewer: React.FC<{
+export const Viewer: React.FC<{
   items: FlatItem[];
   index: number;
   onIndex: (i: number) => void;

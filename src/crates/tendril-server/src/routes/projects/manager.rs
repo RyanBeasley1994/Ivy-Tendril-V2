@@ -211,7 +211,8 @@ pub async fn project_owners(State(state): State<Arc<AppState>>) -> impl IntoResp
 
 
 /// `GET /api/projects/managers` — whether each project's manager is in the middle of a turn, and when
-/// its conversation last moved. A manager that has never been opened is simply not working.
+/// its conversation last moved, and how many things wait on the operator (`needsYou`). A manager that
+/// has never been opened is simply not working.
 pub async fn managers_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let settings = load_config(&state.config_path).unwrap_or_default();
     let mut out = serde_json::Map::new();
@@ -224,7 +225,18 @@ pub async fn managers_status(State(state): State<Arc<AppState>>) -> impl IntoRes
             .await
             .ok()
             .map(|s| s.updated_at.to_rfc3339());
-        out.insert(project.name.clone(), json!({ "working": working, "updatedAt": updated }));
+        let attention = crate::attention::for_project(&state, &project.name).await;
+        out.insert(
+            project.name.clone(),
+            json!({
+                "working": working,
+                "updatedAt": updated,
+                // What waits on the operator: missions to approve or resume, and a question asked.
+                "needsYou": attention.count(),
+                "waitingMissions": attention.waiting_missions,
+                "asked": attention.asked,
+            }),
+        );
     }
     Json(Value::Object(out))
 }

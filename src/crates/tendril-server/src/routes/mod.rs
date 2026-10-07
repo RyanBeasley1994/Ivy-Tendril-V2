@@ -381,6 +381,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/git/repos/:id/pr", post(git::create_pr))
         .route("/api/projects/owners", get(projects::project_owners))
         .route("/api/projects/managers", get(projects::managers_status))
+        .route("/api/projects/:name/evidence", get(projects::project_evidence))
         .route(
             "/api/projects/:name/manager/wake",
             post(projects::schedule_manager_wake),

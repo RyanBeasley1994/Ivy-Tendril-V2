@@ -72,6 +72,11 @@ export interface EvidenceGroup {
   title: string;
   planFolder: string;
   items: EvidenceItem[];
+  /** Set when the plan belongs to a mission. */
+  missionId?: string | null;
+  missionTitle?: string | null;
+  /** The newest item's time, for ordering. */
+  newest?: string;
 }
 
 export interface MissionEvidence {

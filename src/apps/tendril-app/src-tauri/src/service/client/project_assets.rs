@@ -81,6 +81,19 @@ impl TendrilClient {
         .await
     }
 
+    /// Every screenshot and recording attached to any of the project's plans.
+    pub async fn project_evidence(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/evidence", path_segment(project_name)),
+            None,
+            "PROJECT_EVIDENCE_FAILED",
+            "read the project's evidence",
+            None,
+        )
+        .await
+    }
+
     /// The project's engine per role.
     pub async fn get_project_engine(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
         self.project_assets_request(
