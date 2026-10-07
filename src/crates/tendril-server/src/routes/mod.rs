@@ -738,6 +738,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             )),
         )
         .merge(owner_local)
+        // The public API: its own API-key layer, deliberately outside `protected`'s master-secret one.
+        .merge(crate::public_api::router(state.clone()))
         .merge(protected)
         .layer(cors)
         .with_state(state)

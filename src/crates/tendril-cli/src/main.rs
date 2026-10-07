@@ -52,6 +52,13 @@ enum Commands {
     Push(commands::push::PushCommands),
 
     #[command(
+        name = "api-key",
+        subcommand,
+        about = "Keys for the public API: list projects, read progress, message managers"
+    )]
+    ApiKey(commands::api_key::ApiKeyCommands),
+
+    #[command(
         subcommand,
         about = "A project's long-term memory: what agents and you have learned about it"
     )]
@@ -298,6 +305,7 @@ async fn dispatch(
         }
         Commands::Evidence(cmd) => commands::evidence::handle_evidence_command(cmd, tendril_home).await?,
         Commands::Push(cmd) => commands::push::handle_push_command(cmd, tendril_home).await?,
+        Commands::ApiKey(cmd) => commands::api_key::handle_api_key_command(cmd, tendril_home).await?,
         Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,
         Commands::Project(cmd) => {

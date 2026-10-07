@@ -5,6 +5,8 @@ pub mod manager_scheduler;
 pub mod master;
 pub mod pr_sync;
 pub mod pr_watch;
+pub mod public_api;
+pub mod public_keys;
 pub mod push;
 pub mod webpush;
 pub mod review_prompter;

@@ -16,6 +16,7 @@ pub mod mission;
 pub mod models;
 pub mod plan;
 pub mod project;
+pub mod api_key;
 pub mod push;
 pub mod project_analyzer;
 pub mod promptware;
