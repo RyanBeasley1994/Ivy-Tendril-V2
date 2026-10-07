@@ -285,3 +285,42 @@ pub async fn set_milestones_handler(
     }
     mission_json(&state, &f)
 }
+
+/// `GET /api/missions/:id/evidence` — the screenshots and recordings the mission's workers attached to
+/// their plans, grouped by milestone (and the integration plan), oldest group first. A group with
+/// nothing in it is left out.
+pub async fn mission_evidence_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Response {
+    let f = match folder(&state, &id) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    let file = match read_mission_file(&f) {
+        Ok(file) => file,
+        Err(e) => return error_response(e),
+    };
+
+    let mut groups = Vec::new();
+    let mut add = |milestone_id: Option<&str>, title: &str, plan_folder: &str| {
+        let items = tendril_core::plans::evidence::list_evidence(&state.plans_dir.join(plan_folder));
+        if !items.is_empty() {
+            groups.push(json!({
+                "milestoneId": milestone_id,
+                "title": title,
+                "planFolder": plan_folder,
+                "items": items,
+            }));
+        }
+    };
+    for ms in &file.mission.milestones {
+        if let Some(plan) = ms.plan.as_deref() {
+            add(Some(&ms.id), &ms.title, plan);
+        }
+    }
+    if let Some(plan) = file.mission.integration_plan.as_deref() {
+        add(None, "Final result", plan);
+    }
+    (StatusCode::OK, Json(json!({ "groups": groups }))).into_response()
+}

@@ -37,6 +37,49 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
+    /// The screenshots and recordings a mission's workers attached, grouped by milestone.
+    pub async fn mission_evidence(&self, mission_id: &str) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/missions/{}/evidence", path_segment(mission_id)),
+            None,
+            "MISSION_EVIDENCE_FAILED",
+            "read the mission's evidence",
+            None,
+        )
+        .await
+    }
+
+    /// The project's engine per role.
+    pub async fn get_project_engine(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/engine", path_segment(project_name)),
+            None,
+            "PROJECT_ENGINE_FAILED",
+            "read the project's engines",
+            None,
+        )
+        .await
+    }
+
+    /// Sets (or, with `null`, clears) the engine of the roles named in `roles`.
+    pub async fn set_project_engine(
+        &self,
+        project_name: &str,
+        roles: serde_json::Value,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::PUT,
+            &format!("/api/projects/{}/engine", path_segment(project_name)),
+            Some(serde_json::json!({ "roles": roles })),
+            "PROJECT_ENGINE_FAILED",
+            "change the project's engines",
+            None,
+        )
+        .await
+    }
+
     /// Whether each project's manager is mid-turn, and when its conversation last moved.
     pub async fn managers_status(&self) -> Result<serde_json::Value, BridgeError> {
         self.project_assets_request(

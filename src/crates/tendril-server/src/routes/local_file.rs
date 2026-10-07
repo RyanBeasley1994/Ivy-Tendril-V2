@@ -70,6 +70,9 @@ fn content_type_for(path: &std::path::Path) -> &'static str {
         "ico" => "image/x-icon",
         "avif" => "image/avif",
         "pdf" => "application/pdf",
+        "mp4" | "m4v" => "video/mp4",
+        "webm" => "video/webm",
+        "mov" => "video/quicktime",
         _ => "application/octet-stream",
     }
 }

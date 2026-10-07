@@ -20,6 +20,7 @@ mod local_file;
 mod missions;
 mod onboarding;
 mod plans;
+mod git;
 mod project_assets;
 mod projects;
 mod promptwares;

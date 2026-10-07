@@ -91,6 +91,8 @@ const pageIcon = (navId: string): string | undefined => {
   switch (navId) {
     case "projects":
       return "FolderGit2";
+    case "git":
+      return "GitBranch";
     case "dashboard":
       return "ChartBar";
     case "chat":
@@ -166,6 +168,7 @@ export const buildNavItems = (
       badge: badge((badges.plans ?? 0) + (badges.review ?? 0) + (badges.recommendations ?? 0)),
       group: overview,
     },
+    { id: "git", label: t("sidebar.nav.git"), icon: "GitBranch", group: overview },
     { id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "LayoutGrid", group: overview },
     { id: "insights", label: t("sidebar.nav.insights"), icon: "ChartBar", group: observe },
   ].map((item) => ({
@@ -364,7 +367,6 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   recommendationsCount,
   jobCount,
   runningJobCount,
-  chatCount,
   sidebarList = null,
   onSelectSidebarItem,
   onPlanSearch,
@@ -534,7 +536,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   const noop = () => {};
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground">
+    <div className="flex h-screen h-[var(--app-height,100dvh)] w-screen flex-col overflow-hidden bg-background font-sans text-foreground">
       {/* Top Offline / Reconnection Banner */}
       <OfflineBanner
         status={connectionStatus}
@@ -587,8 +589,8 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
               <MobileTabBar
                 activeNav={activeNav}
                 onSelectNav={onSelectNav}
-                onOpenChat={onOpenChat}
-                badges={{ plans: draftCount, review: reviewCount, chat: chatCount }}
+                onOpenProject={onOpenProject}
+                badges={{ plans: draftCount, review: reviewCount }}
               />
             ),
             // The header is the brand row alone. V1 formats the version as "v <x.y.z>".

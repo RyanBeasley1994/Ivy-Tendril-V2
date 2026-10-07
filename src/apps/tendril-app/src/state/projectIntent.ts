@@ -2,7 +2,7 @@
  * A one-shot request to land on a particular panel (and optionally a mission) of a project page.
  * The palette sets it, then navigates; the page takes it on mount, or immediately if already open.
  */
-export type ProjectTab = "overview" | "missions" | "tasks" | "runtime" | "memory";
+export type ProjectTab = "overview" | "missions" | "tasks" | "models" | "runtime" | "memory";
 
 export interface ProjectIntent {
   tab?: ProjectTab;

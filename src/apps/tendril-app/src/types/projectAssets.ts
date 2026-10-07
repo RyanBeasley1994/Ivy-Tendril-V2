@@ -44,3 +44,36 @@ export interface ProjectDocker {
   reason?: string;
   containers: DockerContainer[];
 }
+
+/** One role's engine: the coding agent, and optionally a model and effort on it. */
+export interface EngineChoice {
+  agent: string;
+  model?: string;
+  effort?: string;
+}
+
+export type EngineRole = "manager" | "planner" | "worker" | "judge" | "validator";
+
+export type ProjectEngineRoles = Partial<Record<EngineRole, EngineChoice>>;
+
+/** A screenshot or recording a worker attached to a plan to show its change working. */
+export interface EvidenceItem {
+  kind: "image" | "video";
+  /** Absolute, as the daemon's file route wants it. */
+  path: string;
+  file: string;
+  caption: string;
+  step: string;
+  at?: string;
+}
+
+export interface EvidenceGroup {
+  milestoneId: string | null;
+  title: string;
+  planFolder: string;
+  items: EvidenceItem[];
+}
+
+export interface MissionEvidence {
+  groups: EvidenceGroup[];
+}

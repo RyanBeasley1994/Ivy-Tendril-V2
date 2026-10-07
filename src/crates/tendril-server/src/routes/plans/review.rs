@@ -72,6 +72,7 @@ pub async fn plan_artifacts_handler(
         StatusCode::OK,
         Json(json!({
             "screenshots": artifacts.screenshots,
+            "videos": artifacts.videos,
             "other": artifacts.other,
         })),
     )

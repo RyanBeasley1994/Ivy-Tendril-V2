@@ -125,6 +125,10 @@ git status
 
 Inspect any uncommitted changes before deciding what to do with them: after a crashed or stopped run they are usually unfinished implementation, so finish and commit them. Discard only files that are clearly build, dependency, or test debris, and state what was discarded and why in the status message. The worktree must be clean.
 
+### 4.4. Evidence
+
+If the reviewer's feedback asks for evidence, or this plan changes something a person sees or does and has none attached (`tendril evidence list --plan <plan-id>`), record it now exactly as ExecutePlan's step 7.4 describes: run the real thing, capture screenshots and a short recording of the flow, attach each with `tendril evidence add <file> --plan <plan-id> --caption "..." --step "..."`, and say in the summary what you could not capture and why.
+
 ### 4.5. Update Summary
 
 The prior ExecutePlan run created `<TendrilPlanFolder>/Artifacts/summary.md`. **Do not replace it** — append a new section documenting this retry's changes:

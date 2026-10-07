@@ -10,6 +10,7 @@ import { applyAppZoom } from "./state/zoom";
 import { isTauri } from "./utils/tauri";
 import { loopbackPort } from "./utils/loopbackUrl";
 import { openUrl } from "./utils/opener";
+import { registerPwa, trackVisualViewport } from "./pwa/register";
 import "./index.css";
 
 applyAppZoom();
@@ -18,6 +19,14 @@ applyAppZoom();
 // front of the daemon, and every call goes to the daemon's HTTP routes through it instead.
 if (!isTauri()) {
   installBrowserTransport();
+}
+
+// The installable web app: a service worker (installability, offline page, push) and a viewport height
+// that follows the on-screen keyboard. Service workers need a secure context (HTTPS, or localhost), so on
+// a plain-http address this quietly does nothing and the app still works as a normal page.
+if (!isTauri()) {
+  registerPwa();
+  trackVisualViewport();
 }
 
 // The macOS window has no title bar (`titleBarStyle: Overlay`): the traffic lights float over the

@@ -4,6 +4,7 @@ import type { Milestone, Mission } from "../../types/api";
 import { bridge } from "../../api/bridge";
 import { Card, Dot, GhostButton, Label, Pill, PrimaryButton, type Tone } from "../../components/page/kit";
 import { cn } from "@ivy-interactive/components/ui";
+import { EvidencePanel } from "./EvidencePanel";
 
 type NodeState = "done" | "active" | "waiting" | "failed";
 
@@ -178,6 +179,8 @@ export const MissionRun: React.FC<{
       <Card title="Live mission graph" meta={mission.state === "Running" ? <Pill tone="ok" dot live>LIVE</Pill> : undefined} bodyClassName="p-4">
         <MissionGraph mission={mission} />
       </Card>
+
+      <EvidencePanel missionId={mission.id} running={!["Completed", "Cancelled"].includes(mission.state)} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card title="Execution trace" meta={<Pill>{jobs.length}</Pill>} bodyClassName="divide-y divide-border/60">

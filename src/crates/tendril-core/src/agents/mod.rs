@@ -16,6 +16,7 @@ pub mod pricing;
 // Deliberately not re-exported below: `probe::check_install`, `check_auth` and `validate_model` are
 // too generically named to live in `agents::*`. Use `agents::probe::*`.
 pub mod probe;
+pub mod project_engine;
 // Deliberately not re-exported below: `provider_models::redact` and `select_model` are too generically
 // named to live in `agents::*` alongside everything else. Use `agents::provider_models::*`.
 pub mod provider_models;

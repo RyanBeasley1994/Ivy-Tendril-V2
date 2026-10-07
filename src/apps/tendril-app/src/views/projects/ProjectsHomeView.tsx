@@ -59,7 +59,7 @@ const SEGMENT: Record<string, string> = {
   Pending: "bg-muted",
 };
 
-const ago = (iso: string | null) => (iso ? `${formatAge(Math.max(0, Date.now() - new Date(iso).getTime()))} ago` : "no activity");
+const ago = (iso: string | null) => (iso ? `${formatAge(Math.max(0, Date.now() - new Date(iso).getTime()))} ago` : "none yet");
 
 /** One segment per milestone across the project's live missions, so progress also shows what is moving. */
 const ProgressStrip: React.FC<{ status: ProjectStatus }> = ({ status }) => {

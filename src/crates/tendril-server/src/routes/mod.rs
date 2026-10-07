@@ -3,6 +3,7 @@ pub mod attachments;
 pub mod auth;
 pub mod changes;
 pub mod chat;
+pub mod git;
 pub mod config;
 pub mod costs;
 pub mod dashboard;
@@ -19,6 +20,7 @@ pub mod onboarding;
 pub mod ping;
 pub mod plans;
 pub mod projects;
+pub mod push;
 pub mod promptwares;
 pub mod pull_requests;
 pub mod recommendations;
@@ -176,12 +178,21 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/config/branch-preview",
             post(config::branch_preview_handler),
         )
+        // Browser push for the installed web app
+        .route("/api/push/status", get(push::status_handler))
+        .route("/api/push/subscribe", post(push::subscribe_handler))
+        .route("/api/push/unsubscribe", post(push::unsubscribe_handler))
+        .route("/api/push/test", post(push::test_handler))
         // Missions
         .route(
             "/api/missions",
             get(missions::list_missions_handler).post(missions::create_mission_handler),
         )
         .route("/api/missions/:id", get(missions::get_mission_handler))
+        .route(
+            "/api/missions/:id/evidence",
+            get(missions::mission_evidence_handler),
+        )
         .route(
             "/api/missions/:id/approve",
             post(missions::approve_mission_handler),
@@ -352,11 +363,27 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/projects/:name/manager",
             post(projects::get_or_create_project_manager),
         )
+        // The Git page: the project repositories, their branches, graph and operations.
+        .route("/api/git/repos", get(git::list_repos))
+        .route("/api/git/prs", get(git::all_prs))
+        .route("/api/git/repos/:id", get(git::repo_detail))
+        .route("/api/git/repos/:id/prs", get(git::repo_prs))
+        .route("/api/git/repos/:id/graph", get(git::repo_graph))
+        .route("/api/git/repos/:id/commits/:hash", get(git::repo_commit))
+        .route("/api/git/repos/:id/diff", post(git::repo_diff))
+        .route("/api/git/repos/:id/history", get(git::repo_history))
+        .route("/api/git/repos/:id/op", post(git::repo_op))
+        .route("/api/git/repos/:id/pr-prefill", get(git::pr_prefill))
+        .route("/api/git/repos/:id/pr", post(git::create_pr))
         .route("/api/projects/owners", get(projects::project_owners))
         .route("/api/projects/managers", get(projects::managers_status))
         .route(
             "/api/projects/:name/manager/wake",
             post(projects::schedule_manager_wake),
+        )
+        .route(
+            "/api/projects/:name/manager/watch",
+            post(projects::watch_pull_request),
         )
         .route("/api/projects/:name/docker", get(projects::project_docker))
         .route(

@@ -48,3 +48,24 @@
 .tauri-macos .tsh-root[data-collapsed="true"] [data-testid="shell-top-bar"] {
   padding-left: 40px;
 }
+
+/* Phones: iOS zooms into any focused field under 16px, which breaks the pinned layout, so fields are
+   16px there; taps don't wait for a double-tap; the page itself never rubber-bands or scrolls sideways. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}

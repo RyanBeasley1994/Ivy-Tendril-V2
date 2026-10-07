@@ -16,6 +16,7 @@ import { Card, Dot, GhostButton, Label, Pill, PrimaryButton, Seg, type Tone } fr
 import { ChatView } from "../ChatView";
 import { useMissions } from "./ProjectsHomeView";
 import { MissionGraph, MissionRun } from "./MissionRun";
+import { ModelsPanel } from "./ModelsPanel";
 
 interface Props {
   project: ProjectSummary;
@@ -24,6 +25,8 @@ interface Props {
   onOpenMission: (missionId: string) => void;
   onOpenJob: (jobId: string) => void;
   onOpenPlan: (planId: string) => void;
+  /** Opens the Git page on this project's repositories. */
+  onOpenGit?: () => void;
 }
 
 type Status = ReturnType<typeof projectStatus>;
@@ -64,7 +67,7 @@ const useAsync = <T,>(load: () => Promise<T>, deps: React.DependencyList, interv
  * The project page: the manager chat on the left half, always mounted so a running conversation is
  * never torn down, and the project's panels on the right half, in tabs.
  */
-export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMission, onOpenJob, onOpenPlan }) => {
+export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMission, onOpenJob, onOpenPlan, onOpenGit }) => {
   const [tab, setTab] = React.useState<Tab>("overview");
   const [side, setSide] = React.useState<Side>("chat");
   const [runId, setRunId] = React.useState<string | null>(null);
@@ -111,24 +114,30 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
     { value: "overview", label: "Overview" },
     { value: "missions", label: "Missions", count: status.live.length },
     { value: "tasks", label: "Tasks", count: status.taskCount },
+    { value: "models", label: "Models" },
     { value: "runtime", label: "Runtime" },
     { value: "memory", label: "Memory" },
   ];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="project-view">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border/70 px-5 py-3">
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/70 px-3 py-2.5 lg:flex-nowrap lg:px-5 lg:py-3">
         <GhostButton size="sm" onClick={onBack} aria-label="Back to projects">
           <ArrowLeft className="size-3.5" aria-hidden="true" />
-          Projects
+          <span className="hidden sm:inline">Projects</span>
         </GhostButton>
-        <h1 className="m-0 text-[18px] font-semibold tracking-[-0.02em] text-foreground">{project.name}</h1>
+        <h1 className="m-0 min-w-0 truncate text-[18px] font-semibold tracking-[-0.02em] text-foreground">{project.name}</h1>
         <Pill tone={status.busy ? "ok" : "mute"} dot live={status.busy}>
           {status.busy ? "Working" : "Idle"}
         </Pill>
+        {onOpenGit && (
+          <GhostButton size="sm" className="ml-auto shrink-0" onClick={onOpenGit} title="Branches, commits and uncommitted work in this project's repositories">
+            Git
+          </GhostButton>
+        )}
         {/* Below `lg` there is room for one half at a time. */}
         <Seg<Side>
-          className="ml-auto lg:hidden"
+          className="order-last w-full lg:hidden [&>*]:flex-1"
           label="Show"
           value={side}
           onChange={setSide}
@@ -196,6 +205,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
                 <MissionsPanel project={project} missions={missions} onOpen={openRun} />
               ))}
             {tab === "tasks" && <TasksPanel status={status} onOpenJob={onOpenJob} />}
+            {tab === "models" && <ModelsPanel project={project} missions={missions} />}
             {tab === "runtime" && <RuntimePanel project={project} />}
             {tab === "memory" && <MemoryPanel project={project} />}
           </div>
@@ -549,6 +559,14 @@ const MemoryPanel: React.FC<{ project: ProjectSummary }> = ({ project }) => {
 
 /* ------------------------------------------------------------- manager chat */
 
+/** What is worth asking a project manager, in place of the generic chat's suggestions. */
+const MANAGER_PROMPTS = [
+  { label: "What's the state of things?", prompt: "Give me a quick status: what's running, what's stuck, and what needs me." },
+  { label: "What should we build next?", prompt: "Looking at this project, what are the most valuable next things to build? Suggest three and recommend one." },
+  { label: "Check my open PRs", prompt: "Check my open pull requests and their CI. Fix anything that's red by delegating it, and tell me what you did." },
+  { label: "Tidy up the repo", prompt: "Look for stale branches, old worktrees and finished missions that can be cleaned up, and tell me what you'd remove." },
+];
+
 const MANAGER_COMMANDS = [{ name: "/clear", description: "Start the conversation over" }];
 
 /** The briefing and engine notes are instructions the manager reads, not part of the conversation. */
@@ -618,6 +636,7 @@ const ManagerChat: React.FC<{
       hideMessage={isManagerNote}
       onCommand={onCommand}
       commands={MANAGER_COMMANDS}
+      samplePrompts={MANAGER_PROMPTS}
       draftPrompt={draft}
     />
   );

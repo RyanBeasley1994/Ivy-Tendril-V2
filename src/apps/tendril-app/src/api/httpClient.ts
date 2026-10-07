@@ -1258,11 +1258,13 @@ export const httpClient: TendrilClient = {
       throw bridgeError("NOT_FOUND", `Tendril will not serve '${path}' (${response.status})`);
     }
     const contentType = (response.headers.get("content-type") ?? "").split(";")[0].trim();
-    if (!contentType.startsWith("image/") && contentType !== "application/pdf") {
+    const isVideo = contentType.startsWith("video/");
+    if (!contentType.startsWith("image/") && contentType !== "application/pdf" && !isVideo) {
       throw bridgeError("VALIDATION_ERROR", `'${path}' is not a previewable file`);
     }
     const blob = await response.blob();
-    if (blob.size > MAX_PREVIEW_BYTES) {
+    // A recording attached as evidence may be larger than an image; the evidence command caps it at 48 MB.
+    if (blob.size > (isVideo ? 48 * 1024 * 1024 : MAX_PREVIEW_BYTES)) {
       throw bridgeError("VALIDATION_ERROR", `'${path}' is too large to preview`);
     }
     return blobToDataUrl(new Blob([blob], { type: contentType }));

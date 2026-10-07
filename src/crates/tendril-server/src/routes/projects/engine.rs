@@ -1,12 +1,13 @@
-//! A project's engine: the coding agent and model its manager and missions run on.
+//! A project's engines: the coding agent and model each role runs on, set one role at a time.
 //!
-//! Switching it (say, from Claude to a local model when Claude is rate-limited) is one call that
-//! changes everything in the project at once: the manager's own next turns, every live mission's
-//! role agents from their next job, and the guidance the manager follows for anything new. The job
-//! running at the moment of the switch keeps the agent it started on.
+//! * `GET /api/projects/:name/engine`  -> `{ roles: { worker: { agent, model?, effort? }, ... } }`
+//! * `PUT /api/projects/:name/engine`  body `{ roles: { worker: { agent, model?, effort? } | null, ... } }`
+//!   sets each role it names and clears the ones sent as `null`; roles it does not name are untouched.
 //!
-//! * `GET  /api/projects/:name/engine`
-//! * `PUT  /api/projects/:name/engine`  body `{ "agent", "model"?, "effort"? }`
+//! A change takes effect everywhere in the project at once, and can be made at any time (say, moving a
+//! project to a local model while Claude is rate-limited): the manager's own next turns, every live
+//! mission's matching roles from their next job, new missions, and new plan jobs. A job already
+//! running keeps the agent it started on.
 
 use crate::state::AppState;
 use axum::extract::{Path, State};
@@ -14,25 +15,18 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
+use std::collections::BTreeMap;
 use std::sync::Arc;
+use tendril_core::agents::project_engine::{apply_mission_roles, ProjectEngine, ROLES};
 use tendril_core::chat::manager_brief::manager_session_id;
 use tendril_core::chat::ChatMessage;
-use tendril_core::config::{get_project_root_dir, load_config};
-use tendril_core::missions::model::{MissionAgents, RoleAgent};
+use tendril_core::config::load_config;
+use tendril_core::missions::model::RoleAgent;
 use tendril_core::missions::service;
 use tendril_core::missions::store::list_missions;
 use uuid::Uuid;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Engine {
-    pub agent: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub effort: Option<String>,
-}
 
 fn error(status: StatusCode, message: impl Into<String>) -> Response {
     (status, Json(json!({ "error": message.into() }))).into_response()
@@ -50,16 +44,6 @@ fn project_name(state: &AppState, name: &str) -> Result<String, Response> {
         .ok_or_else(|| error(StatusCode::NOT_FOUND, format!("Project '{name}' not found")))
 }
 
-fn engine_file(state: &AppState, project: &str) -> std::path::PathBuf {
-    get_project_root_dir(&state.tendril_home, project).join("engine.json")
-}
-
-fn read_engine(state: &AppState, project: &str) -> Option<Engine> {
-    std::fs::read_to_string(engine_file(state, project))
-        .ok()
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-}
-
 pub async fn get_project_engine(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
@@ -68,105 +52,108 @@ pub async fn get_project_engine(
         Ok(p) => p,
         Err(r) => return r,
     };
-    Json(json!({ "engine": read_engine(&state, &project) })).into_response()
+    let engine = ProjectEngine::load(&state.tendril_home, &project);
+    Json(json!({ "roles": engine.roles })).into_response()
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetEngineRequest {
+    /// A role name to its new engine, or `null` to put that role back on the default.
+    pub roles: BTreeMap<String, Option<RoleAgent>>,
 }
 
 pub async fn set_project_engine(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
-    Json(engine): Json<Engine>,
+    Json(body): Json<SetEngineRequest>,
 ) -> impl IntoResponse {
     let project = match project_name(&state, &name) {
         Ok(p) => p,
         Err(r) => return r,
     };
-    if engine.agent.trim().is_empty() {
-        return error(StatusCode::BAD_REQUEST, "An agent is required");
+    if let Some(bad) = body.roles.keys().find(|k| !ROLES.contains(&k.as_str())) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            format!("'{bad}' is not a role; the roles are {}", ROLES.join(", ")),
+        );
     }
 
-    let file = engine_file(&state, &project);
-    if let Some(dir) = file.parent() {
-        let _ = std::fs::create_dir_all(dir);
+    let mut engine = ProjectEngine::load(&state.tendril_home, &project);
+    for (role, value) in &body.roles {
+        engine.set(role, value.clone());
     }
-    if let Err(e) = std::fs::write(&file, serde_json::to_vec_pretty(&engine).unwrap_or_default()) {
+    if let Err(e) = engine.save(&state.tendril_home, &project) {
         return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
     }
 
-    let role = RoleAgent {
-        agent: engine.agent.clone(),
-        model: engine.model.clone(),
-        effort: engine.effort.clone(),
-    };
+    let changed: Vec<&str> = body.roles.keys().map(String::as_str).collect();
+    let mission_roles: Vec<&str> = changed.iter().copied().filter(|r| *r != "manager").collect();
 
-    // Every live mission in the project, from its next job.
-    let mut updated = 0usize;
-    for file in list_missions(&state.mission_driver.paths().missions_dir) {
-        if !file.mission.project.eq_ignore_ascii_case(&project) || file.mission.state.is_terminal() {
-            continue;
-        }
-        let agents = MissionAgents {
-            planner: Some(role.clone()),
-            worker: Some(role.clone()),
-            judge: Some(role.clone()),
-            validator: Some(role.clone()),
-        };
-        if service::set_agents(std::path::Path::new(&file.folder_path), agents).is_ok() {
-            updated += 1;
-        }
-    }
-
-    // The manager itself, and a note it reads on its next turn so new work uses the same engine.
-    let manager_id = manager_session_id(&project);
-    let mut manager_updated = false;
-    if state
-        .chat_manager
-        .set_session_agent(
-            &manager_id,
-            &engine.agent,
-            engine.model.as_deref(),
-            engine.effort.as_deref(),
-        )
-        .await
-        .is_ok()
-    {
-        manager_updated = true;
-        let harness = role.describe();
-        let spec = {
-            let mut s = engine.agent.clone();
-            if let Some(m) = &engine.model {
-                s.push(':');
-                s.push_str(m);
+    // Every live mission in the project follows, from its next job.
+    let mut missions_updated = 0usize;
+    if !mission_roles.is_empty() {
+        for file in list_missions(&state.mission_driver.paths().missions_dir) {
+            if !file.mission.project.eq_ignore_ascii_case(&project) || file.mission.state.is_terminal() {
+                continue;
             }
-            s
-        };
-        let note = format!(
-            "Engine switched by the operator: this project now runs on {harness}. Live missions \
-             were moved to it from their next job. For anything new, pass \
-             `--planner {spec} --worker {spec} --judge {spec} --validator {spec}` to \
-             `tendril mission create`, and start plan jobs as usual (they use the configured \
-             default agent unless told otherwise). Do not switch back unless the operator asks."
-        );
-        let _ = state
-            .chat_manager
-            .add_message(
-                &manager_id,
-                ChatMessage {
-                    id: Uuid::new_v4().to_string(),
-                    role: "system".to_string(),
-                    content: note,
-                    timestamp: Utc::now(),
-                    agent_id: None,
-                    model_id: None,
-                    raw_stream: None,
-                    effort: None,
-                },
-            )
-            .await;
+            let merged = apply_mission_roles(file.mission.agents.clone(), &mission_roles, &engine);
+            if service::set_agents(std::path::Path::new(&file.folder_path), merged).is_ok() {
+                missions_updated += 1;
+            }
+        }
     }
+
+    // The manager's own chat, if its role changed. Cleared means "the configured default agent".
+    let mut manager_updated = false;
+    if changed.contains(&"manager") {
+        let manager_id = manager_session_id(&project);
+        let (agent, model, effort) = match engine.role("manager") {
+            Some(r) => (r.agent.clone(), r.model.clone(), r.effort.clone()),
+            None => (state.settings_snapshot().settings.coding_agent.clone(), None, None),
+        };
+        if state
+            .chat_manager
+            .set_session_agent(&manager_id, &agent, model.as_deref(), effort.as_deref())
+            .await
+            .is_ok()
+        {
+            manager_updated = true;
+        }
+    }
+
+    // A short note the manager reads, so it knows why things are running where they are.
+    let summary: Vec<String> = changed
+        .iter()
+        .map(|r| match engine.role(r) {
+            Some(v) => format!("{r}: {}", v.describe()),
+            None => format!("{r}: default"),
+        })
+        .collect();
+    let _ = state
+        .chat_manager
+        .add_message(
+            &manager_session_id(&project),
+            ChatMessage {
+                id: Uuid::new_v4().to_string(),
+                role: "system".to_string(),
+                content: format!(
+                    "Engine switched by the operator ({}). Live missions follow from their next job, and \
+                     new missions and plan jobs pick it up automatically. You do not need to pass agent \
+                     flags.",
+                    summary.join("; ")
+                ),
+                timestamp: Utc::now(),
+                agent_id: None,
+                model_id: None,
+                raw_stream: None,
+                effort: None,
+            },
+        )
+        .await;
 
     Json(json!({
-        "engine": engine,
-        "missionsUpdated": updated,
+        "roles": engine.roles,
+        "missionsUpdated": missions_updated,
         "managerUpdated": manager_updated,
     }))
     .into_response()

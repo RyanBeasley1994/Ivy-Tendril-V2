@@ -63,6 +63,7 @@ import { GitBranchSection } from "./settings/GitBranchSection";
 import { LevelsSection } from "./settings/LevelsSection";
 import { SecurityTunnelingSection } from "./settings/SecurityTunnelingSection";
 import { RemoteServerSection } from "./settings/RemoteServerSection";
+import { PhoneNotificationsSection } from "./settings/PhoneNotificationsSection";
 
 interface SettingsViewProps {
   serviceInfo: ServiceInfo | null;
@@ -1124,6 +1125,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </form>
                 </SettingsSection>
               )}
+
+              {on(SettingsTag.Notifications) && <PhoneNotificationsSection />}
 
               {securitySelected && !isEditingConfig && !isAddingProject && (
                 <>

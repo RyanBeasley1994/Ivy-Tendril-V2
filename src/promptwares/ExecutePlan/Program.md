@@ -496,6 +496,25 @@ attempts: <number>
 
 The `result` field in the frontmatter MUST be one of: `Pass`, `Fail`, or `Skipped`. A verification is not complete without both its report file AND the `tendril plan set-verification` CLI call.
 
+### 7.4. Record Evidence (user-facing changes)
+
+If this plan changes anything a person sees or does (a page, a screen, a form, a flow, a visible API response), prove it works by showing it. "The tests passed" is not what a reviewer wants to see for UI work.
+
+Report status: `tendril job status TendrilJobId --message="Recording evidence..."`
+
+1. **Run the real thing** in the worktree: start the app or service the way the project's README or `AGENTS.md` says, with fake or seed data if it needs any.
+2. **Drive it like a user** and capture what you did. Use whatever the repository already has for browser automation (Playwright is common: `page.screenshot(...)`, and `recordVideo` in the browser context for a clip). If the repository has none, use the simplest tool available on the machine. Do not add a dependency to the project just for evidence.
+3. **Capture, at least:** one screenshot of each state the plan changed or added, and, for a multi-step flow (login, then trade, then confirmation), one short recording of the whole flow. Keep clips under about 30 seconds and files under 40 MB.
+4. **Attach each file**, with a caption saying what it shows and the step you were on:
+
+   ```bash
+   tendril evidence add <file> --plan <plan-id> --caption "The order ticket after a market buy" --step "Placed a trade"
+   ```
+
+   It copies the file into the plan's `Artifacts`; delete your scratch copies afterwards. List what is attached with `tendril evidence list --plan <plan-id>`.
+5. **Be honest about gaps.** If you could not run it (a missing service, no display, no credentials), do not skip this silently: say in the summary exactly what you could not capture and why. A change with nothing but a gap note is judged accordingly.
+6. **Changes with nothing to see** (an internal refactor, a dependency bump, tests only) need no evidence: write `N/A` in the summary's Evidence section.
+
 ### 7.5. Generate Summary
 
 Report status: `tendril job status TendrilJobId --message="Generating summary..."`
@@ -518,6 +537,10 @@ The summary should follow this structure:
 ## Files Modified
 
 <Bulleted list of key files changed, grouped by category. Don't list every file — focus on the important ones.>
+
+## Evidence
+
+<What you attached with `tendril evidence add` and what each shows, or what you could not capture and why, or "N/A — nothing user-facing.">
 
 ## Manual Testing
 

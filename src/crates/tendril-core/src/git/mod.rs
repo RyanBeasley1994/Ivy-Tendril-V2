@@ -13,6 +13,7 @@ pub mod service;
 pub mod sync;
 pub mod worktree;
 pub mod worktree_log;
+pub mod workspace;
 pub mod worktree_reaper;
 
 pub use clone::*;

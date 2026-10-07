@@ -70,7 +70,8 @@
     "job": "Job {{id}}",
     "insights": "Insights",
     "missions": "Missions",
-    "projects": "Projects"
+    "projects": "Projects",
+    "git": "Git"
   },
   "navigation": {
     "errors": {
@@ -90,7 +91,9 @@
       "jobs": "Jobs",
       "insights": "Insights",
       "missions": "Missions",
-      "projects": "Projects"
+      "projects": "Projects",
+      "git": "Git",
+      "manager": "Manager"
     },
     "navGroup": {
       "overview": "Overview",
@@ -279,7 +282,7 @@
     "forwards_other": "{{count}} ports",
     "forwardsNone": "Ports",
     "forwardsTooltip": "Port forwards: open ports from the server on this machine",
-    "search": "Search plans",
+    "search": "Jump to a project or repo",
     "agentSession": "Agent session",
     "inbox": "Open inbox",
     "agentsWorking_one": "{{count}} agent working",

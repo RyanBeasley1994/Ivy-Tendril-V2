@@ -230,6 +230,15 @@ impl ChatExecutionManager {
                         "TENDRIL_CHAT_SESSION_ID".to_string(),
                         s_id.clone(),
                     )]),
+                    // A project manager can only delegate and look: the agent harness refuses the rest.
+                    // `<TENDRIL_HOME>/manager-guard.off` lifts that, for an operator who wants it to.
+                    allowed_tools: if super::super::manager_brief::is_manager_session(&s_id)
+                        && !mgr.tendril_home.join("manager-guard.off").exists()
+                    {
+                        super::super::manager_brief::manager_allowed_tools()
+                    } else {
+                        Vec::new()
+                    },
                     ..Default::default()
                 };
 

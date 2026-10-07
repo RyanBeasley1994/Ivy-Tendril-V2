@@ -1,8 +1,8 @@
 /**
  * The agent catalogue, plus the two probes V1's Coding Agent pane runs against a live agent.
  *
- * `listAgents` is pure `invoke` because the catalogue is static data the daemon composes from
- * config. The other two reach a provider, so they follow `providerModelsApi`'s transport: Tauri IPC
+ * `listAgents` is static data the daemon composes from config, so it is a plain GET in a browser. The
+ * other two reach a provider, so they follow `providerModelsApi`'s transport: Tauri IPC
  * inside the shell, because only the Rust side holds the daemon's bearer secret, and `fetch`
  * outside it, which the dev server proxies. The two are exclusive rather than a fallback chain — a
  * failed `invoke` inside the shell is a real failure, and retrying it over `fetch` would only
@@ -93,7 +93,13 @@ export function resetAgentProbeTransports(): void {
 
 export const agentsApi = {
   async listAgents(): Promise<AgentOption[]> {
-    return await invoke<AgentOption[]>("cmd_list_agents");
+    if (isTauri()) return await invoke<AgentOption[]>("cmd_list_agents");
+
+    // In a browser the web UI's proxy fronts the daemon, so the same catalogue is a plain GET.
+    const path = "/api/agents";
+    const response = await fetch(path, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(await readError(response, path));
+    return (await response.json()) as AgentOption[];
   },
 
   /**

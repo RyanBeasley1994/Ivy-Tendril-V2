@@ -8,6 +8,19 @@ import {
   type ReviewActionSession,
 } from "./events";
 import type {
+  CommitBrief,
+  CommitDetail,
+  DiffTarget,
+  FileDiff,
+  Graph,
+  OpResult,
+  PrPrefill,
+  RepoCard,
+  RepoDetail,
+  RepoOp,
+  RepoPrs,
+} from "../types/git";
+import type {
   AddedProjectRepo,
   AgentCostBreakdown,
   Annotation,
@@ -81,6 +94,9 @@ import type {
   DiscoveredRepoAsset,
   ProjectMemoryEntry,
   ProjectDocker,
+  EngineChoice,
+  MissionEvidence,
+  ProjectEngineRoles,
   ProjectMemoryFile,
   RepoAssetKind,
 } from "../types/projectAssets";
@@ -1004,6 +1020,125 @@ export const tauriClient = {
      `EditProjectMemorySheet`) and `ImportRepoAssetsDialog`'s scan/import. The daemon owns every path:
      a memory file is addressed by its bare name, and a repo is re-scanned on import rather than
      trusted from the client. */
+
+  /* --- Git page ----------------------------------------------------------------------------------
+     `/api/git/**`. A repository is only ever named by the opaque id the daemon gave it. */
+
+  async gitRepos(this: void): Promise<RepoCard[]> {
+    const res = await invokeOrFetch<{ repos: RepoCard[] }>("cmd_git_repos", {}, "/api/git/repos");
+    return res.repos ?? [];
+  },
+
+  /** Open pull requests per repository id, loaded apart from the cards because `gh` is slow. */
+  async gitPrs(this: void): Promise<Record<string, RepoPrs>> {
+    const res = await invokeOrFetch<{ repos: Record<string, RepoPrs> }>("cmd_git_prs", {}, "/api/git/prs");
+    return res.repos ?? {};
+  },
+
+  async gitRepo(this: void, id: string): Promise<RepoDetail> {
+    return invokeOrFetch<RepoDetail>("cmd_git_repo", { id }, `/api/git/repos/${encodeURIComponent(id)}`);
+  },
+
+  async gitGraph(this: void, id: string, limit: number, branch?: string): Promise<Graph> {
+    const query = `limit=${limit}${branch ? `&branch=${encodeURIComponent(branch)}` : ""}`;
+    return invokeOrFetch<Graph>(
+      "cmd_git_graph",
+      { id, limit, branch: branch ?? null },
+      `/api/git/repos/${encodeURIComponent(id)}/graph?${query}`,
+    );
+  },
+
+  async gitCommit(this: void, id: string, hash: string): Promise<CommitDetail> {
+    return invokeOrFetch<CommitDetail>(
+      "cmd_git_commit",
+      { id, hash },
+      `/api/git/repos/${encodeURIComponent(id)}/commits/${encodeURIComponent(hash)}`,
+    );
+  },
+
+  async gitDiff(this: void, id: string, target: DiffTarget, path: string, origPath?: string): Promise<FileDiff> {
+    const request = { target, path, origPath };
+    return invokeOrFetch<FileDiff>(
+      "cmd_git_diff",
+      { id, request },
+      `/api/git/repos/${encodeURIComponent(id)}/diff`,
+      { method: "POST", body: JSON.stringify(request) },
+    );
+  },
+
+  async gitHistory(this: void, id: string, path: string, limit = 100): Promise<CommitBrief[]> {
+    const res = await invokeOrFetch<{ commits: CommitBrief[] }>(
+      "cmd_git_history",
+      { id, path, limit },
+      `/api/git/repos/${encodeURIComponent(id)}/history?path=${encodeURIComponent(path)}&limit=${limit}`,
+    );
+    return res.commits ?? [];
+  },
+
+  /** Runs one operation. A stop on conflicts is a resolved `OpResult` with `outcome.ok === false`. */
+  async gitOp(this: void, id: string, op: RepoOp): Promise<OpResult> {
+    return invokeOrFetch<OpResult>(
+      "cmd_git_op",
+      { id, op },
+      `/api/git/repos/${encodeURIComponent(id)}/op`,
+      { method: "POST", body: JSON.stringify(op) },
+    );
+  },
+
+  async gitPrPrefill(this: void, id: string, head: string, base: string): Promise<PrPrefill> {
+    return invokeOrFetch<PrPrefill>(
+      "cmd_git_pr_prefill",
+      { id, head, base },
+      `/api/git/repos/${encodeURIComponent(id)}/pr-prefill?head=${encodeURIComponent(head)}&base=${encodeURIComponent(base)}`,
+    );
+  },
+
+  async gitCreatePr(
+    this: void,
+    id: string,
+    request: { head: string; base: string; title: string; body: string; draft: boolean },
+  ): Promise<{ url: string }> {
+    return invokeOrFetch<{ url: string }>(
+      "cmd_git_create_pr",
+      { id, request },
+      `/api/git/repos/${encodeURIComponent(id)}/pr`,
+      { method: "POST", body: JSON.stringify(request) },
+    );
+  },
+
+  /** The screenshots and recordings a mission's workers attached to prove their changes, by milestone. */
+  async getMissionEvidence(this: void, missionId: string): Promise<MissionEvidence> {
+    return invokeOrFetch<MissionEvidence>(
+      "cmd_mission_evidence",
+      { id: missionId },
+      `/api/missions/${encodeURIComponent(missionId)}/evidence`,
+    );
+  },
+
+  /** The engine each role of a project runs on; a role not listed runs on the default. */
+  async getProjectEngine(this: void, projectName: string): Promise<ProjectEngineRoles> {
+    const res = await invokeOrFetch<{ roles: ProjectEngineRoles }>(
+      "cmd_get_project_engine",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/engine`,
+    );
+    return res.roles ?? {};
+  },
+
+  /** Sets the engine of the named roles; `null` puts a role back on the default. */
+  async setProjectEngine(
+    this: void,
+    projectName: string,
+    roles: Record<string, EngineChoice | null>,
+  ): Promise<ProjectEngineRoles> {
+    const res = await invokeOrFetch<{ roles: ProjectEngineRoles }>(
+      "cmd_set_project_engine",
+      { projectName, roles },
+      `/api/projects/${encodeURIComponent(projectName)}/engine`,
+      { method: "PUT", body: JSON.stringify({ roles }) },
+    );
+    return res.roles ?? {};
+  },
 
   /** Whether each project's manager is mid-turn, and when its conversation last moved. */
   async getManagersStatus(this: void): Promise<Record<string, { working: boolean; updatedAt: string | null }>> {

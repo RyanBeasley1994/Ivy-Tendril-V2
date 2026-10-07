@@ -9,6 +9,58 @@
 /// Session ids of managers all start with this, so a manager is found by project name alone.
 pub const MANAGER_SESSION_PREFIX: &str = "manager-";
 
+/// Whether a chat session is a project manager's.
+pub fn is_manager_session(session_id: &str) -> bool {
+    session_id.starts_with(MANAGER_SESSION_PREFIX)
+}
+
+/// What a manager's agent may run, enforced by the agent harness itself rather than asked for in the
+/// briefing: the `tendril` CLI, reading and searching, a few read-only `git` and `gh` queries, and
+/// creating throwaway files under `/tmp`. There is deliberately no `rm`: a prefix rule such as
+/// `rm -f /tmp/*` also matches `rm -f /tmp/x /some/repo/file`, so it cannot be made safe. Everything else (editing files, builds, tests, commits, pushes,
+/// merges, arbitrary shell) is refused, so the manager can only delegate.
+///
+/// Claude runs these rules in its "don't ask" mode, where an unlisted command is refused outright,
+/// including compound commands (`a && b`) and pipes. Other agents do not render the list, so for them
+/// the briefing is still the only guard.
+pub fn manager_allowed_tools() -> Vec<String> {
+    [
+        "Read",
+        "Glob",
+        "Grep",
+        "WebFetch",
+        "WebSearch",
+        "Bash(tendril *)",
+        "Bash(git log *)",
+        "Bash(git status *)",
+        "Bash(git diff *)",
+        "Bash(git show *)",
+        "Bash(git branch --list *)",
+        "Bash(git remote -v)",
+        "Bash(gh pr view *)",
+        "Bash(gh pr list *)",
+        "Bash(gh pr checks *)",
+        "Bash(gh run view *)",
+        "Bash(gh run list *)",
+        "Bash(gh issue view *)",
+        "Bash(ls *)",
+        "Bash(cat *)",
+        "Bash(head *)",
+        "Bash(tail *)",
+        "Bash(grep *)",
+        "Bash(wc *)",
+        "Bash(pwd)",
+        "Bash(which *)",
+        "Bash(test *)",
+        "Bash(df *)",
+        "Bash(touch /tmp/*)",
+        "Bash(mkdir -p /tmp/*)",
+    ]
+    .iter()
+    .map(|t| (*t).to_string())
+    .collect()
+}
+
 /// The deterministic session id for a project's manager.
 pub fn manager_session_id(project: &str) -> String {
     let slug: String = project
@@ -19,7 +71,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 7;
+pub const BRIEFING_VERSION: u32 = 10;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -98,7 +150,7 @@ that looks small or urgent: resolving merge conflicts, rebasing, fixing a failin
 a dependency, renaming a file, updating docs.
 
 **You never**, in this chat:
-- edit, create or delete files in the repositories
+- edit, create or delete files in the repositories (your own temp files elsewhere are fine, see below)
 - run builds, tests, linters or formatters
 - resolve conflicts, rebase, merge, cherry-pick, commit or push
 - debug or fix code
@@ -109,6 +161,9 @@ branch). Telling the operator "I've handed this to a worker" is correct; doing i
 
 What you **may** run yourself, and only briefly:
 - the `tendril` CLI: plans, jobs, missions, projects, memory
+- small throwaway checks of your own: create a file or folder under `/tmp` to test that something is
+  writable. Your tools are limited to delegating and looking, and anything else is refused. When a
+  command is refused, don't narrate it or fight it: use another way, or hand it to a worker
 - a few quick read-only checks so a task is well specified: a repo's top-level layout, one PR
   (`gh pr view`), one failing check (`gh run view`), one file. **Stop after a handful of commands.**
 
@@ -156,7 +211,10 @@ Then create them. Do not spend a long turn exploring before anything is queued.
    fixes it. You only run when something prompts you, so **whenever you would say "I'll check on X",
    "I'll follow up", or "I'll keep an eye on it", schedule it instead**:
    `tendril manager wake --project {project} --in 20m --note "PR 46, run 123: if red, delegate a fix"`.
-   Never promise to watch something without a wake-up. Never give a worker a wait longer than the job
+   For a pull request's CI, don't guess a time: after a PR is opened or merged, run
+   `tendril manager watch-pr --project {project} --pr 46`. The daemon checks GitHub itself and wakes you
+   with the result once every check has finished, even if the PR merged first. Use a timed wake-up for
+   anything else. Never promise to watch something without one of the two. Never give a worker a wait longer than the job
    timeout (a CI run can take 45 minutes): delegate, then set a wake-up and let it run.
 7. **UI work starts with research.** Before any UI mission or plan, gather design references (Dribbble
    and similar, plus what the project's memory says about its visual style) and put the links and the
@@ -211,6 +269,41 @@ mod tests {
         assert!(text.contains("How you talk"));
         // No policy: no dangling heading for it.
         assert!(!manager_briefing("Acme", &[], "", None).contains("own standing orders"));
+    }
+
+    #[test]
+    fn the_manager_guard_allows_delegating_and_nothing_that_edits() {
+        let allowed = manager_allowed_tools();
+        assert!(allowed.iter().any(|t| t == "Bash(tendril *)"));
+        assert!(is_manager_session(&manager_session_id("Monorepo-Propfirm")));
+        assert!(!is_manager_session("0d1f-some-chat"));
+        // Nothing that writes into a repository, builds, commits, merges or pushes.
+        for forbidden in ["Write", "Edit", "Bash(git commit", "Bash(git push", "Bash(git merge", "Bash(pnpm", "Bash(npm", "Bash(cargo", "Bash(rm *)", "Bash(sudo"] {
+            assert!(
+                !allowed.iter().any(|t| t == forbidden || t.starts_with(forbidden)),
+                "{forbidden} must not be allowed"
+            );
+        }
+        // No deleting at all, and nothing that can delete through another command (find -exec, branch -D).
+        assert!(!allowed.iter().any(|t| t.starts_with("Bash(rm") || t.starts_with("Bash(find") || t == "Bash(git branch *)"));
+    }
+
+    #[test]
+    fn claude_runs_a_manager_in_dont_ask_mode_with_only_the_allow_list() {
+        use crate::agents::providers::{build_agent_spec, AgentLaunchConfig};
+        let spec = build_agent_spec(
+            "claude",
+            &AgentLaunchConfig {
+                prompt: "hi".into(),
+                allowed_tools: manager_allowed_tools(),
+                ..Default::default()
+            },
+        );
+        let args = spec.args.join(" ");
+        assert!(args.contains("--permission-mode dontAsk"), "unlisted commands must be refused: {args}");
+        assert!(!args.contains("bypassPermissions") && !args.contains("--dangerously-skip-permissions"));
+        assert!(args.contains("Bash(tendril *)"));
+        assert!(!args.contains("Edit"), "the edit tool must not be offered: {args}");
     }
 
     #[test]

@@ -184,23 +184,6 @@ pub async fn project_docker(
     Json(json!({ "available": true, "containers": containers })).into_response()
 }
 
-/// The owner segment of a git remote: `github.com/<owner>/<repo>` in https, ssh and scp forms.
-fn remote_owner(url: &str) -> Option<String> {
-    let url = url.trim();
-    let path = if let Some((_, rest)) = url.split_once("://") {
-        rest.split_once('/')?.1
-    } else if let Some((_, rest)) = url.split_once(':') {
-        rest
-    } else {
-        return None;
-    };
-    let mut segments = path.split('/').filter(|s| !s.is_empty());
-    let owner = segments.next()?;
-    // `owner/repo` needs a repo after it; a lone segment is not an owner.
-    segments.next()?;
-    Some(owner.to_string())
-}
-
 /// `GET /api/projects/owners` — project name to the owner of its first repo's `origin` remote
 /// (`null` when the repo is local-only or has no remote).
 pub async fn project_owners(State(state): State<Arc<AppState>>) -> impl IntoResponse {
@@ -217,7 +200,7 @@ pub async fn project_owners(State(state): State<Arc<AppState>>) -> impl IntoResp
                     .await
                     .ok()
                     .filter(|o| o.status.success())
-                    .and_then(|o| remote_owner(&String::from_utf8_lossy(&o.stdout)))
+                    .and_then(|o| tendril_core::git::workspace::remote_owner(&String::from_utf8_lossy(&o.stdout)))
             }
             None => None,
         };
@@ -226,18 +209,6 @@ pub async fn project_owners(State(state): State<Arc<AppState>>) -> impl IntoResp
     Json(Value::Object(owners))
 }
 
-#[cfg(test)]
-mod owner_tests {
-    use super::remote_owner;
-
-    #[test]
-    fn parses_common_remote_forms() {
-        assert_eq!(remote_owner("https://github.com/acme/app.git\n").as_deref(), Some("acme"));
-        assert_eq!(remote_owner("git@github.com:acme/app.git").as_deref(), Some("acme"));
-        assert_eq!(remote_owner("ssh://git@github.com/acme/app").as_deref(), Some("acme"));
-        assert_eq!(remote_owner("/home/dev/app"), None);
-    }
-}
 
 /// `GET /api/projects/managers` — whether each project's manager is in the middle of a turn, and when
 /// its conversation last moved. A manager that has never been opened is simply not working.
@@ -280,4 +251,26 @@ pub async fn schedule_manager_wake(
         Ok(wake) => (StatusCode::OK, Json(json!(wake))).into_response(),
         Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     }
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct WatchPrRequest {
+    pub pr: u64,
+    #[serde(default)]
+    pub repo: Option<String>,
+}
+
+/// `POST /api/projects/:name/manager/watch` — the manager asks the daemon to watch a pull request's
+/// checks and wake it with the result once they have all finished.
+pub async fn watch_pull_request(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(body): Json<WatchPrRequest>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    let watch = crate::pr_watch::add_watch(&state.tendril_home, &project.name, body.pr, body.repo).await;
+    (StatusCode::OK, Json(json!(watch))).into_response()
 }

@@ -33,8 +33,13 @@ use tendril_core::security::host_policy::{is_allowed_host, strip_port};
 
 /// Extensions `GET /ivy/local-file` will serve, from `LocalFileGuardMiddleware.AllowedFileExtensions`.
 /// Anything else — including no extension at all — is a 404.
-pub const ALLOWED_FILE_EXTENSIONS: [&str; 10] = [
-    "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico", "avif", "pdf",
+///
+/// The four video extensions are evidence (`tendril evidence add`): a worker's recording of the real
+/// thing working. They are served whole, like everything else here, so a clip has to be small enough to
+/// load in one go (the evidence command refuses anything over 48 MB).
+pub const ALLOWED_FILE_EXTENSIONS: [&str; 14] = [
+    "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico", "avif", "pdf", "mp4", "webm", "mov",
+    "m4v",
 ];
 
 /// One `error!` line per process for an empty root list, matching `_loggedEmptyRoots`. Every request
@@ -286,4 +291,19 @@ pub struct ApprovedPath(pub std::path::PathBuf);
 struct ShareGrant {
     token: String,
     host: String,
+}
+
+#[cfg(test)]
+mod video_extension_tests {
+    use super::has_allowed_extension;
+
+    #[test]
+    fn evidence_recordings_are_served_and_other_media_is_still_not() {
+        for ok in ["/plans/00001-x/Artifacts/videos/flow.mp4", "clip.WEBM", "a.mov", "b.m4v"] {
+            assert!(has_allowed_extension(ok), "{ok} should be served");
+        }
+        for no in ["song.mp3", "movie.mkv", "archive.zip", "run.sh", ".mp4"] {
+            assert!(!has_allowed_extension(no), "{no} must stay blocked");
+        }
+    }
 }

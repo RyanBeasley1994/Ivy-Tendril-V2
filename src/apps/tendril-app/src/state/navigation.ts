@@ -114,6 +114,7 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
   // second scroll container inside the first.
   dashboard: app("dashboard", () => i18n.t("common:appTitles.dashboard"), { fullBleed: true }),
   projects: app("projects", () => i18n.t("common:appTitles.projects"), { fullBleed: true }),
+  git: app("git", () => i18n.t("common:appTitles.git"), { fullBleed: true }),
   plans: app("plans", () => i18n.t("common:appTitles.plans"), { fullBleed: true }),
   review: app("review", () => i18n.t("common:appTitles.review"), { fullBleed: true }),
   recommendations: app("recommendations", () => i18n.t("common:appTitles.recommendations")),

@@ -11,6 +11,7 @@ pub use commands::chat::*;
 pub use commands::config::*;
 pub use commands::dashboard::*;
 pub use commands::forward::*;
+pub use commands::git::*;
 pub use commands::github::*;
 pub use commands::inbox::*;
 pub use commands::missions::*;
@@ -274,6 +275,19 @@ pub fn run() {
             cmd_get_project_manager,
             cmd_project_owners,
             cmd_managers_status,
+            cmd_get_project_engine,
+            cmd_git_repos,
+            cmd_git_prs,
+            cmd_git_repo,
+            cmd_git_graph,
+            cmd_git_commit,
+            cmd_git_diff,
+            cmd_git_history,
+            cmd_git_op,
+            cmd_git_pr_prefill,
+            cmd_git_create_pr,
+            cmd_mission_evidence,
+            cmd_set_project_engine,
             cmd_project_docker,
             cmd_list_project_memory,
             cmd_get_project_memory,

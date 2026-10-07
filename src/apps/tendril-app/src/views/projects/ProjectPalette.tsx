@@ -1,7 +1,8 @@
 import React from "react";
-import { ArrowRight, CornerDownLeft, FolderGit2, History, LayoutGrid, Search, Settings, TrendingUp } from "lucide-react";
+import { ArrowRight, CornerDownLeft, FolderGit2, GitBranch, History, LayoutGrid, Search, Settings, TrendingUp } from "lucide-react";
 import { cn } from "@ivy-interactive/components/ui";
 import type { Job, ProjectSummary } from "../../types/api";
+import type { RepoCard } from "../../types/git";
 import { bridge } from "../../api/bridge";
 import { projectStatus } from "../../utils/projectStatus";
 import { useRecentProjects } from "../../state/recentProjects";
@@ -16,7 +17,7 @@ interface Props {
   /** The project page currently open, so its panels can be offered. */
   currentProject: string | null;
   onClose: () => void;
-  onNavigate: (nav: string) => void;
+  onNavigate: (nav: string, args?: unknown) => void;
 }
 
 interface Item {
@@ -51,6 +52,7 @@ const PANELS: { tab: ProjectTab; label: string }[] = [
   { tab: "overview", label: "Overview" },
   { tab: "missions", label: "Missions" },
   { tab: "tasks", label: "Tasks" },
+  { tab: "models", label: "Models: agent and model per role" },
   { tab: "runtime", label: "Runtime: ports and Docker" },
   { tab: "memory", label: "Memory" },
 ];
@@ -65,8 +67,11 @@ export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject
   const [owners, setOwners] = React.useState<Record<string, string | null>>({});
   const listRef = React.useRef<HTMLDivElement>(null);
 
+  const [repos, setRepos] = React.useState<RepoCard[]>([]);
+
   React.useEffect(() => {
     bridge.getProjectOwners().then(setOwners).catch(() => undefined);
+    bridge.gitRepos().then(setRepos).catch(() => undefined);
   }, []);
 
   const open = React.useCallback(
@@ -128,10 +133,36 @@ export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject
 
     const pages: { id: string; label: string; icon: React.ReactNode }[] = [
       { id: "projects", label: "All projects", icon: <FolderGit2 className="size-4" aria-hidden="true" /> },
+      { id: "git", label: "Git: all repositories", icon: <GitBranch className="size-4" aria-hidden="true" /> },
       { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="size-4" aria-hidden="true" /> },
       { id: "insights", label: "Insights", icon: <TrendingUp className="size-4" aria-hidden="true" /> },
       { id: "settings", label: "Settings", icon: <Settings className="size-4" aria-hidden="true" /> },
     ];
+    // Repositories, once something is typed: jump straight into a repo's workspace.
+    if (q) {
+      const matches = repos
+        .map((repo) => ({ repo, score: fuzzyScore(q, `${repo.name} ${repo.project} ${repo.summary?.branch ?? ""} git`) }))
+        .filter((m): m is { repo: RepoCard; score: number } => m.score !== null)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8);
+      for (const { repo } of matches) {
+        const s = repo.summary;
+        const dirty = s ? s.staged + s.unstaged + s.untracked : 0;
+        result.push({
+          id: `repo:${repo.id}`,
+          section: "Git repositories",
+          label: repo.name,
+          hint: repo.project,
+          detail: s ? `${s.branch ?? "detached"}${dirty ? ` · ${dirty} uncommitted` : ""}${s.ahead ? ` · ↑${s.ahead}` : ""}${s.behind ? ` · ↓${s.behind}` : ""}` : "unreadable",
+          icon: <GitBranch className="size-4" aria-hidden="true" />,
+          run: () => {
+            onNavigate("git", { repo: repo.id });
+            onClose();
+          },
+        });
+      }
+    }
+
     for (const page of pages) {
       if (fuzzyScore(q, page.label) === null) continue;
       result.push({
@@ -146,7 +177,7 @@ export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject
       });
     }
     return result;
-  }, [projects, missions, jobs, activity, owners, query, recents, currentProject, open, onNavigate, onClose]);
+  }, [projects, missions, jobs, activity, owners, repos, query, recents, currentProject, open, onNavigate, onClose]);
 
   React.useEffect(() => setIndex(0), [query]);
   React.useEffect(() => {

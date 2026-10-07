@@ -287,6 +287,28 @@ pub struct StartJobQuery {
 /// Longest idempotency key accepted, so an unbounded client string never reaches the column.
 const MAX_IDEMPOTENCY_KEY_LEN: usize = 200;
 
+/// The project's engine for this job, from the project the job's plan (or description) belongs to.
+fn project_engine_for(
+    state: &AppState,
+    args: &tendril_core::models::JobArgs,
+) -> Option<tendril_core::missions::model::RoleAgent> {
+    use tendril_core::agents::project_engine::ProjectEngine;
+    use tendril_core::models::JobArgs;
+    let project = match args {
+        JobArgs::CreatePlan(a) => a.project.clone(),
+        other => {
+            let folder = other.plan_folder()?;
+            let path = std::path::PathBuf::from(folder);
+            let path = if path.is_absolute() { path } else { state.plans_dir.join(path) };
+            tendril_core::plans::reader::read_plan_yaml(&path).ok()?.0.project.clone()
+        }
+    };
+    if project.trim().is_empty() {
+        return None;
+    }
+    ProjectEngine::load(&state.tendril_home, &project).for_job_type(args.job_type()).cloned()
+}
+
 pub async fn start_job(
     State(state): State<Arc<AppState>>,
     Query(query): Query<StartJobQuery>,
@@ -318,6 +340,16 @@ pub async fn start_job(
         other => other,
     };
 
+    // A job nobody picked an agent for follows its project's engine for that kind of work.
+    let (agent, model, effort) = if req.agent.is_none() && req.model.is_none() && req.effort.is_none() {
+        match project_engine_for(&state, &req.args) {
+            Some(r) => (Some(r.agent), r.model, r.effort),
+            None => (None, None, None),
+        }
+    } else {
+        (req.agent, req.model, req.effort)
+    };
+
     let opts = StartOptions {
         wait_for_jobs: req.wait_for_jobs,
         priority: req.priority,
@@ -327,9 +359,9 @@ pub async fn start_job(
             .chat_session_id
             .map(|id| id.trim().to_string())
             .filter(|id| !id.is_empty()),
-        agent: req.agent,
-        model: req.model,
-        effort: req.effort,
+        agent,
+        model,
+        effort,
         ..Default::default()
     };
 

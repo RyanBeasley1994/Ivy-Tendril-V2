@@ -151,6 +151,7 @@ const JobsView = React.lazy(() =>
 const ProjectsHomeView = React.lazy(() =>
   import("./views/projects/ProjectsHomeView").then((m) => ({ default: m.ProjectsHomeView })),
 );
+const GitView = React.lazy(() => import("./views/git/GitView").then((m) => ({ default: m.GitView })));
 const ProjectView = React.lazy(() =>
   import("./views/projects/ProjectView").then((m) => ({ default: m.ProjectView })),
 );
@@ -1062,12 +1063,24 @@ export const App: React.FC = () => {
             onOpenMission={(missionId) => uiStore.setActiveNav("missions", { mission: missionId })}
             onOpenJob={handleSelectJob}
             onOpenPlan={handleSelectPlan}
+            onOpenGit={() => uiStore.setActiveNav("git", { project: project.name })}
           />
         );
       }
     }
 
     switch (activeNav) {
+      case "git":
+        return (
+          <GitView
+            repoId={uiState.pageArgs.repo}
+            project={uiState.pageArgs.project}
+            onOpenRepo={(id) => uiStore.setActiveNav("git", { repo: id })}
+            onBack={() => uiStore.setActiveNav("git")}
+            onAskManager={(project, text) => openProjectFrom(project, { draft: text })}
+          />
+        );
+
       case "projects":
         return (
           <ProjectsHomeView
@@ -1580,7 +1593,7 @@ export const App: React.FC = () => {
           jobs={jobsState.jobs}
           currentProject={activeNav.startsWith("project-") ? activeNav.slice("project-".length) : null}
           onClose={() => setIsPaletteOpen(false)}
-          onNavigate={(nav) => uiStore.setActiveNav(nav)}
+          onNavigate={(nav, args) => uiStore.setActiveNav(nav, args)}
         />
       )}
 

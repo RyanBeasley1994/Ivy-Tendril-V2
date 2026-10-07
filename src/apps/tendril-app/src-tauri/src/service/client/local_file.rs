@@ -23,6 +23,8 @@ impl TendrilClient {
         /// Enough for a screenshot or a plan attachment, and small enough that a stray large file
         /// cannot be turned into a data URL big enough to wedge the webview.
         const MAX_PREVIEW_BYTES: u64 = 16 * 1024 * 1024;
+        /// A recording attached as evidence (`tendril evidence add` refuses anything larger).
+        const MAX_VIDEO_BYTES: u64 = 48 * 1024 * 1024;
 
         let Some(secret) = self.secret.as_deref() else {
             return Err(BridgeError::unauthenticated(
@@ -64,27 +66,25 @@ impl TendrilClient {
             )));
         }
 
-        if resp
-            .content_length()
-            .is_some_and(|len| len > MAX_PREVIEW_BYTES)
-        {
-            return Err(BridgeError::validation(format!(
-                "'{path}' is too large to preview"
-            )));
-        }
-
         let content_type = resp
             .headers()
             .get(reqwest::header::CONTENT_TYPE)
             .and_then(|value| value.to_str().ok())
             .map(|value| value.split(';').next().unwrap_or(value).trim().to_string())
             .unwrap_or_default();
-        // The route only serves the extensions in its allowlist, so this is always an image or a PDF.
-        // It is checked anyway: the media type goes into a `data:` URL the webview will load, and
-        // nothing else belongs there.
-        if !content_type.starts_with("image/") && content_type != "application/pdf" {
+        // The route only serves the extensions in its allowlist, so this is always an image, a PDF or an
+        // evidence recording. It is checked anyway: the media type goes into a `data:` URL the webview
+        // will load, and nothing else belongs there.
+        let is_video = content_type.starts_with("video/");
+        if !content_type.starts_with("image/") && content_type != "application/pdf" && !is_video {
             return Err(BridgeError::validation(format!(
                 "'{path}' is not a previewable file"
+            )));
+        }
+        let limit = if is_video { MAX_VIDEO_BYTES } else { MAX_PREVIEW_BYTES };
+        if resp.content_length().is_some_and(|len| len > limit) {
+            return Err(BridgeError::validation(format!(
+                "'{path}' is too large to preview"
             )));
         }
 
@@ -92,7 +92,7 @@ impl TendrilClient {
             .bytes()
             .await
             .map_err(|err| BridgeError::from(err.without_url()))?;
-        if bytes.len() as u64 > MAX_PREVIEW_BYTES {
+        if bytes.len() as u64 > limit {
             return Err(BridgeError::validation(format!(
                 "'{path}' is too large to preview"
             )));

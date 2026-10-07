@@ -41,6 +41,18 @@ enum Commands {
 
     #[command(
         subcommand,
+        about = "Evidence that a change works: attach screenshots and recordings to a plan"
+    )]
+    Evidence(commands::evidence::EvidenceCommands),
+
+    #[command(
+        subcommand,
+        about = "Phone push for your managers: where it goes and the morning briefing"
+    )]
+    Push(commands::push::PushCommands),
+
+    #[command(
+        subcommand,
         about = "A project's long-term memory: what agents and you have learned about it"
     )]
     Memory(commands::memory::MemoryCommands),
@@ -284,6 +296,8 @@ async fn dispatch(
         Commands::Manager(cmd) => {
             commands::manager::handle_manager_command(cmd, tendril_home).await?
         }
+        Commands::Evidence(cmd) => commands::evidence::handle_evidence_command(cmd, tendril_home).await?,
+        Commands::Push(cmd) => commands::push::handle_push_command(cmd, tendril_home).await?,
         Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,
         Commands::Project(cmd) => {

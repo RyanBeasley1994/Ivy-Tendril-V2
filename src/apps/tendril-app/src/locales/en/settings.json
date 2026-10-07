@@ -424,5 +424,20 @@
     "nativeHint": "Forge pushes the branch, opens or updates the PR, applies your options and merges by itself, in seconds and without tokens. The agent is only called to resolve merge conflicts or recover an unusual branch. Turn off to send every Create PR through the agent.",
     "skipHooksLabel": "Skip pre-push hooks when creating PRs",
     "skipHooksHint": "Pushes plan branches with --no-verify and HUSKY=0, so a repo hook that re-runs the whole test suite cannot block the PR. The plan's own verifications have already passed. Only Create PR's push is affected: commits keep their hooks, and your own pushes are unchanged."
+  },
+  "phoneNotifications": {
+    "title": "Phone notifications",
+    "hint": "Get a push when a manager needs you or its work is complete, even with the app closed. Install the web app first for the best result.",
+    "on": "Notifications are on for this device",
+    "off": "Notifications are off for this device",
+    "turnOn": "Turn on",
+    "turnOff": "Turn off",
+    "test": "Send a test",
+    "testSent": "Sent. It should arrive in a moment.",
+    "testNone": "Nothing was delivered. Turn notifications off and on again.",
+    "denied": "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back.",
+    "insecure": "Push needs a secure address. Open Forge over HTTPS (for example with `tailscale serve`) and try again.",
+    "needsInstall": "On iPhone, add Forge to your Home Screen first (Share, then Add to Home Screen), open it from there, and turn notifications on.",
+    "unsupported": "This browser does not support push notifications."
   }
 }

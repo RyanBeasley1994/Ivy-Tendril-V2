@@ -4,6 +4,9 @@ use std::path::Path;
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct PlanArtifacts {
     pub screenshots: Vec<String>,
+    /// Recordings (`tendril evidence add`): mp4, webm, mov. Kept out of `other` so they show as video.
+    #[serde(default)]
+    pub videos: Vec<String>,
     pub other: Vec<String>,
 }
 
@@ -85,6 +88,7 @@ pub fn read_plan_artifacts(plans_dir: &Path, plan_id_or_ref: &str) -> PlanArtifa
     }
 
     let mut screenshots = Vec::new();
+    let mut videos = Vec::new();
     let mut other = Vec::new();
 
     let is_img_ext = |ext: &str| matches!(ext, "png" | "jpg" | "jpeg" | "webp" | "gif" | "svg");
@@ -121,6 +125,8 @@ pub fn read_plan_artifacts(plans_dir: &Path, plan_id_or_ref: &str) -> PlanArtifa
                             .to_lowercase();
                         if is_img_ext(&ext) {
                             screenshots.push(path.to_string_lossy().to_string());
+                        } else if super::evidence::VIDEO_EXTENSIONS.contains(&ext.as_str()) {
+                            videos.push(path.to_string_lossy().to_string());
                         } else {
                             other.push(path.to_string_lossy().to_string());
                         }
@@ -130,9 +136,25 @@ pub fn read_plan_artifacts(plans_dir: &Path, plan_id_or_ref: &str) -> PlanArtifa
         }
     }
 
+    let videos_dir = artifacts_dir.join("videos");
+    if let Ok(entries) = std::fs::read_dir(&videos_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let is_video = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| super::evidence::VIDEO_EXTENSIONS.contains(&e.to_lowercase().as_str()))
+                .unwrap_or(false);
+            if path.is_file() && is_video {
+                videos.push(path.to_string_lossy().to_string());
+            }
+        }
+    }
+
     screenshots.sort();
+    videos.sort();
     other.sort();
-    PlanArtifacts { screenshots, other }
+    PlanArtifacts { screenshots, videos, other }
 }
 
 /// The largest artifact [`read_plan_artifact`] hands back as text.

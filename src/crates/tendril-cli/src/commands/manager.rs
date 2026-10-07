@@ -20,6 +20,16 @@ pub enum ManagerCommands {
         #[arg(long, help = "What to look at when it wakes, e.g. \"PR 46 CI run 123: if red, delegate a fix\"")]
         note: String,
     },
+
+    #[command(about = "Have the daemon watch a pull request's checks and wake the manager with the result once they have all finished")]
+    WatchPr {
+        #[arg(long, help = "The project whose manager to wake")]
+        project: String,
+        #[arg(long, help = "The pull request number")]
+        pr: u64,
+        #[arg(long, help = "owner/name, when the PR is not in the project's own repository")]
+        repo: Option<String>,
+    },
 }
 
 /// `90s`, `20m`, `2h`, `1h30m`, or a bare number of minutes.
@@ -54,8 +64,25 @@ pub fn parse_duration_seconds(input: &str) -> Option<u64> {
     Some(total)
 }
 
+async fn post_to_manager(tendril_home: &Path, project: &str, action: &str, body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    let master = read_master(tendril_home)
+        .ok_or_else(|| anyhow::anyhow!("The Tendril daemon is not running, so there is nothing to wake the manager."))?;
+    let url = format!("{}/api/projects/{}/manager/{}", master.base_url(), project.replace(' ', "%20"), action);
+    let resp = daemon_client(tendril_home).post(&url).bearer_auth(&master.secret).json(&body).send().await?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        anyhow::bail!("{} ({})", resp.text().await.unwrap_or_default().trim(), status);
+    }
+    Ok(resp.json().await?)
+}
+
 pub async fn handle_manager_command(cmd: ManagerCommands, tendril_home: &Path) -> anyhow::Result<()> {
     match cmd {
+        ManagerCommands::WatchPr { project, pr, repo } => {
+            post_to_manager(tendril_home, &project, "watch", serde_json::json!({ "pr": pr, "repo": repo })).await?;
+            println!("Watching PR {pr}. The manager is woken once every check has finished.");
+            Ok(())
+        }
         ManagerCommands::Wake { project, after, note } => {
             let seconds = parse_duration_seconds(&after)
                 .ok_or_else(|| anyhow::anyhow!("'{after}' is not a duration: use 90s, 20m, 2h or 1h30m"))?;

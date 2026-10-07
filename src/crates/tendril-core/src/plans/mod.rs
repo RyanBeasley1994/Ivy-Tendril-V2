@@ -5,6 +5,7 @@ pub mod diff_comments;
 pub mod doctor;
 pub mod duplicates;
 pub mod env;
+pub mod evidence;
 pub mod fields;
 pub mod guards;
 pub mod helpers;
