@@ -744,6 +744,14 @@ pub struct ChatQueuedItemDto {
     pub created_at: String,
 }
 
+/// A page of messages from before the oldest one a chat view holds.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EarlierChatMessagesDto {
+    pub messages: Vec<ChatMessageDto>,
+    pub has_more: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatSessionDto {
@@ -765,6 +773,10 @@ pub struct ChatSessionDto {
     pub effort: Option<String>,
     #[serde(default, alias = "SpawnedJobIds")]
     pub spawned_job_ids: Vec<String>,
+    /// How many messages the conversation has in all, sent only when `messages` holds just the newest
+    /// of them (a `tail` fetch or a summary list).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_messages: Option<usize>,
     /// The plan this session belongs to, as its folder name — `00021-BuildDesktopOperator`.
     ///
     /// `PlanChatSessions.BelongsTo`: "A session belongs to exactly one plan, recorded on the session

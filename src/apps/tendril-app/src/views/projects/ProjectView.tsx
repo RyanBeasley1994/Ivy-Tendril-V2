@@ -612,8 +612,9 @@ const ManagerChat: React.FC<{
       try {
         const session = await bridge.getProjectManager(project.name);
         sessionId.current = session.id;
+        // `init` already lists the sessions the first time; asking again on every open re-downloads
+        // every conversation in full just to show one.
         await chatStore.init();
-        await chatStore.fetchSessions();
         await chatStore.selectSession(session.id);
         if (live) setReady(true);
       } catch (e) {

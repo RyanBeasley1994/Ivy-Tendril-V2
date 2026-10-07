@@ -888,30 +888,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="border-b border-border p-2 md:hidden">
           {/* `sections` has no row for a single project or for `tunnel`, so both resolve to the row
               that owns them - Projects, and Security & Tunneling. */}
-          <Select
-            value={
+          {(() => {
+            const pickerValue =
               isProjectTag || isAddingProject
                 ? SettingsTag.Projects
                 : securitySelected
                   ? SettingsTag.Security
-                  : selected
-            }
-            onValueChange={selectSection}
-          >
-            <SelectTrigger
-              aria-label={t("nav.mobilePickerLabel")}
-              data-testid="settings-mobile-picker"
-            >
-              <SelectValue placeholder={currentLabel} />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((section) => (
-                <SelectItem key={section.tag} value={section.tag}>
-                  {section.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                  : selected;
+            const CurrentIcon = sections.find((section) => section.tag === pickerValue)?.icon;
+            return (
+              <Select value={pickerValue} onValueChange={selectSection}>
+                <SelectTrigger
+                  aria-label={t("nav.mobilePickerLabel")}
+                  data-testid="settings-mobile-picker"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    {CurrentIcon && <CurrentIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden={true} />}
+                    <SelectValue placeholder={currentLabel} />
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((section) => (
+                    <SelectItem key={section.tag} value={section.tag}>
+                      <span className="flex items-center gap-2">
+                        <section.icon className="size-4 shrink-0 text-muted-foreground" aria-hidden={true} />
+                        {section.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            );
+          })()}
         </div>
 
         {isEditingConfig ? (

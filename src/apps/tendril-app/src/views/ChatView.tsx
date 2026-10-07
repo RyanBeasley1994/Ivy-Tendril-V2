@@ -280,6 +280,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
     selectedAgentId,
     selectedModelId,
     selectedEffort,
+    hasEarlierMessages,
+    loadingEarlier,
   } = storeState;
 
   /**
@@ -404,6 +406,57 @@ export const ChatView: React.FC<ChatViewProps> = ({
     content: streamContentKey,
     isGenerating,
   });
+
+  // Opening a conversation lands on its latest message, not its first. The list is windowed and its
+  // rows settle their heights over a few frames, so the jump is repeated until the layout stops moving.
+  const openedSessionId = activeSession?.id;
+  const openedMessageCount = activeSession?.messages.length ?? 0;
+  useEffect(() => {
+    if (!openedSessionId || openedMessageCount === 0) return;
+    let frames = 0;
+    let frame = requestAnimationFrame(function jump() {
+      resetToTail();
+      if (++frames < 8) frame = requestAnimationFrame(jump);
+    });
+    return () => cancelAnimationFrame(frame);
+    // Only a different conversation re-anchors; messages arriving later follow the tail on their own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedSessionId, openedMessageCount > 0]);
+
+  // Scrolling back: a long conversation opens on its newest window, and older messages are fetched as
+  // the top comes into view. The scroll position is held across the prepend so the reader stays on the
+  // message they were reading rather than being thrown to the top of what just arrived.
+  const earlierAnchorRef = useRef<{ height: number; top: number } | null>(null);
+  const loadEarlier = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) earlierAnchorRef.current = { height: el.scrollHeight, top: el.scrollTop };
+    void store.loadEarlierMessages();
+  }, [scrollContainerRef, store]);
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || !hasEarlierMessages) return;
+    const onScroll = () => {
+      if (el.scrollTop < 240 && !loadingEarlier) loadEarlier();
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  });
+  const oldestMessageId = activeSession?.messages[0]?.id;
+  useLayoutEffect(() => {
+    const anchor = earlierAnchorRef.current;
+    const el = scrollContainerRef.current;
+    if (!anchor || !el || loadingEarlier) return;
+    earlierAnchorRef.current = null;
+    const restore = () => {
+      el.scrollTop = anchor.top + (el.scrollHeight - anchor.height);
+    };
+    restore();
+    // Rows settle their measured heights over the next frames.
+    requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+  }, [oldestMessageId, loadingEarlier, scrollContainerRef]);
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -906,6 +959,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 enableAutoScroll={false}
                 showScrollButton={false}
               >
+                {hasEarlierMessages && (
+                  <div className="flex justify-center pb-3">
+                    <button
+                      type="button"
+                      onClick={loadEarlier}
+                      disabled={loadingEarlier}
+                      className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[12px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
+                      data-testid="chat-load-earlier"
+                    >
+                      {loadingEarlier ? t("view.loadingEarlier") : t("view.loadEarlier")}
+                    </button>
+                  </div>
+                )}
                 {isVirtualized ? (
                   <div
                     style={{ height: totalSize, position: "relative" }}

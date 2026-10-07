@@ -1,15 +1,19 @@
 use super::get_client_from_master;
 use crate::error::BridgeError;
 use crate::models::{
-    ChatQueuedItemDto, ChatSessionDto, CreateSessionDto, EnqueueItemDto, ExecuteTurnDto,
-    PostMessageDto,
+    ChatQueuedItemDto, ChatSessionDto, CreateSessionDto, EarlierChatMessagesDto, EnqueueItemDto,
+    ExecuteTurnDto, PostMessageDto,
 };
 use crate::service::agent_terminal_bridge::{self, StartedAgentTerminal};
 use std::collections::HashMap;
 
 #[tauri::command]
-pub async fn cmd_list_chat_sessions() -> Result<Vec<ChatSessionDto>, BridgeError> {
-    get_client_from_master()?.list_chat_sessions().await
+pub async fn cmd_list_chat_sessions(
+    summary: Option<bool>,
+) -> Result<Vec<ChatSessionDto>, BridgeError> {
+    get_client_from_master()?
+        .list_chat_sessions(summary.unwrap_or(false))
+        .await
 }
 
 #[tauri::command]
@@ -22,8 +26,22 @@ pub async fn cmd_create_chat_session(
 }
 
 #[tauri::command]
-pub async fn cmd_get_chat_session(id: String) -> Result<ChatSessionDto, BridgeError> {
-    get_client_from_master()?.get_chat_session(&id).await
+pub async fn cmd_get_chat_session(
+    id: String,
+    tail: Option<usize>,
+) -> Result<ChatSessionDto, BridgeError> {
+    get_client_from_master()?.get_chat_session(&id, tail).await
+}
+
+#[tauri::command]
+pub async fn cmd_get_earlier_chat_messages(
+    id: String,
+    before: String,
+    limit: Option<usize>,
+) -> Result<EarlierChatMessagesDto, BridgeError> {
+    get_client_from_master()?
+        .get_earlier_chat_messages(&id, &before, limit.unwrap_or(50))
+        .await
 }
 
 #[tauri::command]

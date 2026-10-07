@@ -468,3 +468,76 @@ async fn test_chat_terminal_requires_a_real_session() {
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body["closed"], false);
 }
+
+#[tokio::test]
+async fn test_long_conversations_load_by_tail_summary_and_earlier_pages() {
+    let server = start_test_server().await;
+    let client = reqwest::Client::new();
+    let base = format!("http://{}:{}", server.host, server.port);
+    let auth = format!("Bearer {}", server.secret);
+
+    // Seed the conversation on disk before the daemon first reads it: posting messages would each
+    // start a turn.
+    let id = "long-chat".to_string();
+    let chats = server.tendril_home.join("Chats");
+    std::fs::create_dir_all(&chats).unwrap();
+    let stored = json!({
+        "id": id,
+        "title": "Long",
+        "createdAt": "2026-10-07T12:00:00Z",
+        "updatedAt": "2026-10-07T12:00:00Z",
+        "agentId": "claude",
+        "modelId": "opus",
+        "spawnedJobIds": [],
+        "messages": (0..10)
+            .map(|i| json!({
+                "id": format!("m{i}"),
+                "role": if i % 2 == 0 { "user" } else { "assistant" },
+                "content": format!("message {i}"),
+                "timestamp": "2026-10-07T12:00:00Z",
+            }))
+            .collect::<Vec<_>>(),
+    });
+    std::fs::write(chats.join(format!("{id}.json")), stored.to_string()).unwrap();
+    let get = |query: String| {
+        let (client, auth) = (client.clone(), auth.clone());
+        async move {
+            client
+                .get(query)
+                .header(AUTHORIZATION, auth)
+                .send()
+                .await
+                .unwrap()
+                .json::<serde_json::Value>()
+                .await
+                .unwrap()
+        }
+    };
+
+    // The whole session when nothing is asked for.
+    let whole = get(format!("{base}/api/chat/sessions/{id}")).await;
+    assert_eq!(whole["messages"].as_array().unwrap().len(), 10);
+    assert!(whole.get("totalMessages").is_none());
+
+    // The tail: the newest messages and the true total.
+    let tail = get(format!("{base}/api/chat/sessions/{id}?tail=4")).await;
+    let contents: Vec<_> = tail["messages"].as_array().unwrap().iter().map(|m| m["content"].as_str().unwrap().to_string()).collect();
+    assert_eq!(contents, ["message 6", "message 7", "message 8", "message 9"]);
+    assert_eq!(tail["totalMessages"], 10);
+
+    // The list in summary form: one message each, the count intact.
+    let list = get(format!("{base}/api/chat/sessions?summary=true")).await;
+    assert_eq!(list[0]["messages"].as_array().unwrap().len(), 1);
+    assert_eq!(list[0]["totalMessages"], 10);
+
+    // Earlier pages walk back from the oldest message shown, oldest first, until nothing is left.
+    let first_id = tail["messages"][0]["id"].as_str().unwrap();
+    let page = get(format!("{base}/api/chat/sessions/{id}/messages?before={first_id}&limit=4")).await;
+    let contents: Vec<_> = page["messages"].as_array().unwrap().iter().map(|m| m["content"].as_str().unwrap().to_string()).collect();
+    assert_eq!(contents, ["message 2", "message 3", "message 4", "message 5"]);
+    assert_eq!(page["hasMore"], true);
+    let oldest = page["messages"][0]["id"].as_str().unwrap();
+    let last = get(format!("{base}/api/chat/sessions/{id}/messages?before={oldest}&limit=4")).await;
+    assert_eq!(last["messages"].as_array().unwrap().len(), 2);
+    assert_eq!(last["hasMore"], false);
+}

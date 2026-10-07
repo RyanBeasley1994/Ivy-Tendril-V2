@@ -65,6 +65,7 @@ function toSession(value: unknown): ChatSession {
       ? spawned.filter((id): id is string => typeof id === "string")
       : [],
     planFolderName: text(value, "planFolderName"),
+    totalMessages: typeof field(value, "totalMessages") === "number" ? (field(value, "totalMessages") as number) : undefined,
     isPinned: typeof pinned === "boolean" ? pinned : undefined,
     pinnedAt: text(value, "pinnedAt"),
   };
@@ -121,12 +122,19 @@ async function httpJson(
 }
 
 export const chatApi = {
-  async listSessions(): Promise<ChatSession[]> {
+  /**
+   * `summary` sends each conversation's latest message only (and `totalMessages`): enough for a list,
+   * and the difference between kilobytes and megabytes once conversations get long.
+   */
+  async listSessions(summary = false): Promise<ChatSession[]> {
     if (!isTauri()) {
-      const sessions = await httpJson("/api/chat/sessions", "LIST_CHAT_SESSIONS_FAILED");
+      const sessions = await httpJson(
+        `/api/chat/sessions${summary ? "?summary=true" : ""}`,
+        "LIST_CHAT_SESSIONS_FAILED",
+      );
       return Array.isArray(sessions) ? sessions.map(toSession) : [];
     }
-    return await invoke<ChatSession[]>("cmd_list_chat_sessions");
+    return (await invoke<unknown[]>("cmd_list_chat_sessions", { summary })).map(toSession);
   },
 
   async createSession(args?: {
@@ -151,9 +159,32 @@ export const chatApi = {
     return await invoke<ChatSession>("cmd_create_chat_session", { req: args });
   },
 
-  async getSession(id: string): Promise<ChatSession> {
-    if (!isTauri()) return toSession(await httpJson(sessionPath(id), "GET_CHAT_SESSION_FAILED"));
-    return await invoke<ChatSession>("cmd_get_chat_session", { id });
+  /** `tail` fetches only the newest that many messages; `totalMessages` then says how many exist. */
+  async getSession(id: string, tail?: number): Promise<ChatSession> {
+    if (!isTauri()) {
+      const query = tail ? `?tail=${tail}` : "";
+      return toSession(await httpJson(sessionPath(id) + query, "GET_CHAT_SESSION_FAILED"));
+    }
+    return toSession(await invoke<unknown>("cmd_get_chat_session", { id, tail: tail ?? null }));
+  },
+
+  /** The page of messages before `before`, oldest first, and whether more precede it. */
+  async getEarlierMessages(
+    id: string,
+    before: string,
+    limit = 50,
+  ): Promise<{ messages: ChatMessage[]; hasMore: boolean }> {
+    const raw = !isTauri()
+      ? await httpJson(
+          `${sessionPath(id, "/messages")}?before=${encodeURIComponent(before)}&limit=${limit}`,
+          "GET_EARLIER_CHAT_MESSAGES_FAILED",
+        )
+      : await invoke<unknown>("cmd_get_earlier_chat_messages", { id, before, limit });
+    const messages = field(raw, "messages");
+    return {
+      messages: Array.isArray(messages) ? messages.map(toMessage) : [],
+      hasMore: field(raw, "hasMore") === true,
+    };
   },
 
   async updateSession(id: string, title: string): Promise<ChatSession> {

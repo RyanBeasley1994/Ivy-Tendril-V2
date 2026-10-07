@@ -136,8 +136,19 @@ export const TendrilShell: React.FC<TendrilShellProps> = ({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setDrawerOpen(false);
     };
+    // A menu opened from the drawer renders in a portal, outside the sidebar, so its choices are
+    // caught at the document: anything marked `data-drawer-close` closes the drawer wherever it lives.
+    const onClick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.("[data-drawer-close]")) {
+        setTimeout(() => setDrawerOpen(false), 0);
+      }
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("click", onClick, true);
+    };
   }, [drawerOpen]);
   // The drawer always shows full labels: the desktop rail is not a phone layout.
   const effectiveCollapsed = mobile ? false : collapsed;

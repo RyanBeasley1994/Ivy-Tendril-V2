@@ -42,6 +42,8 @@ export interface ChatSession {
   effort?: string;
   spawnedJobIds: string[];
   planFolderName?: string;
+  /** How many messages the conversation has in all, when `messages` holds only the newest of them. */
+  totalMessages?: number;
   isPinned?: boolean;
   pinnedAt?: string;
 }
@@ -113,6 +115,10 @@ export interface ChatState {
   sessions: ChatSession[];
   activeSessionId: string | null;
   activeSession: ChatSession | null;
+  /** Older messages exist on the daemon than the active conversation has loaded. */
+  hasEarlierMessages: boolean;
+  /** A page of older messages is being fetched. */
+  loadingEarlier: boolean;
   /** The catalog behind the composer's agent picker; empty when it could not be fetched. */
   agents: AgentOption[];
   selectedAgentId: string;

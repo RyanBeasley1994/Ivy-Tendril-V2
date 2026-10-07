@@ -129,7 +129,9 @@
     "jumpToQuestion_down": "Jump to pending question ↓",
     "jumpToQuestion_up": "Jump to pending question ↑",
     "scrollToStreamingTail": "Scroll to streaming tail",
-    "scrollToBottom": "Scroll to bottom"
+    "scrollToBottom": "Scroll to bottom",
+    "loadEarlier": "Load earlier messages",
+    "loadingEarlier": "Loading…"
   },
   "composer": {
     "attach": "Attach file",

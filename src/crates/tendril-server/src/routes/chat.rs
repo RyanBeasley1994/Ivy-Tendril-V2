@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
@@ -79,8 +79,36 @@ pub struct UpdateQueuedItemRequest {
 
 // Handlers
 
-pub async fn list_sessions_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+#[derive(Debug, Deserialize, Default)]
+pub struct ListQuery {
+    /// Each session carries only its latest message (plus `totalMessages`), for lists that show a
+    /// title and a count rather than a conversation.
+    #[serde(default)]
+    pub summary: bool,
+}
+
+/// The session as JSON with only its last `keep` messages, and `totalMessages` saying how many it has.
+/// Left whole (and without the count) when it already fits.
+pub fn trimmed_json(session: &tendril_core::chat::ChatSession, keep: usize) -> serde_json::Value {
+    let total = session.messages.len();
+    let mut value = json!(session);
+    if total > keep {
+        let tail: Vec<_> = session.messages[total - keep..].to_vec();
+        value["messages"] = json!(tail);
+        value["totalMessages"] = json!(total);
+    }
+    value
+}
+
+pub async fn list_sessions_handler(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<ListQuery>,
+) -> impl IntoResponse {
     match state.chat_manager.list_sessions().await {
+        Ok(sessions) if query.summary => {
+            let rows: Vec<_> = sessions.iter().map(|s| trimmed_json(s, 1)).collect();
+            (StatusCode::OK, Json(json!(rows)))
+        }
         Ok(sessions) => (StatusCode::OK, Json(json!(sessions))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -112,17 +140,60 @@ pub async fn create_session_handler(
     }
 }
 
+#[derive(Debug, Deserialize, Default)]
+pub struct GetQuery {
+    /// Only the latest this many messages; older ones come from `GET .../messages?before=`.
+    pub tail: Option<usize>,
+}
+
 pub async fn get_session_handler(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
+    Query(query): Query<GetQuery>,
 ) -> impl IntoResponse {
     match state.chat_manager.get_session(&id).await {
-        Ok(session) => (StatusCode::OK, Json(json!(session))),
+        Ok(session) => match query.tail {
+            Some(n) => (StatusCode::OK, Json(trimmed_json(&session, n.max(1)))),
+            None => (StatusCode::OK, Json(json!(session))),
+        },
         Err(_) => (
             StatusCode::NOT_FOUND,
             Json(json!({ "error": format!("Session '{}' not found", id) })),
         ),
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EarlierQuery {
+    /// The id of the oldest message already shown; the page ends just before it.
+    pub before: String,
+    pub limit: Option<usize>,
+}
+
+/// One page of the messages that come before `before`, oldest first, and whether more precede them.
+pub async fn earlier_messages_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Query(query): Query<EarlierQuery>,
+) -> impl IntoResponse {
+    let Ok(session) = state.chat_manager.get_session(&id).await else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": format!("Session '{}' not found", id) })),
+        );
+    };
+    let Some(at) = session.messages.iter().position(|m| m.id == query.before) else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "that message is not in this conversation" })),
+        );
+    };
+    let limit = query.limit.unwrap_or(50).clamp(1, 200);
+    let start = at.saturating_sub(limit);
+    (
+        StatusCode::OK,
+        Json(json!({ "messages": session.messages[start..at], "hasMore": start > 0 })),
+    )
 }
 
 pub async fn update_session_handler(

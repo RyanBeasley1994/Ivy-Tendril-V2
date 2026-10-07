@@ -231,6 +231,7 @@ pub fn run() {
             cmd_list_chat_sessions,
             cmd_create_chat_session,
             cmd_get_chat_session,
+            cmd_get_earlier_chat_messages,
             cmd_update_chat_session,
             cmd_delete_chat_session,
             cmd_post_chat_message,

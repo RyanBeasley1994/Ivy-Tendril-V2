@@ -567,7 +567,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         .route(
             "/api/chat/sessions/:id/messages",
-            post(chat::post_message_handler),
+            get(chat::earlier_messages_handler).post(chat::post_message_handler),
         )
         .route(
             "/api/chat/sessions/:id/execute",

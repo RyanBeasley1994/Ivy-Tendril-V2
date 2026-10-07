@@ -48,6 +48,7 @@ export const SidebarManagers: React.FC<Props> = ({ projects, jobs, activeProject
         <button
           key={project.name}
           type="button"
+          data-drawer-close
           onClick={() => onOpenProject(project.name)}
           aria-current={activeProject === project.name ? "page" : undefined}
           className={`flex flex-col gap-1.5 rounded-[11px] border bg-card p-2.5 text-left transition-colors hover:border-primary/40 ${

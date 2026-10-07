@@ -69,3 +69,10 @@ a,
 [role="button"] {
   touch-action: manipulation;
 }
+
+/* Touch screens have no hover, and a tooltip a tap leaves behind sits over the tab bar until the next tap. */
+@media (hover: none) {
+  .tui-tooltip-content {
+    display: none !important;
+  }
+}

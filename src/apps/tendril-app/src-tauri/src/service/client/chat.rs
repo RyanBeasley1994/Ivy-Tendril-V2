@@ -3,14 +3,18 @@
 use super::{path_segment, TendrilClient};
 use crate::error::BridgeError;
 use crate::models::{
-    ChatQueuedItemDto, ChatSessionDto, CreateSessionDto, EnqueueItemDto, ExecuteTurnDto,
-    PostMessageDto,
+    ChatQueuedItemDto, ChatSessionDto, CreateSessionDto, EarlierChatMessagesDto, EnqueueItemDto,
+    ExecuteTurnDto, PostMessageDto,
 };
 use serde_json::json;
 
 impl TendrilClient {
-    pub async fn list_chat_sessions(&self) -> Result<Vec<ChatSessionDto>, BridgeError> {
-        let url = format!("{}/api/chat/sessions", self.base_url);
+    pub async fn list_chat_sessions(&self, summary: bool) -> Result<Vec<ChatSessionDto>, BridgeError> {
+        let url = format!(
+            "{}/api/chat/sessions{}",
+            self.base_url,
+            if summary { "?summary=true" } else { "" }
+        );
         let resp = self.client.get(&url).headers(self.headers()).send().await?;
         if !resp.status().is_success() {
             let status = resp.status();
@@ -46,8 +50,16 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
-    pub async fn get_chat_session(&self, id: &str) -> Result<ChatSessionDto, BridgeError> {
-        let url = format!("{}/api/chat/sessions/{}", self.base_url, path_segment(id));
+    /// `tail` limits the messages to the newest that many; `totalMessages` then says how many exist.
+    pub async fn get_chat_session(
+        &self,
+        id: &str,
+        tail: Option<usize>,
+    ) -> Result<ChatSessionDto, BridgeError> {
+        let mut url = format!("{}/api/chat/sessions/{}", self.base_url, path_segment(id));
+        if let Some(n) = tail {
+            url.push_str(&format!("?tail={n}"));
+        }
         let resp = self.client.get(&url).headers(self.headers()).send().await?;
         if !resp.status().is_success() {
             let status = resp.status();
@@ -55,6 +67,31 @@ impl TendrilClient {
             return Err(BridgeError::new(
                 "GET_CHAT_SESSION_FAILED",
                 format!("Failed to get chat session '{id}' ({status}): {text}"),
+            ));
+        }
+        Ok(resp.json().await?)
+    }
+
+    /// One page of the messages before `before`, oldest first, and whether more precede them.
+    pub async fn get_earlier_chat_messages(
+        &self,
+        id: &str,
+        before: &str,
+        limit: usize,
+    ) -> Result<EarlierChatMessagesDto, BridgeError> {
+        let url = format!(
+            "{}/api/chat/sessions/{}/messages?before={}&limit={limit}",
+            self.base_url,
+            path_segment(id),
+            path_segment(before)
+        );
+        let resp = self.client.get(&url).headers(self.headers()).send().await?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            return Err(BridgeError::new(
+                "GET_EARLIER_CHAT_MESSAGES_FAILED",
+                format!("Failed to load earlier messages ({status}): {text}"),
             ));
         }
         Ok(resp.json().await?)

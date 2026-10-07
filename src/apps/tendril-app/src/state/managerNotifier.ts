@@ -44,7 +44,7 @@ export const startManagerNotifier = (): (() => void) => {
   const onTurnEnded = async (project: string) => {
     const [missions, session] = await Promise.all([
       bridge.listMissions().catch(() => []),
-      chatApi.getSession(managerSessionId(project)).catch(() => null),
+      chatApi.getSession(managerSessionId(project), 12).catch(() => null),
     ]);
     const status = projectStatus(project, missions, jobsStore.getState().jobs);
     const reply = [...(session?.messages ?? [])].reverse().find((m) => m.role === "assistant" && m.content.trim());

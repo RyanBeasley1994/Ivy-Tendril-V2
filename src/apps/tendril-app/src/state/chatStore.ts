@@ -110,6 +110,11 @@ export function buildPromptWithAttachments(
  */
 const liveChatStores = new Set<ChatStore>();
 
+/** Messages fetched when a conversation opens (and re-read): its newest window. */
+const MESSAGE_WINDOW = 60;
+/** Messages fetched per step when scrolling back through older ones. */
+const EARLIER_PAGE = 50;
+
 export class ChatStore {
   /**
    * The plan this instance follows, or null for the app-wide store the Chat page owns.
@@ -124,6 +129,8 @@ export class ChatStore {
     sessions: [],
     activeSessionId: null,
     activeSession: null,
+    hasEarlierMessages: false,
+    loadingEarlier: false,
     agents: [],
     selectedAgentId: loadStoredSelectedAgent() ?? FALLBACK_AGENT_ID,
     selectedModelId: DEFAULT_OPTION_ID,
@@ -906,6 +913,8 @@ export class ChatStore {
       sessions: [],
       activeSessionId: null,
       activeSession: null,
+      hasEarlierMessages: false,
+      loadingEarlier: false,
       agents: [],
       selectedAgentId: FALLBACK_AGENT_ID,
       selectedModelId: DEFAULT_OPTION_ID,
@@ -1337,7 +1346,7 @@ export class ChatStore {
     this.notify();
 
     try {
-      const sessions = await chatApi.listSessions();
+      const sessions = await chatApi.listSessions(true);
       // A plan-scoped store sees only the plan's own conversation, which is `PlanChatView`'s
       // `sessionDtos`: `[ToSessionDto(session)]` when `FindForPlan` found one and an empty list when
       // it did not. Narrowing here rather than at every reader is what keeps the rest of the store
@@ -1390,7 +1399,35 @@ export class ChatStore {
    * session it left.
    */
   public async fetchSession(id: string): Promise<ChatSession> {
-    return await chatApi.getSession(id);
+    return await chatApi.getSession(id, 1);
+  }
+
+  /**
+   * Loads the page of messages before the oldest one the active conversation holds, so a long
+   * conversation opens on its newest window and fills backwards as it is scrolled.
+   */
+  public async loadEarlierMessages(): Promise<void> {
+    const session = this.state.activeSession;
+    if (!session || !this.state.hasEarlierMessages || this.state.loadingEarlier) return;
+    const oldest = session.messages[0];
+    if (!oldest) return;
+    this.state.loadingEarlier = true;
+    this.notify();
+    try {
+      const page = await chatApi.getEarlierMessages(session.id, oldest.id, EARLIER_PAGE);
+      // Stale if the reader moved on, or if a re-read already put older messages in.
+      const current = this.state.activeSession;
+      if (!current || current.id !== session.id) return;
+      const known = new Set(current.messages.map((m) => m.id));
+      const fresh = page.messages.filter((m) => !known.has(m.id));
+      this.state.activeSession = { ...current, messages: [...fresh, ...current.messages] };
+      this.state.hasEarlierMessages = page.hasMore;
+    } catch {
+      // The button stays; the next try asks again.
+    } finally {
+      this.state.loadingEarlier = false;
+      this.notify();
+    }
   }
 
   /**
@@ -1436,7 +1473,7 @@ export class ChatStore {
 
     try {
       const [session, queue] = await Promise.all([
-        chatApi.getSession(id),
+        chatApi.getSession(id, MESSAGE_WINDOW),
         chatApi.getQueue(id).catch(() => []),
       ]);
       // The user can switch chats while this fetch is in flight. Landing a stale session here would
@@ -1450,6 +1487,8 @@ export class ChatStore {
       session.pinnedAt = isPinned ? this.pinnedSessions[id] : undefined;
 
       this.state.activeSession = session;
+      this.state.hasEarlierMessages = (session.totalMessages ?? 0) > session.messages.length;
+      this.state.loadingEarlier = false;
       this.state.queuedItems = queue;
       this.backfillDraftOwners([session]);
       this.adoptSessionSelection(session);
@@ -1479,7 +1518,7 @@ export class ChatStore {
     const preserveLocalLonger = options?.preserveLocalLonger ?? this.state.isGenerating;
     try {
       const [session, queue] = await Promise.all([
-        chatApi.getSession(targetId),
+        chatApi.getSession(targetId, MESSAGE_WINDOW),
         chatApi.getQueue(targetId).catch(() => []),
       ]);
       // Fired automatically when a turn ends (`chat.generating_state`), so this routinely races a
@@ -1517,7 +1556,14 @@ export class ChatStore {
           attachments: serverMsg.attachments ?? localMsg?.attachments,
         };
       });
-      this.state.activeSession = { ...session, messages: mergedMessages };
+      // Older messages the reader already loaded stay: the daemon only sent the newest window.
+      const firstServerId = session.messages[0]?.id;
+      const firstServerAt = firstServerId ? localMessages.findIndex((m) => m.id === firstServerId) : -1;
+      const keptOlder = firstServerAt > 0 ? localMessages.slice(0, firstServerAt) : [];
+      if (keptOlder.length === 0) {
+        this.state.hasEarlierMessages = (session.totalMessages ?? 0) > session.messages.length;
+      }
+      this.state.activeSession = { ...session, messages: [...keptOlder, ...mergedMessages] };
       this.state.queuedItems = queue;
       this.backfillDraftOwners([session]);
 
@@ -2037,6 +2083,8 @@ export class ChatStore {
           };
         } else {
           this.state.activeSession = updatedSession;
+          // The answer comes back with the whole conversation.
+          this.state.hasEarlierMessages = false;
         }
       }
       const idx = this.state.sessions.findIndex((s) => s.id === updatedSession.id);

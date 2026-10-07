@@ -694,7 +694,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                       eventHandler={noop}
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent side="top" align="start">
+                  <DropdownMenuContent side="top" align="start" data-drawer-close className="z-[100]">
                     {renderMenuItems(settingsMenuItems)}
                   </DropdownMenuContent>
                 </DropdownMenu>
