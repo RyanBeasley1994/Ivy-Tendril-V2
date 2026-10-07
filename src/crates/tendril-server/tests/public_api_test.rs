@@ -197,3 +197,34 @@ async fn a_message_reaches_the_manager_and_its_reply_is_read_back_by_cursor() {
     let (_, detail) = h.call("GET", "/api/public/v1/projects/Demo", Some(&write), None).await;
     assert!(detail["lastManagerReply"]["text"].as_str().unwrap().contains("On it."));
 }
+
+#[tokio::test]
+async fn keys_are_managed_by_the_owner_and_a_key_cannot_manage_keys() {
+    let h = harness();
+    let owner = h.secret.clone();
+
+    let (status, made) = h.call("POST", "/api/api-keys", Some(&owner), Some(json!({ "name": "hermes", "write": true }))).await;
+    assert_eq!(status, StatusCode::CREATED, "{made}");
+    let key = made["key"].as_str().unwrap().to_string();
+    assert!(key.starts_with("fk_"));
+    assert_eq!(made["record"]["scope"], "write");
+
+    // The key works on the public API...
+    assert_eq!(h.call("GET", PROJECTS, Some(&key), None).await.0, StatusCode::OK);
+    // ...but cannot list, mint or revoke keys.
+    assert_eq!(h.call("GET", "/api/api-keys", Some(&key), None).await.0, StatusCode::UNAUTHORIZED);
+    assert_eq!(h.call("POST", "/api/api-keys", Some(&key), Some(json!({ "name": "x" }))).await.0, StatusCode::UNAUTHORIZED);
+
+    // The list names it but never carries the secret or its hash.
+    let (_, list) = h.call("GET", "/api/api-keys", Some(&owner), None).await;
+    assert_eq!(list["keys"][0]["name"], "hermes");
+    let raw = list.to_string();
+    assert!(!raw.contains(&key) && !raw.contains("hash"));
+
+    // A duplicate name is refused; revoking by id stops the key.
+    assert_eq!(h.call("POST", "/api/api-keys", Some(&owner), Some(json!({ "name": "Hermes" }))).await.0, StatusCode::BAD_REQUEST);
+    let id = list["keys"][0]["id"].as_str().unwrap();
+    assert_eq!(h.call("DELETE", &format!("/api/api-keys/{id}"), Some(&owner), None).await.0, StatusCode::OK);
+    assert_eq!(h.call("GET", PROJECTS, Some(&key), None).await.0, StatusCode::UNAUTHORIZED);
+    assert_eq!(h.call("DELETE", &format!("/api/api-keys/{id}"), Some(&owner), None).await.0, StatusCode::NOT_FOUND);
+}
