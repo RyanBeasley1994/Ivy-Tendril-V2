@@ -119,6 +119,7 @@ fn list_defaults_to_twenty_rows_of_plain_text() {
     let JobCommands::List(JobListArgs {
         status,
         limit,
+        project,
         json,
     }) = parse(&["tendril", "list"])
     else {
@@ -126,6 +127,7 @@ fn list_defaults_to_twenty_rows_of_plain_text() {
     };
     assert_eq!(status, None);
     assert_eq!(limit, 20, "the default page size is part of the contract");
+    assert_eq!(project, None);
     assert!(!json);
 }
 

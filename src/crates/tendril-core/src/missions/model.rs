@@ -332,6 +332,16 @@ impl MissionAgents {
         self.planner.is_none() && self.worker.is_none() && self.judge.is_none() && self.validator.is_none()
     }
 
+    /// Points the role a step belongs to at `agent`.
+    pub fn set_for_step(&mut self, step: MissionStep, agent: Option<RoleAgent>) {
+        match step {
+            MissionStep::Plan | MissionStep::Revise | MissionStep::Steer => self.planner = agent,
+            MissionStep::Execute | MissionStep::Retry => self.worker = agent,
+            MissionStep::Judge => self.judge = agent,
+            MissionStep::Final => self.validator = agent,
+        }
+    }
+
     /// The agent a step runs on.
     pub fn for_step(&self, step: MissionStep) -> Option<&RoleAgent> {
         match step {

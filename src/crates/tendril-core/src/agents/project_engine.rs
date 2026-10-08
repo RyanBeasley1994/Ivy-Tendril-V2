@@ -26,6 +26,84 @@ pub struct ProjectEngine {
     pub roles: BTreeMap<String, RoleAgent>,
 }
 
+/// The engines that apply to every project, and what to switch to when one hits a rate limit.
+///
+/// Stored in `<TENDRIL_HOME>/engine.json`. A project's own engine (above) overrides a role here; a role
+/// neither sets runs on the configured default agent. `fallbacks` is an ordered chain: when the agent a
+/// piece of work is running on is rate limited, the next agent in the chain takes over instead of the work
+/// waiting out the limit.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GlobalEngine {
+    #[serde(default)]
+    pub roles: BTreeMap<String, RoleAgent>,
+    #[serde(default)]
+    pub fallbacks: Vec<RoleAgent>,
+}
+
+fn global_path(tendril_home: &Path) -> PathBuf {
+    tendril_home.join("engine.json")
+}
+
+impl GlobalEngine {
+    pub fn load(tendril_home: &Path) -> Self {
+        std::fs::read_to_string(global_path(tendril_home))
+            .ok()
+            .and_then(|raw| serde_json::from_str(&raw).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn save(&self, tendril_home: &Path) -> std::io::Result<()> {
+        std::fs::create_dir_all(tendril_home)?;
+        std::fs::write(global_path(tendril_home), serde_json::to_vec_pretty(self).unwrap_or_default())
+    }
+
+    /// Sets (`Some`) or clears (`None`) one role. Unknown role names are ignored.
+    pub fn set(&mut self, role: &str, value: Option<RoleAgent>) {
+        if !ROLES.contains(&role) {
+            return;
+        }
+        match value.filter(|v| !v.agent.trim().is_empty()) {
+            Some(v) => {
+                self.roles.insert(role.to_string(), v);
+            }
+            None => {
+                self.roles.remove(role);
+            }
+        }
+    }
+
+    /// Replaces the fallback chain. Blank agents and repeats of an agent already in the chain are dropped.
+    pub fn set_fallbacks(&mut self, chain: Vec<RoleAgent>) {
+        let mut out: Vec<RoleAgent> = Vec::new();
+        for item in chain.into_iter().filter(|a| !a.agent.trim().is_empty()) {
+            if !out.iter().any(|existing| same_engine(existing, &item)) {
+                out.push(item);
+            }
+        }
+        self.fallbacks = out;
+    }
+}
+
+/// Whether two role agents are the same engine: the same agent running the same model.
+fn same_engine(a: &RoleAgent, b: &RoleAgent) -> bool {
+    a.agent.eq_ignore_ascii_case(&b.agent)
+        && a.model.as_deref().unwrap_or_default().eq_ignore_ascii_case(b.model.as_deref().unwrap_or_default())
+}
+
+/// The agent to switch to when `current` is rate limited: the next one in the chain after `current`.
+///
+/// `primary` is what the role would normally run on (it may be unset, meaning the configured default,
+/// which is then not part of the chain). From the primary the next is the first fallback; from a fallback
+/// the one after it; from an agent that is in neither, the first fallback that is not `current`. Nothing
+/// is returned once the chain is spent, and the work waits out the limit as it always did.
+pub fn next_fallback(fallbacks: &[RoleAgent], primary: Option<&RoleAgent>, current: &RoleAgent) -> Option<RoleAgent> {
+    if let Some(at) = fallbacks.iter().position(|f| same_engine(f, current)) {
+        return fallbacks.get(at + 1).cloned();
+    }
+    let _ = primary; // The primary is "before" the chain, so leaving it means the chain's first entry.
+    fallbacks.iter().find(|f| !f.agent.eq_ignore_ascii_case(&current.agent)).cloned()
+}
+
 /// What `engine.json` looked like before roles: one engine for everything.
 #[derive(Deserialize)]
 struct LegacyEngine {
@@ -69,6 +147,14 @@ impl ProjectEngine {
             },
             _ => Self::default(),
         }
+    }
+
+    /// What actually applies to `project`: the global engine's roles, overridden by the project's own.
+    /// This is for deciding what to run; edit a project's own settings through [`ProjectEngine::load`].
+    pub fn load_effective(tendril_home: &Path, project: &str) -> Self {
+        let mut roles = GlobalEngine::load(tendril_home).roles;
+        roles.extend(Self::load(tendril_home, project).roles);
+        Self { roles }
     }
 
     pub fn save(&self, tendril_home: &Path, project: &str) -> std::io::Result<()> {
@@ -202,6 +288,46 @@ mod tests {
         assert_eq!(e.for_job_type("ExecutePlan").unwrap().agent, "codex");
         assert_eq!(e.for_job_type("RetryPlan").unwrap().agent, "codex");
         assert!(e.for_job_type("SyncRepo").is_none());
+    }
+
+    #[test]
+    fn a_projects_own_engine_overrides_the_global_one_role_by_role() {
+        let home = std::env::temp_dir().join(format!("tendril-engine-{}", uuid::Uuid::new_v4()));
+        let mut global = GlobalEngine::default();
+        global.set("worker", Some(role("claude", Some("opus"))));
+        global.set("judge", Some(role("claude", None)));
+        global.save(&home).unwrap();
+        let mut mine = ProjectEngine::default();
+        mine.set("worker", Some(role("codex", Some("local"))));
+        mine.save(&home, "Acme").unwrap();
+
+        let effective = ProjectEngine::load_effective(&home, "Acme");
+        assert_eq!(effective.role("worker").unwrap().agent, "codex", "the project wins");
+        assert_eq!(effective.role("judge").unwrap().agent, "claude", "the rest is inherited");
+        // A project with nothing of its own gets the global engine whole.
+        assert_eq!(ProjectEngine::load_effective(&home, "Other").role("worker").unwrap().agent, "claude");
+        // And editing a project never copies inherited roles into its own file.
+        assert_eq!(ProjectEngine::load(&home, "Acme").roles.len(), 1);
+        let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn the_fallback_chain_is_deduplicated_and_walked_in_order() {
+        let mut g = GlobalEngine::default();
+        g.set_fallbacks(vec![role("codex", Some("local")), role(" ", None), role("CODEX", Some("local")), role("gemini", None)]);
+        assert_eq!(g.fallbacks.len(), 2, "blank and repeated entries are dropped");
+
+        let chain = g.fallbacks.clone();
+        let claude = role("claude", None);
+        // From the primary, the first fallback; then each next one; then nothing left.
+        assert_eq!(next_fallback(&chain, Some(&claude), &claude).unwrap().agent, "codex");
+        assert_eq!(next_fallback(&chain, Some(&claude), &role("codex", Some("local"))).unwrap().agent, "gemini");
+        assert!(next_fallback(&chain, Some(&claude), &role("gemini", None)).is_none(), "the chain is spent");
+        // An unset primary (the configured default) behaves the same.
+        assert_eq!(next_fallback(&chain, None, &claude).unwrap().agent, "codex");
+        // Never "falls back" onto the agent that just failed, and an empty chain has nowhere to go.
+        assert!(next_fallback(&[role("claude", None)], None, &claude).is_none());
+        assert!(next_fallback(&[], None, &claude).is_none());
     }
 
     #[test]

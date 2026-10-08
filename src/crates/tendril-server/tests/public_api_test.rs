@@ -276,3 +276,45 @@ async fn a_projects_evidence_gathers_every_plan_of_that_project_newest_first() {
 
     assert_eq!(h.call("GET", "/api/projects/Nope/evidence", Some(&owner), None).await.0, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn the_global_engine_and_fallback_chain_are_set_and_projects_can_override() {
+    let h = harness();
+    let owner = h.secret.clone();
+
+    let (status, empty) = h.call("GET", "/api/engine", Some(&owner), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(empty["roles"], json!({}));
+    assert_eq!(empty["fallbacks"], json!([]));
+
+    let (status, saved) = h
+        .call(
+            "PUT",
+            "/api/engine",
+            Some(&owner),
+            Some(json!({
+                "roles": { "worker": { "agent": "claude", "model": "opus" }, "judge": { "agent": "claude" } },
+                "fallbacks": [{ "agent": "codex", "model": "local" }, { "agent": "codex", "model": "local" }, { "agent": "gemini" }]
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved["roles"]["worker"]["model"], "opus");
+    assert_eq!(saved["fallbacks"].as_array().unwrap().len(), 2, "the repeat is dropped: {saved}");
+
+    // Clearing one role leaves the others and the chain.
+    let (_, after) = h.call("PUT", "/api/engine", Some(&owner), Some(json!({ "roles": { "judge": null } }))).await;
+    assert!(after["roles"].get("judge").is_none());
+    assert_eq!(after["roles"]["worker"]["agent"], "claude");
+    assert_eq!(after["fallbacks"].as_array().unwrap().len(), 2);
+
+    // A project's own engine overrides one role and inherits the other.
+    h.call("PUT", "/api/projects/Demo/engine", Some(&owner), Some(json!({ "roles": { "worker": { "agent": "codex" } } }))).await;
+    let effective = tendril_core::agents::project_engine::ProjectEngine::load_effective(&h.home, "Demo");
+    assert_eq!(effective.role("worker").unwrap().agent, "codex");
+
+    assert_eq!(h.call("PUT", "/api/engine", Some(&owner), Some(json!({ "roles": { "boss": { "agent": "claude" } } }))).await.0, StatusCode::BAD_REQUEST);
+    // A public-API key cannot touch it.
+    let key = h.key("bot", Scope::Write);
+    assert_eq!(h.call("PUT", "/api/engine", Some(&key), Some(json!({ "roles": {} }))).await.0, StatusCode::UNAUTHORIZED);
+}

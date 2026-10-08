@@ -306,7 +306,7 @@ fn project_engine_for(
     if project.trim().is_empty() {
         return None;
     }
-    ProjectEngine::load(&state.tendril_home, &project).for_job_type(args.job_type()).cloned()
+    ProjectEngine::load_effective(&state.tendril_home, &project).for_job_type(args.job_type()).cloned()
 }
 
 pub async fn start_job(

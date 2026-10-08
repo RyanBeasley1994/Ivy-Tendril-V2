@@ -326,10 +326,36 @@ impl MissionDriver {
 
     /// Parks the step to re-run after the limit, when `job` was rate limited. Returns whether it did.
     /// The milestone keeps its state and its attempt is given back: waiting is not trying.
-    fn park_if_rate_limited(folder: &Path, job: &JobItem, step: MissionStep, milestone: Option<&str>) -> Result<bool> {
+    fn park_if_rate_limited(&self, folder: &Path, job: &JobItem, step: MissionStep, milestone: Option<&str>) -> Result<bool> {
         let Some(reason) = Self::rate_limited(job) else {
             return Ok(false);
         };
+        // A fallback agent, when the operator set a chain and the limited agent is not its last link:
+        // switch this step's role to it and run the step again now, rather than waiting out the limit.
+        let fallbacks = crate::agents::project_engine::GlobalEngine::load(&self.paths.tendril_home).fallbacks;
+        if !fallbacks.is_empty() {
+            let used = RoleAgent { agent: job.provider.clone(), model: job.model.clone(), effort: job.effort.clone() };
+            let primary = read_mission(folder)?.agents.for_step(step).cloned();
+            if let Some(next) = crate::agents::project_engine::next_fallback(&fallbacks, primary.as_ref(), &used) {
+                update_mission(folder, |m| {
+                    m.rate_limit_streak = 0;
+                    if matches!(step, MissionStep::Execute | MissionStep::Retry) {
+                        if let Some(ms) = milestone.and_then(|id| m.milestone_mut(id)) {
+                            ms.attempts = ms.attempts.saturating_sub(1);
+                        }
+                    }
+                    m.agents.set_for_step(step, Some(next.clone()));
+                    // Due at once: the next pass re-runs the step on the new agent.
+                    m.rate_limit = Some(RateLimitWait { until: Utc::now(), step, milestone: milestone.map(str::to_string), reason: reason.clone() });
+                    m.log(
+                        milestone,
+                        format!("{} hit a rate limit ({}); switching to {} and carrying on", used.describe(), reason, next.describe()),
+                    );
+                    Ok(())
+                })?;
+                return Ok(true);
+            }
+        }
         update_mission(folder, |m| {
             m.rate_limit_streak += 1;
             let until = rate_limit::wait_for(&reason, m.rate_limit_streak, Utc::now());
@@ -422,7 +448,7 @@ impl MissionDriver {
             return Ok(false);
         }
         let mission = Self::settle(folder, &job)?;
-        if Self::park_if_rate_limited(folder, &job, MissionStep::Plan, None)? {
+        if self.park_if_rate_limited(folder, &job, MissionStep::Plan, None)? {
             return Ok(true);
         }
         if job.status == JobStatus::Completed && !mission.milestones.is_empty() {
@@ -471,7 +497,7 @@ impl MissionDriver {
         }
         let before: std::collections::HashSet<String> = cr.existing_milestones.iter().cloned().collect();
         let mission = Self::settle(folder, &job)?;
-        if Self::park_if_rate_limited(folder, &job, MissionStep::Revise, None)? {
+        if self.park_if_rate_limited(folder, &job, MissionStep::Revise, None)? {
             return Ok(true);
         }
         let added: Vec<String> = mission
@@ -523,7 +549,7 @@ impl MissionDriver {
             return Ok(false);
         }
         let mission = Self::settle(folder, &job)?;
-        if Self::park_if_rate_limited(folder, &job, MissionStep::Steer, None)? {
+        if self.park_if_rate_limited(folder, &job, MissionStep::Steer, None)? {
             return Ok(true);
         }
         self.publish_plan_to_integration(&mission);
@@ -614,7 +640,7 @@ impl MissionDriver {
             let mission = Self::settle(folder, &job)?;
             let milestone = current.milestone.clone().unwrap_or_default();
             if matches!(current.step, MissionStep::Execute | MissionStep::Retry | MissionStep::Judge)
-                && Self::park_if_rate_limited(folder, &job, current.step, Some(&milestone))?
+                && self.park_if_rate_limited(folder, &job, current.step, Some(&milestone))?
             {
                 return Ok(true);
             }
@@ -1023,7 +1049,7 @@ impl MissionDriver {
             return Ok(false);
         }
         let mission = Self::settle(folder, &job)?;
-        if Self::park_if_rate_limited(folder, &job, MissionStep::Final, None)? {
+        if self.park_if_rate_limited(folder, &job, MissionStep::Final, None)? {
             return Ok(true);
         }
         let decision = mission

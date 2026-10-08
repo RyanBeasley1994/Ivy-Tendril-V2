@@ -65,6 +65,7 @@ import { SecurityTunnelingSection } from "./settings/SecurityTunnelingSection";
 import { RemoteServerSection } from "./settings/RemoteServerSection";
 import { PhoneNotificationsSection } from "./settings/PhoneNotificationsSection";
 import { ApiKeysSection } from "./settings/ApiKeysSection";
+import { GlobalEnginesSection } from "./settings/GlobalEnginesSection";
 
 interface SettingsViewProps {
   serviceInfo: ServiceInfo | null;
@@ -995,6 +996,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     savedAgent={saved.codingAgent}
                     onSaveRaw={saveRawKey}
                   />
+
+                  <GlobalEnginesSection />
 
                   <HarnessVisibilitySection config={config} onSaveRaw={saveRawKey} />
 

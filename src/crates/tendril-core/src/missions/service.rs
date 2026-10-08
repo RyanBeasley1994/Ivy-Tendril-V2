@@ -83,7 +83,7 @@ pub fn create(paths: &MissionPaths, settings: &TendrilSettings, req: NewMission)
     }
     mission.budget.max_cost = req.max_cost.filter(|c| *c > 0.0);
     // Roles the request leaves unset follow the project's own engine settings.
-    let engine = crate::agents::project_engine::ProjectEngine::load(&paths.tendril_home, &project.name);
+    let engine = crate::agents::project_engine::ProjectEngine::load_effective(&paths.tendril_home, &project.name);
     mission.agents = clean_agents(crate::agents::project_engine::fill_unset_mission_roles(req.agents, &engine));
     mission.log(None, "Mission created");
     let created = create_mission(&paths.missions_dir, &mission)?;

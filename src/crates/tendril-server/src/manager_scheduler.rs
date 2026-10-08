@@ -234,6 +234,136 @@ async fn latest_reply(state: &AppState, manager: &str) -> Option<tendril_core::c
     state.chat_manager.get_session(manager).await.ok()
 }
 
+/// The tool calls the agent harness refused during a turn, read from the turn's recorded stream.
+fn refusals_in(raw_stream: &str) -> Vec<tendril_core::jobs::denials::PermissionDenial> {
+    let lines: Vec<String> = raw_stream.lines().map(str::to_string).collect();
+    tendril_core::jobs::denials::extract_permission_denials(&lines)
+}
+
+/// What a manager is told when its commands were refused: which ones, why, and what to do instead.
+/// Without this it reports that its shell is "blocked", asks the operator to allow it (which they cannot
+/// do), and the work stops there.
+fn refusal_message(denials: &[tendril_core::jobs::denials::PermissionDenial]) -> String {
+    let shown = tendril_core::jobs::denials::describe_denials(denials).join("; ");
+    format!(
+        "Your last turn was cut short: these tool calls were refused and did not run: {shown}. \
+A command is refused when it is outside your allowed tools or is not one simple command: pipes (`|`), `&&`, `;`, `$(...)`, backticks, redirects (`>`, `2>&1`) and heredocs all count. \
+Run each again as a single plain command (pass a long mission goal inline as one quoted `--goal` argument), use the CLI's own filters instead of piping, or delegate the work to a worker. \
+Do not ask the operator to allow your shell: they cannot, and you do not need them to. Carry on with what you were asked."
+    )
+}
+
+/// How many corrections a project's manager gets in a window, so a command that can never succeed is not
+/// retried in a loop.
+const MAX_CORRECTIONS: u32 = 2;
+const CORRECTION_WINDOW: Duration = Duration::from_secs(30 * 60);
+
+fn may_correct(
+    history: &mut HashMap<String, (std::time::Instant, u32)>,
+    project: &str,
+    clock: std::time::Instant,
+) -> bool {
+    let entry = history.entry(project.to_string()).or_insert((clock, 0));
+    if clock.duration_since(entry.0) >= CORRECTION_WINDOW {
+        *entry = (clock, 0);
+    }
+    if entry.1 >= MAX_CORRECTIONS {
+        return false;
+    }
+    entry.1 += 1;
+    true
+}
+
+/// After a manager's turn: if the harness refused any of its commands, say so in the log and prompt the
+/// manager to carry on without them.
+async fn correct_refusals(
+    state: &AppState,
+    project: &str,
+    history: &mut HashMap<String, (std::time::Instant, u32)>,
+) {
+    let manager = manager_session_id(project);
+    let Some(session) = latest_reply(state, &manager).await else { return };
+    let Some(reply) = session.messages.iter().rev().find(|m| m.role == "assistant" && m.raw_stream.is_some()) else {
+        return;
+    };
+    // Only a turn that has just ended counts; an old refusal is not worth a prompt now.
+    if (chrono::Utc::now() - reply.timestamp).num_minutes() > 10 {
+        return;
+    }
+    let denials = refusals_in(reply.raw_stream.as_deref().unwrap_or_default());
+    if denials.is_empty() {
+        return;
+    }
+    let summary = tendril_core::jobs::denials::describe_denials(&denials).join("; ");
+    tracing::warn!("Manager of {project}: tool calls refused: {summary}");
+    if !may_correct(history, project, std::time::Instant::now()) {
+        return;
+    }
+    if let Err(e) = state.chat_manager.notify_event(&manager, &refusal_message(&denials)).await {
+        tracing::debug!("Could not prompt manager {manager}: {e}");
+    }
+}
+
+/// One patrol pass over every project that has a manager.
+async fn patrol(state: &AppState, patrol_state: &mut crate::patrol::PatrolState) {
+    use crate::patrol;
+    let settings = tendril_core::config::load_config(&state.config_path).unwrap_or_default();
+    if settings.projects.is_empty() {
+        return;
+    }
+    let now = chrono::Utc::now();
+    let mut failed = Vec::new();
+    for status in [tendril_core::models::JobStatus::Failed, tendril_core::models::JobStatus::Timeout] {
+        if let Ok(jobs) = state.job_manager.list_jobs(Some(status), 40).await {
+            failed.extend(jobs.into_iter().filter(|j| j.completed_at.is_some_and(|at| now - at <= chrono::Duration::hours(1))));
+        }
+    }
+    let running = state.job_manager.list_non_terminal_jobs().await.unwrap_or_default();
+    let all_missions = list_missions(&state.mission_driver.paths().missions_dir);
+
+    for project in settings.projects.iter().map(|p| p.name.clone()) {
+        let id = manager_session_id(&project);
+        let Ok(session) = state.chat_manager.get_session(&id).await else { continue };
+        if state.chat_manager.is_generating(&id).await {
+            continue;
+        }
+        let idle_for = now - session.updated_at;
+        if idle_for.to_std().unwrap_or_default() < patrol::RECENTLY_ACTIVE {
+            continue;
+        }
+        if !patrol_state.due(&project, std::time::Instant::now()) {
+            continue;
+        }
+        let missions: Vec<_> = all_missions.iter().filter(|f| f.mission.project.eq_ignore_ascii_case(&project)).cloned().collect();
+        let project_failed: Vec<_> = failed.iter().filter(|j| j.project.eq_ignore_ascii_case(&project)).cloned().collect();
+        let found = patrol::findings(&missions, &project_failed, now);
+
+        let message = if !found.is_empty() {
+            patrol_state.should_raise(&project, &found).then(|| patrol::patrol_message(&found))
+        } else {
+            patrol_state.should_raise(&project, &found);
+            let live = patrol::has_live_work(
+                &missions,
+                running.iter().filter(|j| j.project.eq_ignore_ascii_case(&project)).count(),
+            );
+            let goals = std::fs::read_to_string(
+                tendril_core::config::get_project_root_dir(&state.tendril_home, &project).join("Memory").join("goals.md"),
+            )
+            .unwrap_or_default();
+            (!live
+                && !goals.trim().is_empty()
+                && idle_for >= patrol::GOALS_AFTER_IDLE
+                && patrol_state.goals_due(&project, missions.len(), std::time::Instant::now()))
+            .then(|| patrol::goals_message(&goals))
+        };
+        if let Some(message) = message {
+            if let Err(e) = state.chat_manager.notify_event(&id, &message).await {
+                tracing::debug!("Could not patrol manager {id}: {e}");
+            }
+        }
+    }
+}
+
 /// A manager's turn just ended: decide whether that is worth a push, and send it.
 async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
     let cfg = crate::push::PushConfig::load(&state.tendril_home);
@@ -320,6 +450,11 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
         let mut seen: Option<HashMap<String, MissionState>> = None;
         let mut announced: HashMap<String, Announced> = HashMap::new();
         let mut was_working: HashMap<String, bool> = HashMap::new();
+        let mut engine_alerts: HashMap<(String, String), std::time::Instant> = HashMap::new();
+        let mut corrections: HashMap<String, (std::time::Instant, u32)> = HashMap::new();
+        let mut patrol_state = crate::patrol::PatrolState::default();
+        let mut patrol_checked = std::time::Instant::now() - Duration::from_secs(3600);
+        let mut engines_checked = std::time::Instant::now() - Duration::from_secs(3600);
         let mut briefing_pending: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut ticker = tokio::time::interval(TICK);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -383,6 +518,29 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                 }
             }
 
+            // 2b. An engine that has gone down shows up as several jobs stopped for silence at once; the
+            //     managers it is hurting are told the pattern, not left to rediscover it job by job.
+            if engines_checked.elapsed() >= Duration::from_secs(60) {
+                engines_checked = std::time::Instant::now();
+                if let Ok(jobs) = state.job_manager.list_jobs(Some(tendril_core::models::JobStatus::Timeout), 60).await {
+                    let silent = crate::engine_watch::silent_jobs(&jobs, chrono::Utc::now());
+                    for alert in crate::engine_watch::plan_alerts(&silent, &mut engine_alerts, std::time::Instant::now()) {
+                        let Some(manager) = manager_exists(&state, &alert.project).await else { continue };
+                        if let Err(e) = state.chat_manager.notify_event(&manager, &crate::engine_watch::message(&alert)).await {
+                            tracing::debug!("Could not wake manager {manager}: {e}");
+                        }
+                    }
+                }
+            }
+
+            // 2c. Patrol: a manager that is only ever woken by events or by the operator sits idle while
+            //     things stall. Look at each project now and then, wake its manager with whatever is stuck
+            //     or loose, and, when nothing is running and it has standing goals, point it at them.
+            if patrol_checked.elapsed() >= Duration::from_secs(60) {
+                patrol_checked = std::time::Instant::now();
+                patrol(&state, &mut patrol_state).await;
+            }
+
             // 3. Pull requests a manager asked to have watched.
             for watch in crate::pr_watch::due_watches(&state.tendril_home).await {
                 let Some(dir) = project_repo_dir(&state, &watch.project) else {
@@ -421,6 +579,7 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                 let before = was_working.insert(project.clone(), working);
                 if before == Some(true) && !working {
                     let briefing = briefing_pending.remove(&project);
+                    correct_refusals(&state, &project, &mut corrections).await;
                     on_turn_end(&state, &project, briefing).await;
                 }
             }
@@ -544,6 +703,34 @@ mod tests {
         let catchup = wakeup_message("00007", "Add SSO", MissionState::AwaitingApproval, None, Wakeup::Catchup);
         assert!(catchup.contains("daemon restarted"), "{catchup}");
         assert!(!catchup.contains("Unstick"), "approval is not a pause: {catchup}");
+    }
+
+    #[test]
+    fn refused_commands_are_read_off_the_turns_result_event() {
+        let stream = [
+            r#"{"type":"assistant","message":{"content":[{"type":"text","text":"on it"}]}}"#,
+            r#"{"type":"result","subtype":"success","permission_denials":[{"tool_name":"Bash","tool_input":{"command":"tendril mission list --json | jq ."}}]}"#,
+        ]
+        .join("\n");
+        let denials = refusals_in(&stream);
+        assert_eq!(denials.len(), 1);
+        assert_eq!(denials[0].tool_name, "Bash");
+        let text = refusal_message(&denials);
+        assert!(text.contains("tendril mission list"), "{text}");
+        assert!(text.contains("Do not ask the operator to allow your shell"), "{text}");
+        assert!(refusals_in(r#"{"type":"result","subtype":"success"}"#).is_empty());
+        assert!(refusals_in("").is_empty());
+    }
+
+    #[test]
+    fn a_manager_is_corrected_a_couple_of_times_then_left_to_it() {
+        let mut history = HashMap::new();
+        let t = std::time::Instant::now();
+        assert!(may_correct(&mut history, "A", t));
+        assert!(may_correct(&mut history, "A", t));
+        assert!(!may_correct(&mut history, "A", t), "no loop on a command that can never work");
+        assert!(may_correct(&mut history, "B", t), "another project is unaffected");
+        assert!(may_correct(&mut history, "A", t + CORRECTION_WINDOW + Duration::from_secs(1)), "a fresh window");
     }
 
     #[test]

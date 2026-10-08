@@ -179,6 +179,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/config/branch-preview",
             post(config::branch_preview_handler),
         )
+        // The global engines and the rate-limit fallback chain
+        .route("/api/engine", get(projects::get_global_engine).put(projects::set_global_engine))
         // Keys for the public API, managed from Settings
         .route("/api/api-keys", get(api_keys::list_handler).post(api_keys::create_handler))
         .route("/api/api-keys/:id", delete(api_keys::revoke_handler))

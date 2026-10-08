@@ -8,7 +8,7 @@ import { agentsApi } from "../../api/agentsApi";
 import { bridge } from "../../api/bridge";
 import { Card, GhostButton, Label, Pill, PrimaryButton } from "../../components/page/kit";
 
-const ROLES: { role: EngineRole; label: string; hint: string }[] = [
+export const ENGINE_ROLES: { role: EngineRole; label: string; hint: string }[] = [
   { role: "manager", label: "Manager", hint: "The chat you talk to. It decides and delegates." },
   { role: "planner", label: "Planner", hint: "Researches the goal and writes the plan." },
   { role: "worker", label: "Worker", hint: "Does the actual building." },
@@ -16,7 +16,7 @@ const ROLES: { role: EngineRole; label: string; hint: string }[] = [
   { role: "validator", label: "Validator", hint: "Final check on the whole result." },
 ];
 
-const DEFAULT_VALUE = "__default__";
+export const DEFAULT_VALUE = "__default__";
 
 const selectClass =
   "h-8 min-w-0 rounded-lg border border-input bg-muted px-2.5 text-[12.5px] text-foreground outline-none focus:border-primary/50 disabled:opacity-50";
@@ -60,7 +60,7 @@ export const ModelsPanel: React.FC<{ project: ProjectSummary; missions: Mission[
   };
 
   const everyRole = (choice: EngineChoice | null) =>
-    Object.fromEntries(ROLES.map((r) => [r.role, choice])) as Record<string, EngineChoice | null>;
+    Object.fromEntries(ENGINE_ROLES.map((r) => [r.role, choice])) as Record<string, EngineChoice | null>;
 
   const limited = missions.find((m) => m.project === project.name && m.rateLimit);
 
@@ -134,7 +134,7 @@ export const ModelsPanel: React.FC<{ project: ProjectSummary; missions: Mission[
       </Card>
 
       <div className="flex flex-col gap-2.5">
-        {ROLES.map(({ role, label, hint }) => (
+        {ENGINE_ROLES.map(({ role, label, hint }) => (
           <RoleRow
             key={role}
             label={label}
@@ -150,7 +150,7 @@ export const ModelsPanel: React.FC<{ project: ProjectSummary; missions: Mission[
   );
 };
 
-const RoleRow: React.FC<{
+export const RoleRow: React.FC<{
   label: string;
   hint: string;
   agents: AgentOption[];

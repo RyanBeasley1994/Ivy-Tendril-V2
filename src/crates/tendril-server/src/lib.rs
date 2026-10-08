@@ -1,9 +1,11 @@
 pub mod attention;
 pub mod auth;
+pub mod engine_watch;
 pub mod event_buffer;
 pub mod local_file_guard;
 pub mod manager_scheduler;
 pub mod master;
+pub mod patrol;
 pub mod pr_sync;
 pub mod pr_watch;
 pub mod public_api;

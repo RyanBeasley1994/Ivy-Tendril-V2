@@ -17,6 +17,7 @@ pub mod models;
 pub mod plan;
 pub mod project;
 pub mod api_key;
+pub mod engine;
 pub mod push;
 pub mod project_analyzer;
 pub mod promptware;

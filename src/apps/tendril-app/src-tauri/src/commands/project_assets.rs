@@ -35,6 +35,16 @@ pub async fn cmd_project_evidence(project_name: String) -> Result<serde_json::Va
 }
 
 #[tauri::command]
+pub async fn cmd_get_global_engine() -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.get_global_engine().await
+}
+
+#[tauri::command]
+pub async fn cmd_set_global_engine(body: serde_json::Value) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.set_global_engine(body).await
+}
+
+#[tauri::command]
 pub async fn cmd_get_project_engine(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?.get_project_engine(&project_name).await
 }

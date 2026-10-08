@@ -94,6 +94,25 @@ impl TendrilClient {
         .await
     }
 
+    /// The global engines and the rate-limit fallback chain.
+    pub async fn get_global_engine(&self) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(reqwest::Method::GET, "/api/engine", None, "GLOBAL_ENGINE_FAILED", "read the global engines", None)
+            .await
+    }
+
+    /// Sets global roles (`null` clears one) and/or replaces the fallback chain.
+    pub async fn set_global_engine(&self, body: serde_json::Value) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::PUT,
+            "/api/engine",
+            Some(body),
+            "GLOBAL_ENGINE_SET_FAILED",
+            "save the global engines",
+            None,
+        )
+        .await
+    }
+
     /// The project's engine per role.
     pub async fn get_project_engine(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
         self.project_assets_request(

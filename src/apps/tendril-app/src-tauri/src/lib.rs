@@ -277,6 +277,8 @@ pub fn run() {
             cmd_project_owners,
             cmd_managers_status,
             cmd_get_project_engine,
+            cmd_get_global_engine,
+            cmd_set_global_engine,
             cmd_git_repos,
             cmd_git_prs,
             cmd_git_repo,

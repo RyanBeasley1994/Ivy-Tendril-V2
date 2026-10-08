@@ -105,6 +105,7 @@ import type {
   ProjectMemoryEntry,
   ProjectDocker,
   EngineChoice,
+  GlobalEngine,
   MissionEvidence,
   ProjectEngineRoles,
   ProjectMemoryFile,
@@ -1158,6 +1159,26 @@ export const tauriClient = {
       { projectName: project },
       `/api/projects/${encodeURIComponent(project)}/evidence`,
     );
+  },
+
+  /** The engines every project uses unless it sets its own, and the rate-limit fallback chain. */
+  async getGlobalEngine(this: void): Promise<GlobalEngine> {
+    const res = await invokeOrFetch<Partial<GlobalEngine>>("cmd_get_global_engine", {}, "/api/engine");
+    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [] };
+  },
+
+  /** Sets global roles (`null` clears one) and/or replaces the whole fallback chain. */
+  async setGlobalEngine(
+    this: void,
+    change: { roles?: Record<string, EngineChoice | null>; fallbacks?: EngineChoice[] },
+  ): Promise<GlobalEngine> {
+    const res = await invokeOrFetch<Partial<GlobalEngine>>(
+      "cmd_set_global_engine",
+      { body: change },
+      "/api/engine",
+      { method: "PUT", body: JSON.stringify(change) },
+    );
+    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [] };
   },
 
   /** The engine each role of a project runs on; a role not listed runs on the default. */

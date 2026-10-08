@@ -51,6 +51,8 @@ enum Commands {
     )]
     Push(commands::push::PushCommands),
 
+    Engine(commands::engine::EngineArgs),
+
     #[command(
         name = "api-key",
         subcommand,
@@ -305,6 +307,7 @@ async fn dispatch(
         }
         Commands::Evidence(cmd) => commands::evidence::handle_evidence_command(cmd, tendril_home).await?,
         Commands::Push(cmd) => commands::push::handle_push_command(cmd, tendril_home).await?,
+        Commands::Engine(args) => commands::engine::handle_engine_command(args, tendril_home).await?,
         Commands::ApiKey(cmd) => commands::api_key::handle_api_key_command(cmd, tendril_home).await?,
         Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,

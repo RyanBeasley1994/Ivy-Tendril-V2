@@ -21,6 +21,27 @@ pub enum ManagerCommands {
         note: String,
     },
 
+    #[command(
+        about = "Show or change which agent each role of a project runs on (planner, worker, judge, validator)",
+        long_about = "Show or change which agent each role of a project runs on. With no role flags it prints the current engines. \
+A role is `agent`, `agent:model` or `agent:model:effort`, e.g. `--worker claude` or `--judge codex:gpt-5:high`. \
+The change applies at once to the manager, to every live mission from its next job, and to new work; a job already running keeps its agent."
+    )]
+    Engine {
+        #[arg(long, help = "The project")]
+        project: String,
+        #[arg(long)]
+        planner: Option<String>,
+        #[arg(long)]
+        worker: Option<String>,
+        #[arg(long)]
+        judge: Option<String>,
+        #[arg(long)]
+        validator: Option<String>,
+        #[arg(long, value_delimiter = ',', help = "Put these roles back on the default agent, e.g. --reset worker,judge")]
+        reset: Vec<String>,
+    },
+
     #[command(about = "Have the daemon watch a pull request's checks and wake the manager with the result once they have all finished")]
     WatchPr {
         #[arg(long, help = "The project whose manager to wake")]
@@ -76,8 +97,81 @@ async fn post_to_manager(tendril_home: &Path, project: &str, action: &str, body:
     Ok(resp.json().await?)
 }
 
+/// The `roles` body for `PUT /api/projects/:name/engine`: each role named becomes the agent given (or
+/// `null` to reset it); roles not named are left alone.
+pub fn engine_roles(
+    planner: Option<&str>,
+    worker: Option<&str>,
+    judge: Option<&str>,
+    validator: Option<&str>,
+    reset: &[String],
+) -> anyhow::Result<serde_json::Map<String, serde_json::Value>> {
+    let mut roles = serde_json::Map::new();
+    for (role, spec) in [("planner", planner), ("worker", worker), ("judge", judge), ("validator", validator)] {
+        let Some(spec) = spec else { continue };
+        let mut parts = spec.splitn(3, ':').map(str::trim);
+        let agent = parts.next().filter(|a| !a.is_empty()).ok_or_else(|| anyhow::anyhow!("--{role} needs an agent, e.g. claude or claude:opus"))?;
+        let mut value = serde_json::json!({ "agent": agent });
+        if let Some(model) = parts.next().filter(|m| !m.is_empty()) {
+            value["model"] = model.into();
+        }
+        if let Some(effort) = parts.next().filter(|e| !e.is_empty()) {
+            value["effort"] = effort.into();
+        }
+        roles.insert(role.to_string(), value);
+    }
+    for role in reset {
+        let role = role.trim().to_ascii_lowercase();
+        if !["planner", "worker", "judge", "validator"].contains(&role.as_str()) {
+            anyhow::bail!("'{role}' is not a role: planner, worker, judge or validator");
+        }
+        if roles.contains_key(&role) {
+            anyhow::bail!("--{role} and --reset {role} contradict each other");
+        }
+        roles.insert(role, serde_json::Value::Null);
+    }
+    Ok(roles)
+}
+
 pub async fn handle_manager_command(cmd: ManagerCommands, tendril_home: &Path) -> anyhow::Result<()> {
     match cmd {
+        ManagerCommands::Engine { project, planner, worker, judge, validator, reset } => {
+            let master = read_master(tendril_home)
+                .ok_or_else(|| anyhow::anyhow!("The Tendril daemon is not running."))?;
+            let url = format!("{}/api/projects/{}/engine", master.base_url(), project.replace(' ', "%20"));
+            let roles = engine_roles(planner.as_deref(), worker.as_deref(), judge.as_deref(), validator.as_deref(), &reset)?;
+            let client = daemon_client(tendril_home);
+            let request = if roles.is_empty() {
+                client.get(&url)
+            } else {
+                client.put(&url).json(&serde_json::json!({ "roles": roles }))
+            };
+            let resp = request.bearer_auth(&master.secret).send().await?;
+            if !resp.status().is_success() {
+                let status = resp.status();
+                anyhow::bail!("{} ({})", resp.text().await.unwrap_or_default().trim(), status);
+            }
+            let body: serde_json::Value = resp.json().await?;
+            let current = &body["roles"];
+            println!("Engines for {project}:");
+            for role in ["planner", "worker", "judge", "validator"] {
+                let r = &current[role];
+                let text = match r["agent"].as_str() {
+                    Some(agent) => {
+                        let mut t = agent.to_string();
+                        for extra in ["model", "effort"] {
+                            if let Some(v) = r[extra].as_str() {
+                                t.push_str(&format!(" · {v}"));
+                            }
+                        }
+                        t
+                    }
+                    None => "default".to_string(),
+                };
+                println!("  {role:<10} {text}");
+            }
+            Ok(())
+        }
         ManagerCommands::WatchPr { project, pr, repo } => {
             post_to_manager(tendril_home, &project, "watch", serde_json::json!({ "pr": pr, "repo": repo })).await?;
             println!("Watching PR {pr}. The manager is woken once every check has finished.");
@@ -112,7 +206,20 @@ pub async fn handle_manager_command(cmd: ManagerCommands, tendril_home: &Path) -
 
 #[cfg(test)]
 mod tests {
-    use super::parse_duration_seconds;
+    use super::{engine_roles, parse_duration_seconds};
+
+    #[test]
+    fn engine_flags_become_the_roles_body() {
+        let roles = engine_roles(None, Some("claude"), Some("codex:gpt-5:high"), None, &["validator".to_string()]).unwrap();
+        assert_eq!(roles["worker"], serde_json::json!({ "agent": "claude" }));
+        assert_eq!(roles["judge"], serde_json::json!({ "agent": "codex", "model": "gpt-5", "effort": "high" }));
+        assert!(roles["validator"].is_null());
+        assert!(!roles.contains_key("planner"), "a role not named is left alone");
+        assert!(engine_roles(None, None, None, None, &["boss".to_string()]).is_err());
+        assert!(engine_roles(None, Some("claude"), None, None, &["worker".to_string()]).is_err());
+        assert!(engine_roles(None, Some(":opus"), None, None, &[]).is_err());
+        assert!(engine_roles(None, None, None, None, &[]).unwrap().is_empty(), "no flags means show");
+    }
 
     #[test]
     fn parses_the_forms_a_manager_writes() {

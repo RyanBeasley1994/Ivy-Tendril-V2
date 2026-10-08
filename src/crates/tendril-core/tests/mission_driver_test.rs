@@ -546,6 +546,52 @@ async fn a_rate_limited_execution_waits_then_continues_without_using_an_attempt(
 }
 
 #[tokio::test]
+async fn a_rate_limited_execution_moves_to_the_fallback_agent_and_carries_on_at_once() {
+    use tendril_core::agents::project_engine::GlobalEngine;
+    use tendril_core::missions::model::RoleAgent;
+
+    let w = world();
+    let folder = approved_mission(&w, Some(3), None).await;
+    let mut global = GlobalEngine::default();
+    global.set_fallbacks(vec![RoleAgent { agent: "codex".into(), model: Some("local".into()), effort: None }]);
+    global.save(&w.paths.tendril_home).unwrap();
+
+    let (exec, args) = w.jobs.last();
+    let plan = plan_folder_of(&args);
+    execute(&w, &plan, &read_mission(&folder).unwrap().branch.unwrap(), "half done");
+    w.jobs.fail_with(&exec, "Claude AI usage limit reached, try again in 23 minutes");
+    w.driver.reconcile(&folder).await.unwrap();
+
+    // No waiting: the worker role now points at the fallback and the milestone was started again.
+    let m = read_mission(&folder).unwrap();
+    assert_eq!(m.agents.worker.as_ref().map(|a| a.agent.as_str()), Some("codex"));
+    assert_eq!(m.agents.worker.as_ref().and_then(|a| a.model.as_deref()), Some("local"));
+    assert!(m.rate_limit.is_none(), "the wait was consumed at once");
+    assert_eq!(m.milestone("M1").unwrap().attempts, 1, "the limited attempt was given back, the new one counts");
+    assert_ne!(w.jobs.last().0, exec, "a new job is running");
+    assert!(m.log.iter().any(|l| l.message.contains("switching to codex")), "the switch is in the mission log");
+}
+
+#[tokio::test]
+async fn a_rate_limit_with_no_fallback_left_still_waits() {
+    use tendril_core::agents::project_engine::GlobalEngine;
+    use tendril_core::missions::model::RoleAgent;
+
+    let w = world();
+    let folder = approved_mission(&w, Some(3), None).await;
+    // The only fallback is the agent that just got limited, so there is nowhere to go.
+    let mut global = GlobalEngine::default();
+    global.set_fallbacks(vec![RoleAgent { agent: "claude".into(), model: None, effort: None }]);
+    global.save(&w.paths.tendril_home).unwrap();
+    let (exec, _) = w.jobs.last();
+    w.jobs.fail_with(&exec, "Claude AI usage limit reached, try again in 23 minutes");
+    w.driver.reconcile(&folder).await.unwrap();
+    let m = read_mission(&folder).unwrap();
+    assert!(m.rate_limit.is_some(), "it waits out the limit as before");
+    assert!(m.agents.worker.is_none());
+}
+
+#[tokio::test]
 async fn a_rate_limited_judge_is_rerun_after_the_wait() {
     let w = world();
     let folder = approved_mission(&w, None, None).await;

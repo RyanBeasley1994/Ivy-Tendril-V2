@@ -70,6 +70,9 @@ pub async fn get_or_create_project_manager(
     match state.chat_manager.get_or_create_session_with_id(&id, &title).await {
         Ok((session, created)) => {
             if created {
+                if let Some(r) = tendril_core::agents::project_engine::ProjectEngine::load_effective(&state.tendril_home, &project.name).role("manager") {
+                    let _ = state.chat_manager.set_session_agent(&id, &r.agent, r.model.as_deref(), r.effort.as_deref()).await;
+                }
                 let briefing = ChatMessage {
                     id: Uuid::new_v4().to_string(),
                     role: "system".to_string(),

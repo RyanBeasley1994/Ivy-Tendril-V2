@@ -82,3 +82,9 @@ export interface EvidenceGroup {
 export interface MissionEvidence {
   groups: EvidenceGroup[];
 }
+
+/** The engines every project uses unless it sets its own, and the order agents take over when one is rate limited. */
+export interface GlobalEngine {
+  roles: ProjectEngineRoles;
+  fallbacks: EngineChoice[];
+}
