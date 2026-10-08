@@ -214,6 +214,17 @@ impl ChatExecutionManager {
                     &current_role,
                     &mgr.spawned_jobs(&s_id).await,
                 );
+                // The agent this turn really starts on: the session's, unless that agent is rate limited
+                // right now and a fallback can cover for it. The session itself is not changed, so the
+                // turn after the limit resets is back on the agent the operator chose.
+                let planned_engine = crate::missions::model::RoleAgent {
+                    agent: agent_to_use_clone.clone(),
+                    model: current_options.model_id.clone(),
+                    effort: current_options.effort.clone(),
+                };
+                let fallbacks = crate::agents::project_engine::GlobalEngine::load(&mgr.tendril_home).fallbacks;
+                let used = crate::agents::cooldown::resolve(&fallbacks, Some(&planned_engine), &agent_to_use_clone, Utc::now())
+                    .unwrap_or_else(|| planned_engine.clone());
                 let launch_config = AgentLaunchConfig {
                     prompt: match &plan_context {
                         Some(ctx) => format!("{}{}", ctx.briefing, built_prompt),
@@ -224,8 +235,8 @@ impl ChatExecutionManager {
                         .clone()
                         .or_else(|| plan_context.as_ref().and_then(|c| c.working_directory.clone()))
                         .unwrap_or_else(|| mgr.tendril_home.clone()),
-                    model: current_options.model_id.clone(),
-                    effort: current_options.effort.clone(),
+                    model: used.model.clone(),
+                    effort: used.effort.clone(),
                     environment_variables: HashMap::from([(
                         "TENDRIL_CHAT_SESSION_ID".to_string(),
                         s_id.clone(),
@@ -244,7 +255,7 @@ impl ChatExecutionManager {
                     ..Default::default()
                 };
 
-                let spec = (mgr.spec_builder)(&agent_to_use_clone, &launch_config);
+                let spec = (mgr.spec_builder)(&used.agent, &launch_config);
                 let (line_tx, mut line_rx) =
                     tokio::sync::mpsc::unbounded_channel::<AgentOutputEvent>();
 
@@ -399,6 +410,7 @@ impl ChatExecutionManager {
                 // periodic `persist_in_flight_message` tick above must never reconcile, since a
                 // tool that is genuinely still running would get a fake result written over it.
                 let outcome = TurnOutcome::from_run(run_handle.await, stderr_tail);
+                let limit_message: Option<String>;
 
                 // The turn is over, so its buffer stops being live. The lock is held across the
                 // whole handover - deregister, snapshot, write - because this is the one flush an
@@ -416,6 +428,7 @@ impl ChatExecutionManager {
                         outcome.synthetic_tool_output(),
                         true,
                     ));
+                    limit_message = outcome.rate_limit_message(&raw_stream_lines);
 
                     // Final message update & persistence
                     mgr.finalize_message(
@@ -430,6 +443,27 @@ impl ChatExecutionManager {
 
                 // Clean up active cancellation
                 mgr.active_cancellations.lock().await.remove(&s_id);
+
+                // The agent hit a rate or usage limit: it sits out until the limit resets, and if a
+                // fallback can cover for it the same request is run again straight away on that fallback.
+                if let Some(message) = limit_message {
+                    let now = Utc::now();
+                    crate::agents::cooldown::note_rate_limited(&used.agent, crate::missions::rate_limit::wait_for(&message, 3, now));
+                    let cover = crate::agents::cooldown::resolve(&fallbacks, Some(&planned_engine), &agent_to_use_clone, now);
+                    if cover.is_some_and(|c| !c.agent.eq_ignore_ascii_case(&used.agent)) {
+                        mgr.enqueue_message_first(
+                            &s_id,
+                            crate::chat::ChatQueuedItem {
+                                id: Uuid::new_v4().to_string(),
+                                prompt: current_prompt.clone(),
+                                attachments: None,
+                                created_at: Utc::now(),
+                                role: (current_role != "user").then(|| current_role.clone()),
+                            },
+                        )
+                        .await;
+                    }
+                }
 
                 // Check if there are queued messages to dequeue
                 if let Some(next_item) = mgr.dequeue_message(&s_id).await {

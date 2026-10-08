@@ -306,7 +306,12 @@ fn project_engine_for(
     if project.trim().is_empty() {
         return None;
     }
-    ProjectEngine::load_effective(&state.tendril_home, &project).for_job_type(args.job_type()).cloned()
+    let planned = ProjectEngine::load_effective(&state.tendril_home, &project).for_job_type(args.job_type()).cloned();
+    // An agent that is rate limited right now is sat out: the job starts on the next one in the fallback
+    // chain, and is back on the chosen agent once the limit resets.
+    let fallbacks = tendril_core::agents::project_engine::GlobalEngine::load(&state.tendril_home).fallbacks;
+    let default_agent = state.settings_snapshot().settings.coding_agent.clone();
+    tendril_core::agents::cooldown::resolve(&fallbacks, planned.as_ref(), &default_agent, chrono::Utc::now())
 }
 
 pub async fn start_job(

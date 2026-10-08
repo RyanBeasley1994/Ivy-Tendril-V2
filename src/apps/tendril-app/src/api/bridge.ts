@@ -1164,7 +1164,7 @@ export const tauriClient = {
   /** The engines every project uses unless it sets its own, and the rate-limit fallback chain. */
   async getGlobalEngine(this: void): Promise<GlobalEngine> {
     const res = await invokeOrFetch<Partial<GlobalEngine>>("cmd_get_global_engine", {}, "/api/engine");
-    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [] };
+    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [], limited: res.limited ?? [] };
   },
 
   /** Sets global roles (`null` clears one) and/or replaces the whole fallback chain. */
@@ -1178,7 +1178,7 @@ export const tauriClient = {
       "/api/engine",
       { method: "PUT", body: JSON.stringify(change) },
     );
-    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [] };
+    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [], limited: res.limited ?? [] };
   },
 
   /** The engine each role of a project runs on; a role not listed runs on the default. */

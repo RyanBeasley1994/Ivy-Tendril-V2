@@ -61,6 +61,19 @@ export const GlobalEnginesSection: React.FC = () => {
         <p className="text-sm text-muted-foreground">{error ?? "Loading agents…"}</p>
       ) : (
         <div className="space-y-6">
+          {(engine.limited ?? []).length > 0 && (
+            <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-[12.5px]" data-testid="limited-agents">
+              {(engine.limited ?? []).map((l) => (
+                <div key={l.agent}>
+                  <span className="font-medium text-foreground">{l.agent}</span> is rate limited until{" "}
+                  {new Date(l.until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.{" "}
+                  {engine.fallbacks.length > 0
+                    ? "New work is on the fallback until then, and moves back by itself."
+                    : "With no fallback, work waits for it."}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex flex-col gap-2.5">
             {ENGINE_ROLES.map(({ role, label, hint }) => (
               <RoleRow

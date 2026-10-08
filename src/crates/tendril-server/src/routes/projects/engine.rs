@@ -163,7 +163,12 @@ pub async fn set_project_engine(
 
 pub async fn get_global_engine(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let engine = GlobalEngine::load(&state.tendril_home);
-    Json(json!({ "roles": engine.roles, "fallbacks": engine.fallbacks })).into_response()
+    // Agents sitting out a rate limit right now, and when each comes back.
+    let limited: Vec<_> = tendril_core::agents::cooldown::active(Utc::now())
+        .into_iter()
+        .map(|(agent, until)| json!({ "agent": agent, "until": until.to_rfc3339() }))
+        .collect();
+    Json(json!({ "roles": engine.roles, "fallbacks": engine.fallbacks, "limited": limited })).into_response()
 }
 
 #[derive(Debug, Deserialize)]

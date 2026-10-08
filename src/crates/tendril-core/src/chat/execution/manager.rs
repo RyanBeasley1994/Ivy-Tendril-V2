@@ -312,6 +312,12 @@ impl ChatExecutionManager {
     }
 
     // Queue management
+    /// Puts `item` at the front of the queue: it runs before anything already waiting.
+    pub async fn enqueue_message_first(&self, session_id: &str, item: ChatQueuedItem) {
+        let mut map = self.queued_messages.write().await;
+        map.entry(session_id.to_string()).or_default().insert(0, item);
+    }
+
     pub async fn enqueue_message(&self, session_id: &str, item: ChatQueuedItem) {
         let mut map = self.queued_messages.write().await;
         map.entry(session_id.to_string()).or_default().push(item);

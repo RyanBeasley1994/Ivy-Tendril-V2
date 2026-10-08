@@ -87,4 +87,6 @@ export interface MissionEvidence {
 export interface GlobalEngine {
   roles: ProjectEngineRoles;
   fallbacks: EngineChoice[];
+  /** Agents sitting out a rate limit right now, and when each comes back. */
+  limited?: { agent: string; until: string }[];
 }

@@ -562,14 +562,19 @@ async fn a_rate_limited_execution_moves_to_the_fallback_agent_and_carries_on_at_
     w.jobs.fail_with(&exec, "Claude AI usage limit reached, try again in 23 minutes");
     w.driver.reconcile(&folder).await.unwrap();
 
-    // No waiting: the worker role now points at the fallback and the milestone was started again.
+    // No waiting: the milestone was started again at once, and that job runs on the fallback.
     let m = read_mission(&folder).unwrap();
-    assert_eq!(m.agents.worker.as_ref().map(|a| a.agent.as_str()), Some("codex"));
-    assert_eq!(m.agents.worker.as_ref().and_then(|a| a.model.as_deref()), Some("local"));
     assert!(m.rate_limit.is_none(), "the wait was consumed at once");
     assert_eq!(m.milestone("M1").unwrap().attempts, 1, "the limited attempt was given back, the new one counts");
-    assert_ne!(w.jobs.last().0, exec, "a new job is running");
-    assert!(m.log.iter().any(|l| l.message.contains("switching to codex")), "the switch is in the mission log");
+    let (rerun, _) = w.jobs.last();
+    assert_ne!(rerun, exec, "a new job is running");
+    let agent = w.jobs.agents.lock().unwrap()[&rerun].clone().expect("it was given an engine");
+    assert_eq!((agent.agent.as_str(), agent.model.as_deref()), ("codex", Some("local")));
+    // The mission still names the agent the operator chose, so once the limit resets new steps are
+    // back on it with nothing to switch back.
+    assert!(m.agents.worker.is_none(), "the role was not rewritten");
+    assert!(m.log.iter().any(|l| l.message.contains("covering with codex")), "the cover is in the mission log");
+    tendril_core::agents::cooldown::clear("claude");
 }
 
 #[tokio::test]
@@ -589,6 +594,7 @@ async fn a_rate_limit_with_no_fallback_left_still_waits() {
     let m = read_mission(&folder).unwrap();
     assert!(m.rate_limit.is_some(), "it waits out the limit as before");
     assert!(m.agents.worker.is_none());
+    tendril_core::agents::cooldown::clear("claude");
 }
 
 #[tokio::test]

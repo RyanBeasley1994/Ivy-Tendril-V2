@@ -522,6 +522,18 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
             //     managers it is hurting are told the pattern, not left to rediscover it job by job.
             if engines_checked.elapsed() >= Duration::from_secs(60) {
                 engines_checked = std::time::Instant::now();
+                // Any job that just failed on a rate limit puts its agent on cooldown, so what starts next
+                // (plan jobs outside missions included) is covered by the fallback chain until it resets.
+                if let Ok(failed) = state.job_manager.list_jobs(Some(tendril_core::models::JobStatus::Failed), 30).await {
+                    let now = chrono::Utc::now();
+                    for job in failed.iter().filter(|j| j.completed_at.is_some_and(|at| now - at <= chrono::Duration::minutes(10))) {
+                        let texts = [job.reported_failure_reason.as_deref(), job.status_message.as_deref()];
+                        if let Some(reason) = tendril_core::missions::rate_limit::detect(texts.into_iter().flatten()) {
+                            let from = job.completed_at.unwrap_or(now);
+                            tendril_core::agents::cooldown::note_rate_limited(&job.provider, tendril_core::missions::rate_limit::wait_for(&reason, 3, from));
+                        }
+                    }
+                }
                 if let Ok(jobs) = state.job_manager.list_jobs(Some(tendril_core::models::JobStatus::Timeout), 60).await {
                     let silent = crate::engine_watch::silent_jobs(&jobs, chrono::Utc::now());
                     for alert in crate::engine_watch::plan_alerts(&silent, &mut engine_alerts, std::time::Instant::now()) {

@@ -136,6 +136,15 @@ impl TurnOutcome {
         (status, None)
     }
 
+    /// The limit message, when this turn failed because the agent hit a rate or usage limit.
+    pub(super) fn rate_limit_message(&self, raw_lines: &[String]) -> Option<String> {
+        if self.is_success() {
+            return None;
+        }
+        let failure = self.failure_text(raw_lines);
+        crate::missions::rate_limit::detect(std::iter::once(failure.as_str()).chain(self.stderr_tail.iter().map(String::as_str)))
+    }
+
     fn failure_text(&self, raw_lines: &[String]) -> String {
         self.failure_parts(raw_lines).0
     }

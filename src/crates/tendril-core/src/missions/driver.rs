@@ -231,6 +231,18 @@ impl MissionDriver {
         Ok(Some((current, job)))
     }
 
+    /// The engine a step should start on: its role's, unless that agent is rate limited right now and a
+    /// fallback can cover for it.
+    fn resolve_engine(
+        &self,
+        fallbacks: &[RoleAgent],
+        planned: Option<&RoleAgent>,
+        now: chrono::DateTime<Utc>,
+    ) -> Option<RoleAgent> {
+        let default_agent = (self.settings)().coding_agent;
+        crate::agents::cooldown::resolve(fallbacks, planned, &default_agent, now)
+    }
+
     async fn start_job(
         &self,
         folder: &Path,
@@ -240,7 +252,9 @@ impl MissionDriver {
         message: String,
         mutate: impl FnOnce(&mut MissionYaml),
     ) -> Result<bool> {
-        let agent = read_mission(folder)?.agents.for_step(step).cloned();
+        let planned = read_mission(folder)?.agents.for_step(step).cloned();
+        let fallbacks = crate::agents::project_engine::GlobalEngine::load(&self.paths.tendril_home).fallbacks;
+        let agent = self.resolve_engine(&fallbacks, planned.as_ref(), Utc::now());
         let job_id = self.jobs.start(args, agent.as_ref()).await?;
         let reference = MissionJobRef {
             job_id: job_id.clone(),
@@ -330,31 +344,33 @@ impl MissionDriver {
         let Some(reason) = Self::rate_limited(job) else {
             return Ok(false);
         };
-        // A fallback agent, when the operator set a chain and the limited agent is not its last link:
-        // switch this step's role to it and run the step again now, rather than waiting out the limit.
+        // The agent that was just limited sits out until its limit resets (the message usually says when).
+        // If a fallback can cover for it, the step runs again at once on that fallback; nothing in the
+        // mission is rewritten, so the moment the limit clears new steps are back on the chosen agent.
+        let now = Utc::now();
+        let limited_agent = job.provider.clone();
+        crate::agents::cooldown::note_rate_limited(&limited_agent, rate_limit::wait_for(&reason, 3, now));
         let fallbacks = crate::agents::project_engine::GlobalEngine::load(&self.paths.tendril_home).fallbacks;
-        if !fallbacks.is_empty() {
-            let used = RoleAgent { agent: job.provider.clone(), model: job.model.clone(), effort: job.effort.clone() };
-            let primary = read_mission(folder)?.agents.for_step(step).cloned();
-            if let Some(next) = crate::agents::project_engine::next_fallback(&fallbacks, primary.as_ref(), &used) {
-                update_mission(folder, |m| {
-                    m.rate_limit_streak = 0;
-                    if matches!(step, MissionStep::Execute | MissionStep::Retry) {
-                        if let Some(ms) = milestone.and_then(|id| m.milestone_mut(id)) {
-                            ms.attempts = ms.attempts.saturating_sub(1);
-                        }
+        let planned = read_mission(folder)?.agents.for_step(step).cloned();
+        let covering = self.resolve_engine(&fallbacks, planned.as_ref(), now);
+        let covered_by = covering.as_ref().map(|a| a.agent.clone()).filter(|a| !a.eq_ignore_ascii_case(&limited_agent));
+        if let Some(cover) = covered_by {
+            update_mission(folder, |m| {
+                m.rate_limit_streak = 0;
+                if matches!(step, MissionStep::Execute | MissionStep::Retry) {
+                    if let Some(ms) = milestone.and_then(|id| m.milestone_mut(id)) {
+                        ms.attempts = ms.attempts.saturating_sub(1);
                     }
-                    m.agents.set_for_step(step, Some(next.clone()));
-                    // Due at once: the next pass re-runs the step on the new agent.
-                    m.rate_limit = Some(RateLimitWait { until: Utc::now(), step, milestone: milestone.map(str::to_string), reason: reason.clone() });
-                    m.log(
-                        milestone,
-                        format!("{} hit a rate limit ({}); switching to {} and carrying on", used.describe(), reason, next.describe()),
-                    );
-                    Ok(())
-                })?;
-                return Ok(true);
-            }
+                }
+                // Due at once: the next pass re-runs the step, which now starts on the fallback.
+                m.rate_limit = Some(RateLimitWait { until: Utc::now(), step, milestone: milestone.map(str::to_string), reason: reason.clone() });
+                m.log(
+                    milestone,
+                    format!("{limited_agent} hit a rate limit ({reason}); covering with {cover} until it resets"),
+                );
+                Ok(())
+            })?;
+            return Ok(true);
         }
         update_mission(folder, |m| {
             m.rate_limit_streak += 1;
