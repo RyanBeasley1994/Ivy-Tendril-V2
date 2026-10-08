@@ -78,7 +78,7 @@ pub fn findings(
                 found(format!("mission {} \"{}\" has been waiting for approval for {age} min", f.id, m.title))
             }
             MissionState::Review if age >= 15 => found(format!(
-                "mission {} \"{}\" has sat in review for {age} min: get its work merged locally, then have a worker push the branch and open a pull request, watch its CI, and close the mission",
+                "mission {} \"{}\" has sat in review for {age} min: check it against what was asked, then push its branch, open a pull request, watch its CI, and close the mission. Do not merge it into main yourself",
                 f.id, m.title
             )),
             MissionState::Planning | MissionState::Running | MissionState::Validating if age >= 45 => found(format!(
@@ -109,7 +109,8 @@ pub fn patrol_message(findings: &[Finding]) -> String {
     format!(
         "Patrol: nobody has asked you anything, but these need handling:\n{list}\n\n\
 Deal with each one now, yourself or through a worker, the way your standing orders say: unstick pauses, \
-approve and run what is waiting, get finished work merged and closed, follow up failures with a sharper attempt. \
+approve and run what is waiting, get finished work merged and closed, push and open pull requests for what was never shipped, \
+remove worktrees and branches that are finished with, follow up failures with a sharper attempt. \
 Do not wait for the operator. When it is all handled, reply with one short line saying what you did. \
 If one of them really is the operator's to decide (a budget ran out, they paused it on purpose), say which and why in that line, \
 once: an unchanged list is raised {MAX_REPEATS} times and then dropped until something changes."

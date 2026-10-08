@@ -294,3 +294,91 @@ pub async fn watch_pull_request(
     let watch = crate::pr_watch::add_watch(&state.tendril_home, &project.name, body.pr, body.repo).await;
     (StatusCode::OK, Json(json!(watch))).into_response()
 }
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskRequest {
+    #[serde(default)]
+    pub title: String,
+    pub prompt: String,
+    /// An existing directory to work in, instead of a fresh worktree on a new branch.
+    #[serde(default)]
+    pub dir: Option<String>,
+    /// The branch to cut the task's branch from, instead of the remote's main branch.
+    #[serde(default)]
+    pub from: Option<String>,
+    /// The id of a finished task to send back with `prompt`, instead of starting a new one.
+    #[serde(default, rename = "continue")]
+    pub continue_id: Option<String>,
+}
+
+/// `POST /api/projects/:name/manager/tasks` — the manager hands a small job straight to one agent, or
+/// sends a finished one back (see `crate::manager_tasks`).
+pub async fn start_manager_task(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(body): Json<TaskRequest>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    let result = match body.continue_id.as_deref().map(str::trim).filter(|id| !id.is_empty()) {
+        Some(id) => crate::manager_tasks::send_back(&state, &project.name, id, &body.prompt).await,
+        None => {
+            let Some(repo) = project.repos.first() else {
+                return error(StatusCode::BAD_REQUEST, format!("Project '{}' has no repos configured", project.name));
+            };
+            crate::manager_tasks::start(
+                &state,
+                &project.name,
+                std::path::Path::new(repo),
+                &body.title,
+                &body.prompt,
+                body.dir.as_deref(),
+                body.from.as_deref(),
+            )
+            .await
+        }
+    };
+    match result {
+        Ok(task) => (StatusCode::OK, Json(json!(task))).into_response(),
+        Err(e) => error(StatusCode::BAD_REQUEST, e),
+    }
+}
+
+/// `GET /api/projects/:name/manager/tasks` — the project's tasks, running and finished-but-not-cleaned.
+pub async fn list_manager_tasks(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    Json(json!({ "tasks": crate::manager_tasks::list(&state.tendril_home, &project.name) })).into_response()
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+pub struct CleanTaskRequest {
+    #[serde(default)]
+    pub force: bool,
+}
+
+/// `POST /api/projects/:name/manager/tasks/:id/clean` — removes a finished task's worktree, and its
+/// branch when the commits are safe elsewhere.
+pub async fn clean_manager_task(
+    State(state): State<Arc<AppState>>,
+    Path((name, id)): Path<(String, String)>,
+    body: Option<Json<CleanTaskRequest>>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    let force = body.map(|b| b.force).unwrap_or(false);
+    match crate::manager_tasks::clean(&state, &project.name, &id, force).await {
+        Ok(done) => (StatusCode::OK, Json(json!({ "result": done }))).into_response(),
+        Err(e) => error(StatusCode::BAD_REQUEST, e),
+    }
+}

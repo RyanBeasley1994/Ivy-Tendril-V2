@@ -392,6 +392,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/projects/:name/manager/watch",
             post(projects::watch_pull_request),
         )
+        .route(
+            "/api/projects/:name/manager/tasks",
+            get(projects::list_manager_tasks).post(projects::start_manager_task),
+        )
+        .route(
+            "/api/projects/:name/manager/tasks/:id/clean",
+            post(projects::clean_manager_task),
+        )
         .route("/api/projects/:name/docker", get(projects::project_docker))
         .route(
             "/api/projects/:name/engine",

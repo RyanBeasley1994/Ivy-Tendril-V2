@@ -141,6 +141,8 @@ impl ChatExecutionManager {
             .insert(session_id.to_string(), cancel_tx);
 
         let agent_to_use_clone = agent_to_use.clone();
+        let session_model = model_to_use.clone();
+        let session_effort = effort_to_use.clone();
         let mgr = Arc::clone(self);
         let s_id = session_id.to_string();
         let persist_interval = self.persist_interval;
@@ -217,10 +219,13 @@ impl ChatExecutionManager {
                 // The agent this turn really starts on: the session's, unless that agent is rate limited
                 // right now and a fallback can cover for it. The session itself is not changed, so the
                 // turn after the limit resets is back on the agent the operator chose.
+                // The session's own model and effort when the turn names none: a turn the daemon
+                // starts (an event, a manager's wake) names nothing, and would otherwise run on the
+                // agent's default model instead of the one the session was set to.
                 let planned_engine = crate::missions::model::RoleAgent {
                     agent: agent_to_use_clone.clone(),
-                    model: current_options.model_id.clone(),
-                    effort: current_options.effort.clone(),
+                    model: Some(session_model.clone()).filter(|m| !m.is_empty() && m != "default"),
+                    effort: session_effort.clone(),
                 };
                 let fallbacks = crate::agents::project_engine::GlobalEngine::load(&mgr.tendril_home).fallbacks;
                 let used = crate::agents::cooldown::resolve(&fallbacks, Some(&planned_engine), &agent_to_use_clone, Utc::now())

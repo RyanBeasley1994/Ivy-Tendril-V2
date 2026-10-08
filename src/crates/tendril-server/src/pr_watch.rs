@@ -118,15 +118,38 @@ pub struct PrStatus {
     /// `OPEN`, `MERGED` or `CLOSED`.
     pub state: String,
     pub outcome: CheckOutcome,
+    /// How the branch stands against main, for an open pull request.
+    pub against_main: AgainstMain,
+}
+
+/// Whether an open pull request's branch can go into main as it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AgainstMain {
+    /// Up to date, or GitHub has not said otherwise.
+    #[default]
+    Fine,
+    /// Main has moved on and the branch does not have it.
+    Behind,
+    /// It conflicts with main.
+    Conflicts,
 }
 
 /// Reads `gh pr view --json title,state,statusCheckRollup`.
 pub fn evaluate(json: &Value) -> PrStatus {
     let title = json["title"].as_str().unwrap_or("").to_string();
     let state = json["state"].as_str().unwrap_or("OPEN").to_string();
+    let against_main = if state != "OPEN" {
+        AgainstMain::Fine
+    } else if json["mergeable"].as_str() == Some("CONFLICTING") || json["mergeStateStatus"].as_str() == Some("DIRTY") {
+        AgainstMain::Conflicts
+    } else if json["mergeStateStatus"].as_str() == Some("BEHIND") {
+        AgainstMain::Behind
+    } else {
+        AgainstMain::Fine
+    };
     let checks = json["statusCheckRollup"].as_array().cloned().unwrap_or_default();
     if checks.is_empty() {
-        return PrStatus { title, state, outcome: CheckOutcome::NoChecks };
+        return PrStatus { title, state, outcome: CheckOutcome::NoChecks, against_main };
     }
     let mut pending = 0usize;
     let mut failed: Vec<String> = Vec::new();
@@ -160,14 +183,14 @@ pub fn evaluate(json: &Value) -> PrStatus {
         failed.dedup();
         CheckOutcome::Failed(failed)
     };
-    PrStatus { title, state, outcome }
+    PrStatus { title, state, outcome, against_main }
 }
 
 /// Asks GitHub about the PR from inside the project's repo.
 pub async fn fetch(watch: &PrWatch, repo_dir: &Path) -> Result<PrStatus, String> {
     let mut cmd = tokio::process::Command::new("gh");
     cmd.current_dir(repo_dir)
-        .args(["pr", "view", &watch.pr.to_string(), "--json", "title,state,statusCheckRollup"]);
+        .args(["pr", "view", &watch.pr.to_string(), "--json", "title,state,statusCheckRollup,mergeable,mergeStateStatus"]);
     if let Some(repo) = &watch.repo {
         cmd.args(["--repo", repo]);
     }
@@ -185,8 +208,21 @@ pub async fn fetch(watch: &PrWatch, repo_dir: &Path) -> Result<PrStatus, String>
 /// The sentence the manager is woken with, or `None` while the checks are still running.
 pub fn wake_message(watch: &PrWatch, status: &PrStatus, age_seconds: i64) -> Option<String> {
     let subject = format!("PR {} \"{}\" ({})", watch.pr, status.title, status.state.to_lowercase());
+    // Green against an old main is not green: the branch has to take main in and be checked again.
+    let stale = match status.against_main {
+        AgainstMain::Fine => None,
+        AgainstMain::Behind => Some(format!(
+            "{subject}: main has moved on and this branch does not have it, so it is not ready. Bring main in (`gh pr update-branch {}`), then watch it again.",
+            watch.pr
+        )),
+        AgainstMain::Conflicts => Some(format!(
+            "{subject}: it conflicts with main, so it is not ready. Hand out a task on the PR branch to merge the latest main in and resolve the conflicts, have it pushed, then watch it again."
+        )),
+    };
     match &status.outcome {
-        CheckOutcome::Green => Some(format!("{subject}: every check passed.")),
+        CheckOutcome::Pending(_) if stale.is_some() && status.against_main == AgainstMain::Conflicts => stale,
+        CheckOutcome::Green | CheckOutcome::NoChecks if stale.is_some() => stale,
+        CheckOutcome::Green => Some(format!("{subject}: every check passed, and GitHub reports it neither behind nor in conflict with main.")),
         CheckOutcome::Failed(names) => Some(format!(
             "{subject}: checks failed: {}. Look at the failing runs and delegate a fix on the PR branch.",
             names.join(", ")
@@ -265,8 +301,22 @@ mod tests {
         let none = evaluate(&json!({"title": "t", "state": "OPEN", "statusCheckRollup": []}));
         assert_eq!(wake_message(&watch(), &none, 30), None, "CI may simply not have started yet");
         assert!(wake_message(&watch(), &none, NO_CHECKS_AFTER_SECONDS).is_some());
-        let stuck = PrStatus { title: "t".into(), state: "OPEN".into(), outcome: CheckOutcome::Pending(2) };
+        let stuck = PrStatus { title: "t".into(), state: "OPEN".into(), outcome: CheckOutcome::Pending(2), against_main: AgainstMain::Fine };
         assert!(wake_message(&watch(), &stuck, GIVE_UP_AFTER_SECONDS).unwrap().contains("still running"));
+    }
+
+    #[test]
+    fn green_checks_on_a_branch_that_lacks_main_are_not_ready() {
+        let checks = json!([{"name": "c", "status": "COMPLETED", "conclusion": "SUCCESS"}]);
+        let behind = evaluate(&json!({"title": "t", "state": "OPEN", "mergeStateStatus": "BEHIND", "statusCheckRollup": checks}));
+        assert_eq!(behind.against_main, AgainstMain::Behind);
+        assert!(wake_message(&watch(), &behind, 60).unwrap().contains("gh pr update-branch 46"));
+        let conflicts = evaluate(&json!({"title": "t", "state": "OPEN", "mergeable": "CONFLICTING", "statusCheckRollup": [{"name": "c", "status": "IN_PROGRESS"}]}));
+        // A conflict is news straight away: no point waiting for checks that will have to run again.
+        assert!(wake_message(&watch(), &conflicts, 60).unwrap().contains("conflicts with main"));
+        // Once merged, how it stood against main no longer matters.
+        let merged = evaluate(&json!({"title": "t", "state": "MERGED", "mergeStateStatus": "BEHIND", "statusCheckRollup": checks}));
+        assert!(wake_message(&watch(), &merged, 60).unwrap().contains("every check passed"));
     }
 
     #[tokio::test]

@@ -42,6 +42,46 @@ The change applies at once to the manager, to every live mission from its next j
         reset: Vec<String>,
     },
 
+    #[command(
+        about = "Hand a small job straight to one agent, with no plan: it runs in a fresh worktree on its own branch and the manager is woken when it stops",
+        long_about = "Hand a small job straight to one agent, with no plan. The agent (the project's worker engine) gets only your instruction, \
+runs in a fresh worktree on a new branch cut from the remote's main branch as it is right now (fetched first; --from names another branch to build on), \
+commits its work, and reports. The manager is woken with that report and what was left behind. Nothing is pushed or cleaned up for you: \
+push the branch and open its pull request, then `tendril manager task-clean`. \
+Use --in to run in a directory that already exists (a mission's worktree, a pull request's checkout) instead of a new one, \
+and --continue to send a finished task back to the same worker with what is wrong."
+    )]
+    Task {
+        #[arg(long, help = "The project")]
+        project: String,
+        #[arg(long, help = "A few words naming the task; also names its branch")]
+        title: Option<String>,
+        #[arg(long = "in", help = "Run in this existing directory instead of a fresh worktree on a new branch")]
+        dir: Option<String>,
+        #[arg(long, value_name = "BRANCH", help = "Cut the task's branch from this branch instead of the remote's main: for work that builds on a branch not merged yet")]
+        from: Option<String>,
+        #[arg(long = "continue", value_name = "TASK_ID", help = "Send this finished task back to its worker with the instruction")]
+        continue_id: Option<String>,
+        #[arg(help = "What to do, what must be true when it is done, and how to check it. Read from stdin when omitted")]
+        instruction: Option<String>,
+    },
+
+    #[command(about = "List the project's tasks: running, and finished but not yet cleaned up")]
+    Tasks {
+        #[arg(long, help = "The project")]
+        project: String,
+    },
+
+    #[command(about = "Remove a finished task's worktree, and its branch when its commits are merged or pushed")]
+    TaskClean {
+        #[arg(long, help = "The project")]
+        project: String,
+        #[arg(help = "The task id, as `tendril manager tasks` prints it")]
+        id: String,
+        #[arg(long, help = "Also throw away uncommitted files and an unmerged, unpushed branch")]
+        force: bool,
+    },
+
     #[command(about = "Have the daemon watch a pull request's checks and wake the manager with the result once they have all finished")]
     WatchPr {
         #[arg(long, help = "The project whose manager to wake")]
@@ -170,6 +210,58 @@ pub async fn handle_manager_command(cmd: ManagerCommands, tendril_home: &Path) -
                 };
                 println!("  {role:<10} {text}");
             }
+            Ok(())
+        }
+        ManagerCommands::Task { project, title, dir, from, continue_id, instruction } => {
+            let instruction = match instruction {
+                Some(text) => text,
+                None => {
+                    let mut text = String::new();
+                    std::io::Read::read_to_string(&mut std::io::stdin(), &mut text)?;
+                    text
+                }
+            };
+            if instruction.trim().is_empty() {
+                anyhow::bail!("A task needs an instruction: pass it as the argument, or on stdin");
+            }
+            let body = serde_json::json!({ "title": title.unwrap_or_default(), "prompt": instruction, "dir": dir, "from": from, "continue": continue_id });
+            let task = post_to_manager(tendril_home, &project, "tasks", body).await?;
+            let id = task["id"].as_str().unwrap_or("?");
+            match task["branch"].as_str() {
+                Some(branch) => println!("Task {id} started on branch {branch} in {}.", task["dir"].as_str().unwrap_or("?")),
+                None => println!("Task {id} started in {}.", task["dir"].as_str().unwrap_or("?")),
+            }
+            println!("The manager is woken when its worker stops. Do not wait for it.");
+            Ok(())
+        }
+        ManagerCommands::Tasks { project } => {
+            let master = read_master(tendril_home).ok_or_else(|| anyhow::anyhow!("The Tendril daemon is not running."))?;
+            let url = format!("{}/api/projects/{}/manager/tasks", master.base_url(), project.replace(' ', "%20"));
+            let resp = daemon_client(tendril_home).get(&url).bearer_auth(&master.secret).send().await?;
+            if !resp.status().is_success() {
+                let status = resp.status();
+                anyhow::bail!("{} ({})", resp.text().await.unwrap_or_default().trim(), status);
+            }
+            let body: serde_json::Value = resp.json().await?;
+            let tasks = body["tasks"].as_array().cloned().unwrap_or_default();
+            if tasks.is_empty() {
+                println!("No tasks in {project}.");
+            }
+            for t in tasks {
+                println!(
+                    "{}  {:<8}  {}  {}  {}",
+                    t["id"].as_str().unwrap_or("?"),
+                    if t["finishedAt"].is_null() { "running" } else { "finished" },
+                    t["branch"].as_str().unwrap_or("-"),
+                    t["dir"].as_str().unwrap_or("-"),
+                    t["title"].as_str().unwrap_or(""),
+                );
+            }
+            Ok(())
+        }
+        ManagerCommands::TaskClean { project, id, force } => {
+            let done = post_to_manager(tendril_home, &project, &format!("tasks/{id}/clean"), serde_json::json!({ "force": force })).await?;
+            println!("{}", done["result"].as_str().unwrap_or("Cleaned."));
             Ok(())
         }
         ManagerCommands::WatchPr { project, pr, repo } => {

@@ -161,7 +161,7 @@ fn describe(state: MissionState) -> &'static str {
     match state {
         MissionState::AwaitingApproval => "has its milestones planned and is waiting for approval (`tendril mission approve <id>`)",
         MissionState::Paused => "is paused",
-        MissionState::Review => "passed validation and is in review: check it against what the operator asked for, then land it, ship it and close it, as your standing orders say",
+        MissionState::Review => "passed validation and is in review: check it against what the operator asked for, then push it, open its pull request and close it, as your standing orders say",
         MissionState::Completed => "is completed: if the request it belongs to has more to do, take the next step; if that was the last of it, check the request's \"done when\" and close it in the Goals memory",
         MissionState::Cancelled => "was cancelled",
         _ => "changed state",
@@ -313,7 +313,10 @@ async fn patrol(state: &AppState, patrol_state: &mut crate::patrol::PatrolState)
         }
         let missions: Vec<_> = all_missions.iter().filter(|f| f.mission.project.eq_ignore_ascii_case(&project)).cloned().collect();
         let project_failed: Vec<_> = failed.iter().filter(|j| j.project.eq_ignore_ascii_case(&project)).cloned().collect();
-        let found = patrol::findings(&missions, &project_failed, now);
+        let mut found = patrol::findings(&missions, &project_failed, now);
+        // What the manager itself has left untidy: tasks not cleaned up, finished missions not shipped.
+        let repo = project_repo_dir(state, &project);
+        found.extend(crate::manager_tasks::loose_ends(state, &project, repo.as_deref(), &missions, now).await);
 
         let message = if !found.is_empty() {
             patrol_state.should_raise(&project, &found).then(|| patrol::patrol_message(&found))
@@ -480,6 +483,9 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                     tracing::debug!("Could not wake manager {manager}: {e}");
                 }
             }
+
+            // 2a. Tasks the managers handed straight to an agent: tell each manager when its worker stops.
+            crate::manager_tasks::report_finished(&state).await;
 
             // 2b. An engine that has gone down shows up as several jobs stopped for silence at once; the
             //     managers it is hurting are told the pattern, not left to rediscover it job by job.
