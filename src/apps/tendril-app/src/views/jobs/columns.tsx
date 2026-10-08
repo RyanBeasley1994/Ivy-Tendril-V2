@@ -67,6 +67,7 @@ export const SORT_COLUMNS: RemoteSortColumn[] = [
   { name: "planId", sortColumn: "planFile" },
   { name: "prompt", sortColumn: "reportedPlanTitle" },
   { name: "type" },
+  { name: "agent", sortColumn: "provider" },
   { name: "project" },
   { name: "timer", sortColumn: "durationSeconds" },
   { name: "agentOutput", sortColumn: "status" },
@@ -312,6 +313,33 @@ export function useJobColumns({
             {labels.jobType(row.type)}
           </Badge>
         ),
+      },
+      {
+        name: "agent",
+        header: t("table.columns.agent.header"),
+        width: "170px",
+        sortColumn: "provider",
+        filter: {
+          kind: "text",
+          column: "provider",
+          placeholder: t("table.columns.agent.filterPlaceholder"),
+        },
+        accessor: (row) => row.provider ?? "",
+        // The harness and the model it is running, e.g. `claude` over `opus · high`, so a glance at the
+        // list says what is running where (and which jobs are on the local model).
+        cell: (_value, row) =>
+          row.provider ? (
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-[12.5px] text-foreground">{row.provider}</span>
+              {(row.model || row.effort) && (
+                <span className="truncate font-mono text-[10.5px] text-muted-foreground">
+                  {[row.model, row.effort].filter(Boolean).join(" · ")}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          ),
       },
       {
         name: "project",

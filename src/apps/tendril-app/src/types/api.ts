@@ -181,6 +181,9 @@ export interface Job {
   cacheWriteTokens?: number;
   reasoningTokens?: number;
   model?: string;
+  /** Which harness the run is on (`claude`, `codex`, …). V1's `Provider`. */
+  provider?: string;
+  effort?: string;
 }
 
 export interface JobDetail extends Job {
@@ -189,8 +192,6 @@ export interface JobDetail extends Job {
   args?: string;
   workingDirectory?: string;
   reportedFailureReason?: string;
-  /** Which agent ran it (`claude`, `codex`, …). V1's `Provider`. */
-  provider?: string;
   /** The command line the agent was launched with. V1's `CliCommand`, labelled `Arguments` there. */
   cliCommand?: string;
   /** Which execution profile the run used. V1's `Profile` row in the Cost & Tokens sheet. */

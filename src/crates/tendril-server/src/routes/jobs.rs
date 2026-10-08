@@ -174,6 +174,10 @@ const JOB_ROW_FIELDS: &[(&str, &str, &str)] = &[
     ("cacheWriteTokens", "cacheWriteTokens", "CacheWriteTokens"),
     ("reasoningTokens", "reasoningTokens", "ReasoningTokens"),
     ("model", "model", "Model"),
+    // Which harness and effort the run is on, so the Jobs table and the project's tasks can say what is
+    // running where without opening each job.
+    ("provider", "provider", "Provider"),
+    ("effort", "effort", "Effort"),
     ("processId", "processId", "ProcessId"),
     // The conversation that started the job, so the chat header can list a job it started without
     // depending on having caught the `chat.job_spawned` event that announced it.

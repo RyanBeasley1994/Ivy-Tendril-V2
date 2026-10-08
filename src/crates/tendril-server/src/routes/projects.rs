@@ -32,6 +32,7 @@ pub use manager::{
     get_or_create_project_manager, managers_status, project_docker, project_owners,
     schedule_manager_wake, watch_pull_request,
 };
+pub(crate) use manager::refresh_briefing;
 pub use memory::{
     delete_project_memory, get_project_memory, list_project_memory, put_project_memory,
 };

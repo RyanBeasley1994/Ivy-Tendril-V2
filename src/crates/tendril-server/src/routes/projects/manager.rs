@@ -13,9 +13,7 @@ use axum::Json;
 use chrono::Utc;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use tendril_core::chat::manager_brief::{
-    briefing_is_current, is_briefing, manager_briefing, manager_session_id,
-};
+use tendril_core::chat::manager_brief::{is_briefing, manager_briefing, manager_session_id};
 use tendril_core::chat::ChatMessage;
 use tendril_core::config::{expand_variables, load_config};
 use uuid::Uuid;
@@ -57,6 +55,31 @@ fn read_policy(state: &AppState, project: &str) -> Option<String> {
     .ok()
 }
 
+/// Puts the current briefing in place of the one a manager already has, when they differ: the briefing
+/// itself changed, or the operator edited `manager-policy.md`, the project's context or its repositories.
+/// A manager with no session, or a session with no briefing in it, is left alone, and so is one in the
+/// middle of a turn: that turn is writing the session, and it already has the briefing it started with.
+pub(crate) async fn refresh_briefing(state: &AppState, project: &str) {
+    let Ok(project) = find_project(state, project) else { return };
+    let id = manager_session_id(&project.name);
+    if state.chat_manager.is_generating(&id).await {
+        return;
+    }
+    let Ok(session) = state.chat_manager.get_session(&id).await else { return };
+    let Some(old) = session.messages.iter().find(|m| m.role == "system" && is_briefing(&m.content)) else {
+        return;
+    };
+    let fresh = manager_briefing(
+        &project.name,
+        &project.repos,
+        &project.context,
+        read_policy(state, &project.name).as_deref(),
+    );
+    if old.content != fresh {
+        let _ = state.chat_manager.replace_message_content(&id, &old.id, &fresh).await;
+    }
+}
+
 pub async fn get_or_create_project_manager(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
@@ -93,25 +116,7 @@ pub async fn get_or_create_project_manager(
                 }
             }
             if !created {
-                // A manager opened before the briefing changed gets the current one in place.
-                if let Some(old) = session
-                    .messages
-                    .iter()
-                    .find(|m| m.role == "system" && is_briefing(&m.content))
-                {
-                    if !briefing_is_current(&old.content) {
-                        let fresh = manager_briefing(
-                            &project.name,
-                            &project.repos,
-                            &project.context,
-                            read_policy(&state, &project.name).as_deref(),
-                        );
-                        let _ = state
-                            .chat_manager
-                            .replace_message_content(&id, &old.id, &fresh)
-                            .await;
-                    }
-                }
+                refresh_briefing(&state, &project.name).await;
             }
             let session = state.chat_manager.get_session(&id).await.unwrap_or(session);
             (StatusCode::OK, Json(json!(session))).into_response()

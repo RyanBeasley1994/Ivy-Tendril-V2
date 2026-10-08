@@ -220,7 +220,6 @@ async fn the_rows_are_the_clients_job_shape_not_the_daemons_job_item() {
         "reportedPlanId",
         "reportedPlanTitle",
         "planFile",
-        "provider",
         "args",
         "typedArgs",
         "cleared",
@@ -258,6 +257,8 @@ async fn the_rows_are_the_clients_job_shape_not_the_daemons_job_item() {
         "cacheWriteTokens",
         "reasoningTokens",
         "model",
+        "provider",
+        "effort",
         "processId",
         "detached",
     ];

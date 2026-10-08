@@ -19,6 +19,10 @@
         "header": "Type",
         "filterPlaceholder": "All"
       },
+      "agent": {
+        "header": "Agent",
+        "filterPlaceholder": "Any agent"
+      },
       "project": {
         "header": "Project",
         "filterPlaceholder": "All"

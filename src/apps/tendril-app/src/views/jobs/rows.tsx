@@ -75,6 +75,10 @@ export interface JobRow {
   /** Whether this job's process survived a daemon restart. See {@link buildJobRows}. */
   detached: boolean;
   processId?: number;
+  /** The harness the run is on (`claude`, `codex`, …), the model it runs, and its effort. */
+  provider?: string;
+  model?: string;
+  effort?: string;
 }
 
 /** `FormatTimer`: a running job counts up, a finished one shows how long it took. */
@@ -206,6 +210,9 @@ export function buildJobRows(jobs: readonly Job[], options: BuildJobRowsOptions 
       statusMessage: jobStatusMessage(job, t),
       detached: Boolean(job.detached ?? details[job.id]?.detached),
       processId: job.processId ?? details[job.id]?.processId,
+      provider: job.provider ?? details[job.id]?.provider,
+      model: job.model ?? details[job.id]?.model,
+      effort: job.effort ?? details[job.id]?.effort,
     };
   });
 }

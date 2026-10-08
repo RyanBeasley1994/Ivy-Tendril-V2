@@ -504,6 +504,11 @@ const TasksPanel: React.FC<{ status: Status; onOpenJob: (id: string) => void }> 
           <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">
             {job.planTitle ?? job.prompt ?? job.type}
           </span>
+          {job.provider && (
+            <span className="hidden shrink-0 font-mono text-[10.5px] text-muted-foreground sm:inline">
+              {[job.provider, job.model].filter(Boolean).join(" · ")}
+            </span>
+          )}
           <Pill tone={job.status === "Running" ? "ok" : "mute"} dot live={job.status === "Running"}>
             {job.status}
           </Pill>

@@ -1,5 +1,6 @@
 //! The prompt one chat turn hands the agent, and the spawned-job block that opens it.
 
+use crate::chat::manager_brief::is_manager_session;
 use crate::chat::models::ChatMessage;
 
 /// The prompt one chat turn hands the agent: the conversation so far, the chat session's id, and the
@@ -19,10 +20,16 @@ pub fn build_chat_agent_prompt(
     spawned_jobs: &[ChatSpawnedJob],
 ) -> String {
     let mut out = String::new();
+    // A project's manager is briefed to act and report in a line, never to advise and ask. The framing
+    // every other chat gets ("guide the user through the next steps", "advise the user ... suggested next
+    // steps") tells it the opposite on every single turn, so it gets its own.
+    let manager = is_manager_session(session_id);
 
     // V1 puts this first, before the history: what the session has already set running is context for
     // everything below it, and for a turn that *is* a job event it is the subject.
-    if !spawned_jobs.is_empty() {
+    if manager {
+        out.push_str(&manager_jobs_section(spawned_jobs));
+    } else if !spawned_jobs.is_empty() {
         out.push_str("# Jobs Spawned in this Chat Session\n");
         out.push_str("The following jobs were spawned in this chat session:\n\n");
         for job in spawned_jobs {
@@ -75,13 +82,53 @@ pub fn build_chat_agent_prompt(
         out.push_str("# Current Event Notification\n");
         out.push_str(prompt);
         out.push_str("\n\n");
-        out.push_str("Evaluate this completed job event. Proactively inspect the job outcomes/artifacts if needed, determine whether any action is needed, and advise the user with a concise summary and suggested next steps.\n");
+        out.push_str(if manager {
+            MANAGER_EVENT_INSTRUCTION
+        } else {
+            "Evaluate this completed job event. Proactively inspect the job outcomes/artifacts if needed, determine whether any action is needed, and advise the user with a concise summary and suggested next steps.\n"
+        });
     } else {
         out.push_str("# Current User Request\n");
         out.push_str(prompt);
         out.push('\n');
     }
 
+    out
+}
+
+/// What a manager is told after an event the daemon woke it with.
+const MANAGER_EVENT_INSTRUCTION: &str = "This came from the daemon, not from the operator, who may not be watching. Handle it the way your briefing says: act first, then reply with one short line saying what you did. If it needs nothing from you, say so in a few words and stop. Do not recap other work, and do not ask the operator anything you can decide yourself.\n";
+
+/// How many finished jobs a manager is shown. Its session lives as long as the project does, so the
+/// full list only grows; the ones still going and the latest to finish are what a turn can act on, and
+/// `tendril job list` has the rest.
+const MANAGER_FINISHED_JOBS: usize = 8;
+
+/// The jobs block for a manager: everything still going, the last few that finished, and no advice on
+/// what to say about them.
+fn manager_jobs_section(jobs: &[ChatSpawnedJob]) -> String {
+    let (finished, going): (Vec<&ChatSpawnedJob>, Vec<&ChatSpawnedJob>) =
+        jobs.iter().partition(|j| j.is_completed() || j.is_failed());
+    if going.is_empty() && finished.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from("# Plan jobs you started\n");
+    if going.is_empty() {
+        out.push_str("None are running.\n");
+    } else {
+        out.push_str("Still going:\n");
+        going.iter().for_each(|j| out.push_str(&j.prompt_line()));
+    }
+    if !finished.is_empty() {
+        let skipped = finished.len().saturating_sub(MANAGER_FINISHED_JOBS);
+        out.push_str("Latest to finish");
+        if skipped > 0 {
+            out.push_str(&format!(" ({skipped} older ones not shown)"));
+        }
+        out.push_str(":\n");
+        finished[skipped..].iter().for_each(|j| out.push_str(&j.prompt_line()));
+    }
+    out.push_str("Missions are not listed here: `tendril mission list` has them.\n---\n\n");
     out
 }
 
@@ -235,6 +282,39 @@ mod tests {
         );
         assert!(!build_chat_agent_prompt(&[], "?", "s", "user", &[])
             .contains("Jobs Spawned in this Chat Session"));
+    }
+
+    /// A manager is told to act and report, never to advise and ask, and is not handed every job it
+    /// ever started.
+    #[test]
+    fn a_manager_gets_its_own_framing_and_a_bounded_jobs_list() {
+        let job = |id: usize, status: &str| ChatSpawnedJob {
+            id: format!("{id:05}"),
+            job_type: "ExecutePlan".to_string(),
+            status: status.to_string(),
+            plan_id: None,
+            plan_title: None,
+            status_message: None,
+        };
+        let mut jobs: Vec<ChatSpawnedJob> = (1..=20).map(|i| job(i, if i % 5 == 0 { "Failed" } else { "Completed" })).collect();
+        jobs.push(job(21, "Running"));
+
+        let woken = build_chat_agent_prompt(&[], "Patrol: ...", "manager-acme", "system", &jobs);
+        assert!(woken.contains("# Current Event Notification"));
+        assert!(woken.contains("act first, then reply with one short line"), "{woken}");
+        for other_chats in ["Evaluate this completed job event", "advise the user", "guide the user", "Guide the user"] {
+            assert!(!woken.contains(other_chats), "{other_chats}: {woken}");
+        }
+        assert!(woken.contains("Still going:\n- Job 00021"), "{woken}");
+        assert!(woken.contains("(12 older ones not shown)"), "{woken}");
+        assert!(!woken.contains("Job 00012:") && woken.contains("Job 00013:") && woken.contains("Job 00020:"), "{woken}");
+
+        // Asked by the operator, it is a request like any other; with no jobs there is no block.
+        let asked = build_chat_agent_prompt(&[], "where are we?", "manager-acme", "user", &[]);
+        assert!(asked.contains("# Current User Request") && !asked.contains("Plan jobs you started"));
+        // Any other chat keeps V1's wording.
+        let plain = build_chat_agent_prompt(&[], "done", "0d1f-some-chat", "system", &jobs);
+        assert!(plain.contains("Evaluate this completed job event") && plain.contains("# Jobs Spawned in this Chat Session"));
     }
 
     #[test]
