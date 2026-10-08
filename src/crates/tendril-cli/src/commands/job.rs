@@ -72,6 +72,8 @@ pub struct JobListArgs {
     pub status: Option<String>,
     #[arg(short, long, default_value = "20")]
     pub limit: usize,
+    #[arg(long, help = "Only this project's jobs")]
+    pub project: Option<String>,
     #[arg(long, help = "Output jobs as JSON")]
     pub json: bool,
 }
@@ -272,7 +274,10 @@ pub async fn handle_job_command(cmd: JobCommands, tendril_home: &Path) -> anyhow
                 }
             }
             let master = get_master_or_err(tendril_home)?;
-            let mut url = format!("{}/api/jobs?limit={}", master.base_url(), args.limit);
+            // A project filter is applied here, after the fetch, so ask for enough rows that the newest
+            // `limit` of that project's jobs are not crowded out by other projects'.
+            let fetch_limit = if args.project.is_some() { args.limit.max(200) } else { args.limit };
+            let mut url = format!("{}/api/jobs?limit={}", master.base_url(), fetch_limit);
             if let Some(st) = args.status {
                 url.push_str(&format!("&status={}", st));
             }
@@ -285,7 +290,11 @@ pub async fn handle_job_command(cmd: JobCommands, tendril_home: &Path) -> anyhow
                 );
             }
             let resp = resp.error_for_status()?;
-            let jobs: serde_json::Value = resp.json().await?;
+            let mut jobs: serde_json::Value = resp.json().await?;
+            if let (Some(project), Some(all)) = (args.project.as_deref(), jobs.as_array_mut()) {
+                all.retain(|j| j["project"].as_str().is_some_and(|p| p.eq_ignore_ascii_case(project)));
+                all.truncate(args.limit);
+            }
 
             if args.json {
                 println!("{}", serde_json::to_string_pretty(&jobs)?);

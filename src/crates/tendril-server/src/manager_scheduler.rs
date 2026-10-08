@@ -21,6 +21,12 @@ use tendril_core::missions::store::list_missions;
 use tokio::sync::Mutex;
 
 const TICK: Duration = Duration::from_secs(10);
+/// A mission still waiting on its manager this long after it was announced is announced again, in case
+/// the first prompt was lost (the manager was mid-turn, the daemon restarted, the turn failed).
+const REMINDER_AFTER: Duration = Duration::from_secs(20 * 60);
+/// Reminders per mission and state. After that it is left alone: a mission that really is the
+/// operator's to decide shows up in their "needs you" count instead of nagging the manager forever.
+const MAX_REMINDERS: u32 = 3;
 /// A wake-up shorter than this is a busy loop in disguise; longer than a week is a forgotten one.
 pub const MIN_WAKE_SECONDS: u64 = 30;
 pub const MAX_WAKE_SECONDS: u64 = 7 * 24 * 3600;
@@ -106,6 +112,77 @@ fn is_manager_business(state: MissionState) -> bool {
             | MissionState::Completed
             | MissionState::Cancelled
     )
+}
+
+/// Why a manager is being told about a mission now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Wakeup {
+    /// The mission just entered the state.
+    Changed,
+    /// The daemon (re)started and found the mission already waiting.
+    Catchup,
+    /// Still waiting after a while; the number of this reminder.
+    Reminder(u32),
+}
+
+/// The announcement already made for a mission that is waiting on its manager.
+struct Announced {
+    at: std::time::Instant,
+    reminders: u32,
+}
+
+fn waits_on_manager(state: MissionState) -> bool {
+    matches!(state, MissionState::Paused | MissionState::AwaitingApproval)
+}
+
+/// Whether, and why, to tell a manager about a mission this tick.
+///
+/// A state *change* is the usual reason. Two more keep a stuck mission from being forgotten: a daemon
+/// that has just started tells the manager about whatever is already paused or awaiting approval (the
+/// transition happened while nobody was listening), and a mission still waiting after
+/// [`REMINDER_AFTER`] is raised again, a few times, if nothing was done about it.
+fn plan_wakeup(
+    first_pass: bool,
+    previous: Option<MissionState>,
+    now: MissionState,
+    announced: Option<&Announced>,
+    clock: std::time::Instant,
+) -> Option<Wakeup> {
+    if !is_manager_business(now) {
+        return None;
+    }
+    if first_pass {
+        return waits_on_manager(now).then_some(Wakeup::Catchup);
+    }
+    if previous != Some(now) {
+        return Some(Wakeup::Changed);
+    }
+    let a = announced?;
+    (waits_on_manager(now) && a.reminders < MAX_REMINDERS && clock.duration_since(a.at) >= REMINDER_AFTER)
+        .then_some(Wakeup::Reminder(a.reminders + 1))
+}
+
+fn wakeup_message(id: &str, title: &str, state: MissionState, reason: Option<&str>, why: Wakeup) -> String {
+    let mut message = match why {
+        Wakeup::Changed => format!("Mission {id} \"{title}\" {}.", describe(state)),
+        Wakeup::Catchup => format!(
+            "Mission {id} \"{title}\" {}. (You may have missed this: the daemon restarted while it waited.)",
+            describe(state)
+        ),
+        Wakeup::Reminder(n) => format!(
+            "Reminder {n} of {MAX_REMINDERS}: mission {id} \"{title}\" {}, and nothing has been done about it.",
+            describe(state)
+        ),
+    };
+    if state == MissionState::Paused {
+        if let Some(reason) = reason.map(str::trim).filter(|r| !r.is_empty()) {
+            message.push_str(&format!(" Reason: {reason}."));
+        }
+        message.push_str(
+            " Unstick it yourself unless the operator paused it on purpose or a budget ran out: see \"A paused mission is yours to unstick\" in your briefing.",
+        );
+    }
+    message
 }
 
 fn describe(state: MissionState) -> &'static str {
@@ -241,6 +318,7 @@ fn project_repo_dir(state: &AppState, project: &str) -> Option<PathBuf> {
 pub fn spawn_manager_scheduler(state: Arc<AppState>) {
     tokio::spawn(async move {
         let mut seen: Option<HashMap<String, MissionState>> = None;
+        let mut announced: HashMap<String, Announced> = HashMap::new();
         let mut was_working: HashMap<String, bool> = HashMap::new();
         let mut briefing_pending: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut ticker = tokio::time::interval(TICK);
@@ -248,8 +326,8 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
         loop {
             ticker.tick().await;
 
-            // 1. Mission state changes. The first pass only records where things stand, so a daemon
-            //    restart does not announce every mission that is already waiting.
+            // 1. Mission state changes, plus the catch-up and reminders in `plan_wakeup` so a mission that
+            //    paused while nobody was listening, or whose first prompt was lost, is not left stuck.
             let current: HashMap<String, (MissionState, String, String, Option<String>)> =
                 list_missions(&state.mission_driver.paths().missions_dir)
                     .into_iter()
@@ -265,22 +343,30 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                         )
                     })
                     .collect();
-            if let Some(previous) = &seen {
-                for (id, (now_state, project, title, reason)) in &current {
-                    let changed = previous.get(id).map(|p| p != now_state).unwrap_or(true);
-                    if !changed || !is_manager_business(*now_state) {
-                        continue;
-                    }
-                    let Some(manager) = manager_exists(&state, project).await else { continue };
-                    let mut message = format!("Mission {id} \"{title}\" {}.", describe(*now_state));
-                    if *now_state == MissionState::Paused {
-                        if let Some(reason) = reason.as_deref().filter(|r| !r.trim().is_empty()) {
-                            message.push_str(&format!(" Reason: {}.", reason.trim()));
+            let first_pass = seen.is_none();
+            let previous_states = seen.clone().unwrap_or_default();
+            let clock = std::time::Instant::now();
+            for (id, (now_state, project, title, reason)) in &current {
+                if !waits_on_manager(*now_state) {
+                    announced.remove(id);
+                }
+                let Some(why) = plan_wakeup(first_pass, previous_states.get(id).copied(), *now_state, announced.get(id), clock)
+                else {
+                    continue;
+                };
+                let Some(manager) = manager_exists(&state, project).await else { continue };
+                let message = wakeup_message(id, title, *now_state, reason.as_deref(), why);
+                match state.chat_manager.notify_event(&manager, &message).await {
+                    Ok(_) => {
+                        if waits_on_manager(*now_state) {
+                            let reminders = match why {
+                                Wakeup::Reminder(n) => n,
+                                _ => 0,
+                            };
+                            announced.insert(id.clone(), Announced { at: clock, reminders });
                         }
                     }
-                    if let Err(e) = state.chat_manager.notify_event(&manager, &message).await {
-                        tracing::debug!("Could not wake manager {manager}: {e}");
-                    }
+                    Err(e) => tracing::debug!("Could not wake manager {manager}: {e}"),
                 }
             }
             seen = Some(current.into_iter().map(|(id, (s, ..))| (id, s)).collect());
@@ -408,6 +494,56 @@ mod tests {
         assert!(take_due(&home).await.is_empty());
         assert_eq!(read_wakes(&home).wakes.len(), 1);
         let _ = std::fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn a_mission_that_was_already_waiting_when_the_daemon_started_wakes_its_manager_once() {
+        let now = std::time::Instant::now();
+        use MissionState::*;
+        assert_eq!(plan_wakeup(true, None, Paused, None, now), Some(Wakeup::Catchup));
+        assert_eq!(plan_wakeup(true, None, AwaitingApproval, None, now), Some(Wakeup::Catchup));
+        // Finished or running missions are not announced on startup: that would be noise.
+        for state in [Running, Planning, Validating, Review, Completed, Cancelled] {
+            assert_eq!(plan_wakeup(true, None, state, None, now), None, "{state:?}");
+        }
+    }
+
+    #[test]
+    fn a_state_change_wakes_the_manager_and_no_change_does_not() {
+        let now = std::time::Instant::now();
+        use MissionState::*;
+        assert_eq!(plan_wakeup(false, Some(Running), Paused, None, now), Some(Wakeup::Changed));
+        assert_eq!(plan_wakeup(false, None, Review, None, now), Some(Wakeup::Changed), "a new mission");
+        assert_eq!(plan_wakeup(false, Some(Paused), Paused, None, now), None);
+        assert_eq!(plan_wakeup(false, Some(Running), Running, None, now), None);
+    }
+
+    #[test]
+    fn a_mission_left_paused_is_raised_again_a_few_times_then_left_alone() {
+        use MissionState::*;
+        let now = std::time::Instant::now();
+        let ago = |mins: u64, reminders: u32| Announced { at: now - Duration::from_secs(mins * 60), reminders };
+        // Too soon.
+        assert_eq!(plan_wakeup(false, Some(Paused), Paused, Some(&ago(5, 0)), now), None);
+        // Due: reminders count up 1, 2, 3.
+        assert_eq!(plan_wakeup(false, Some(Paused), Paused, Some(&ago(21, 0)), now), Some(Wakeup::Reminder(1)));
+        assert_eq!(plan_wakeup(false, Some(Paused), Paused, Some(&ago(21, 2)), now), Some(Wakeup::Reminder(3)));
+        // Out of reminders.
+        assert_eq!(plan_wakeup(false, Some(Paused), Paused, Some(&ago(60, 3)), now), None);
+        // Review is announced once, never nagged.
+        assert_eq!(plan_wakeup(false, Some(Review), Review, Some(&ago(60, 0)), now), None);
+    }
+
+    #[test]
+    fn the_wake_message_says_why_and_tells_the_manager_to_unstick_a_pause() {
+        let paused = wakeup_message("00007", "Add SSO", MissionState::Paused, Some("No agent output for 10 minutes"), Wakeup::Changed);
+        assert!(paused.contains("Reason: No agent output for 10 minutes."), "{paused}");
+        assert!(paused.contains("Unstick it yourself"), "{paused}");
+        let reminder = wakeup_message("00007", "Add SSO", MissionState::Paused, None, Wakeup::Reminder(2));
+        assert!(reminder.starts_with("Reminder 2 of 3"), "{reminder}");
+        let catchup = wakeup_message("00007", "Add SSO", MissionState::AwaitingApproval, None, Wakeup::Catchup);
+        assert!(catchup.contains("daemon restarted"), "{catchup}");
+        assert!(!catchup.contains("Unstick"), "approval is not a pause: {catchup}");
     }
 
     #[test]

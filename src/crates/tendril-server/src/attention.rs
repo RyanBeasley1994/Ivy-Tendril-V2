@@ -10,6 +10,22 @@ use tendril_core::chat::manager_brief::manager_session_id;
 use tendril_core::missions::model::MissionState;
 use tendril_core::missions::store::list_missions;
 
+/// How long a paused or awaiting-approval mission is the manager's alone to sort out. The daemon wakes
+/// the manager when it happens and again after 20 minutes; only a mission still stuck after this is
+/// something the operator is told about. A project with no manager at all has no grace.
+pub const MANAGER_GRACE_MINUTES: i64 = 30;
+
+/// Whether a mission waiting in `state` since `updated` now needs the operator.
+pub fn mission_needs_operator(
+    state: MissionState,
+    updated: chrono::DateTime<chrono::Utc>,
+    now: chrono::DateTime<chrono::Utc>,
+    has_manager: bool,
+) -> bool {
+    matches!(state, MissionState::AwaitingApproval | MissionState::Paused)
+        && (!has_manager || now - updated >= chrono::Duration::minutes(MANAGER_GRACE_MINUTES))
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Attention {
     /// Missions waiting for approval or paused.
@@ -43,17 +59,17 @@ pub fn ends_on_question(session: &tendril_core::chat::ChatSession, generating: b
 }
 
 pub async fn for_project(state: &AppState, project: &str) -> Attention {
+    let id = manager_session_id(project);
+    let generating = state.chat_manager.is_generating(&id).await;
+    let session = state.chat_manager.get_session(&id).await.ok();
+    let has_manager = session.is_some();
+    let asked = session.as_ref().map(|s| ends_on_question(s, generating)).unwrap_or(false);
+    let now = chrono::Utc::now();
     let waiting_missions = list_missions(&state.mission_driver.paths().missions_dir)
         .into_iter()
         .filter(|f| f.mission.project.eq_ignore_ascii_case(project))
-        .filter(|f| matches!(f.mission.state, MissionState::AwaitingApproval | MissionState::Paused))
+        .filter(|f| mission_needs_operator(f.mission.state, f.mission.updated, now, has_manager))
         .count();
-    let id = manager_session_id(project);
-    let generating = state.chat_manager.is_generating(&id).await;
-    let asked = match state.chat_manager.get_session(&id).await {
-        Ok(session) => ends_on_question(&session, generating),
-        Err(_) => false,
-    };
     Attention { waiting_missions, asked }
 }
 
@@ -111,6 +127,19 @@ mod tests {
         assert!(!ends_on_question(&session(vec![]), false));
         // A question earlier in the reply does not count; only how it ends.
         assert!(!ends_on_question(&session(vec![message("assistant", "Why did it fail? A flaky test. Re-ran it.")]), false));
+    }
+
+    #[test]
+    fn a_stuck_mission_is_the_managers_for_a_while_before_it_is_yours() {
+        use MissionState::*;
+        let now = chrono::Utc::now();
+        let ago = |m: i64| now - chrono::Duration::minutes(m);
+        assert!(!mission_needs_operator(Paused, ago(5), now, true), "the manager is still on it");
+        assert!(mission_needs_operator(Paused, ago(31), now, true), "it had its chance");
+        assert!(mission_needs_operator(AwaitingApproval, ago(45), now, true));
+        assert!(mission_needs_operator(Paused, ago(1), now, false), "no manager, no grace");
+        assert!(!mission_needs_operator(Running, ago(300), now, true));
+        assert!(!mission_needs_operator(Review, ago(300), now, true));
     }
 
     #[test]

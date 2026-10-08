@@ -163,9 +163,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const working = rows.filter((r) => r.status.busy).length;
 
+  // A paused or unapproved mission is its manager's to sort out first (the daemon wakes it, then
+  // reminds it); it only becomes yours once it has stayed stuck past this grace period. Mirrors
+  // `MANAGER_GRACE_MINUTES` in the daemon's `attention` module.
+  const GRACE_MS = 30 * 60_000;
   const waiting = rows.flatMap(({ project, status }) =>
     status.missions
       .filter((m) => m.state === "AwaitingApproval" || m.state === "Paused")
+      .filter((m) => !m.updated || Date.now() - Date.parse(m.updated) >= GRACE_MS)
       .map((m) => ({ project: project.name, mission: m })),
   );
 

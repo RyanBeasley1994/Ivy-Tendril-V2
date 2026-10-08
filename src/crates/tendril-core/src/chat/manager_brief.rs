@@ -37,6 +37,31 @@ pub fn manager_allowed_tools() -> Vec<String> {
         "Bash(git show *)",
         "Bash(git branch --list *)",
         "Bash(git remote -v)",
+        // The same reads aimed at a repository by path (`git -C <repo> ...`), which is how a manager
+        // looks at a project that is not its working directory, and a few more read-only queries.
+        "Bash(git status)",
+        "Bash(git branch --show-current)",
+        "Bash(git worktree list)",
+        "Bash(git stash list)",
+        "Bash(git rev-parse *)",
+        "Bash(git rev-list *)",
+        "Bash(git merge-base *)",
+        "Bash(git cherry *)",
+        "Bash(git ls-files *)",
+        "Bash(git -C * status)",
+        "Bash(git -C * status *)",
+        "Bash(git -C * log *)",
+        "Bash(git -C * diff *)",
+        "Bash(git -C * show *)",
+        "Bash(git -C * branch --list *)",
+        "Bash(git -C * branch --show-current)",
+        "Bash(git -C * worktree list)",
+        "Bash(git -C * stash list)",
+        "Bash(git -C * rev-parse *)",
+        "Bash(git -C * rev-list *)",
+        "Bash(git -C * merge-base *)",
+        "Bash(git -C * cherry *)",
+        "Bash(git -C * ls-files *)",
         "Bash(gh pr view *)",
         "Bash(gh pr list *)",
         "Bash(gh pr checks *)",
@@ -71,7 +96,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 10;
+pub const BRIEFING_VERSION: u32 = 11;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -195,18 +220,27 @@ Then create them. Do not spend a long turn exploring before anything is queued.
 3. **Monitor, without chatter.** You are woken when a mission needs approval, pauses, reaches review,
    completes or is cancelled, when a plan job you started yourself finishes, and when a wake-up you
    scheduled comes due. The steps inside a mission do not wake you; its driver handles them. Check
-   state with `tendril mission list --json` and `tendril job list` only when you need to. When an event
+   state with `tendril mission list --project {project}` (add `--state paused` to narrow it; paused
+   missions print their reason) and `tendril job list --project {project}` only when you need to. When an event
    needs nothing from you, reply with **one short line**, not a report. Do not repeat unrelated open
    items (old failed jobs, stray drafts) in every message; mention each once, or delegate the cleanup.
-4. **Retry and re-plan.** When a piece fails or is rejected, work out why from its output, then
+4. **A paused mission is yours to unstick.** You are told why it paused (`tendril mission get <id>` shows
+   it too). When the cause is the machinery and not the work, such as "no agent output", a stale or
+   timed-out worker, a rate limit, a killed or crashed process, or a network or git hiccup, run
+   `tendril mission resume <id>` yourself, straight away, and say so in one line. Do that at most twice for
+   the same cause; if it pauses again for the same reason, change the approach first (`tendril mission
+   message <id> "<sharper instruction>"`, or have a worker split the piece) and then resume. Leave it to
+   the operator only when a budget ran out, you have run out of different approaches, or they paused it
+   on purpose. A paused mission you did nothing about is a mistake, and you will be reminded.
+5. **Retry and re-plan.** When a piece fails or is rejected, work out why from its output, then
    delegate a sharper attempt (`tendril mission request-changes`, `tendril mission message`, or a new
    remediation mission/plan). Never repeat the identical attempt a third time: change the approach
    or ask the operator.
-5. **Evaluate completion against the end state, not the last step.** A goal is done only when the
+6. **Evaluate completion against the end state, not the last step.** A goal is done only when the
    result is verified. "The PR merged" is not done if its required checks have not finished green;
    "the worker exited 0" is not done if nothing shows the work landed. Check the real state (`gh pr view`,
    `gh run view`), and say plainly when it is done and when it is not.
-6. **Watch PRs and CI, and keep your promises with wake-ups.** For pull requests you or your missions
+7. **Watch PRs and CI, and keep your promises with wake-ups.** For pull requests you or your missions
    opened, watch the checks. When CI fails or a PR conflicts, create a plan job on the PR branch that
    fixes it. You only run when something prompts you, so **whenever you would say "I'll check on X",
    "I'll follow up", or "I'll keep an eye on it", schedule it instead**:
@@ -216,9 +250,21 @@ Then create them. Do not spend a long turn exploring before anything is queued.
    with the result once every check has finished, even if the PR merged first. Use a timed wake-up for
    anything else. Never promise to watch something without one of the two. Never give a worker a wait longer than the job
    timeout (a CI run can take 45 minutes): delegate, then set a wake-up and let it run.
-7. **UI work starts with research.** Before any UI mission or plan, gather design references (Dribbble
+8. **UI work starts with research.** Before any UI mission or plan, gather design references (Dribbble
    and similar, plus what the project's memory says about its visual style) and put the links and the
    concrete visual target into the spec so workers build to it.
+
+## Running commands
+You run one simple command per call. Pipes (`|`), `&&`, `;`, `$(...)`, backticks and redirects are
+refused, as is anything outside the allowed list. So do not pipe into `jq`, `python` or `head`: use the
+tool's own filters (`tendril mission list --project {project} --state paused`, `tendril job list --project
+{project} --status Failed --limit 5`, `tendril mission get <id>`) and read the output yourself. Aim a git
+read at a repository with `git -C <repo-path> status` rather than `cd`.
+
+**A refused command is never a reason to ask the operator for permission.** The limits are fixed and the
+operator cannot lift them mid-conversation. Run a simpler form of the command, or hand the check to a
+worker (`tendril job start ...` or a plan) and read what it reports. Do not tell the operator you are
+"blocked": either find another way or delegate it, and carry on.
 
 ## Steering while work runs
 The operator may message you at any time. You may answer status questions, change the plan (add,
@@ -278,7 +324,7 @@ mod tests {
         assert!(is_manager_session(&manager_session_id("Monorepo-Propfirm")));
         assert!(!is_manager_session("0d1f-some-chat"));
         // Nothing that writes into a repository, builds, commits, merges or pushes.
-        for forbidden in ["Write", "Edit", "Bash(git commit", "Bash(git push", "Bash(git merge", "Bash(pnpm", "Bash(npm", "Bash(cargo", "Bash(rm *)", "Bash(sudo"] {
+        for forbidden in ["Write", "Edit", "Bash(git commit", "Bash(git push", "Bash(git merge ", "Bash(git merge)", "Bash(pnpm", "Bash(npm", "Bash(cargo", "Bash(rm *)", "Bash(sudo"] {
             assert!(
                 !allowed.iter().any(|t| t == forbidden || t.starts_with(forbidden)),
                 "{forbidden} must not be allowed"
@@ -286,6 +332,34 @@ mod tests {
         }
         // No deleting at all, and nothing that can delete through another command (find -exec, branch -D).
         assert!(!allowed.iter().any(|t| t.starts_with("Bash(rm") || t.starts_with("Bash(find") || t == "Bash(git branch *)"));
+    }
+
+    #[test]
+    fn a_manager_can_read_a_repository_by_path_but_not_change_one() {
+        let allowed = manager_allowed_tools();
+        for read in ["Bash(git -C * status)", "Bash(git -C * log *)", "Bash(git -C * diff *)", "Bash(git -C * worktree list)"] {
+            assert!(allowed.iter().any(|t| t == read), "{read} should be allowed");
+        }
+        // Nothing that writes: no commit, push, checkout, reset, merge, rebase, clean, add, stash push,
+        // worktree add/remove, or branch deletion, in any `-C` form.
+        for write in ["commit", "push", "checkout", "reset", "merge", "rebase", "clean", "add", "worktree add", "worktree remove", "branch -D", "stash push", "stash drop"] {
+            // Matched as a whole word: `merge-base` is a read, `merge` is not.
+            let word = |t: &str| t.contains(&format!(" {write} ")) || t.contains(&format!(" {write})"));
+            assert!(
+                !allowed.iter().any(|t| t.starts_with("Bash(git -C * ") && word(t)),
+                "git -C ... {write} must not be allowed"
+            );
+        }
+    }
+
+    #[test]
+    fn the_briefing_teaches_simple_commands_and_forbids_asking_permission_for_them() {
+        let text = manager_briefing("Acme", &[], "", None);
+        assert!(text.contains("one simple command per call"));
+        assert!(text.contains("--state paused"));
+        assert!(text.contains("never a reason to ask the operator for permission"));
+        assert!(text.contains("A paused mission is yours to unstick"));
+        assert!(text.contains("tendril mission resume <id>"));
     }
 
     #[test]

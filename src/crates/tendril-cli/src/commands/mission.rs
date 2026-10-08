@@ -25,6 +25,10 @@ pub enum MissionCommands {
     List {
         #[arg(long, help = "Print JSON")]
         json: bool,
+        #[arg(long, help = "Only this project's missions")]
+        project: Option<String>,
+        #[arg(long, help = "Only missions in this state, e.g. paused, running, review")]
+        state: Option<String>,
     },
 
     #[command(about = "Show a mission: goal, milestones, budget and log")]
@@ -312,23 +316,42 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
                 }
             }
         }
-        MissionCommands::List { json } => {
-            let missions = list_missions(&paths.missions_dir);
+        MissionCommands::List { json, project, state } => {
+            let wanted = match state.as_deref() {
+                Some(raw) => Some(MissionState::from_str_loose(raw).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Unknown mission state '{raw}'. States: Planning, AwaitingApproval, Running, Validating, Review, Completed, Paused, Cancelled"
+                    )
+                })?),
+                None => None,
+            };
+            let missions: Vec<_> = list_missions(&paths.missions_dir)
+                .into_iter()
+                .filter(|m| project.as_deref().map_or(true, |p| m.mission.project.eq_ignore_ascii_case(p)))
+                .filter(|m| wanted.map_or(true, |w| m.mission.state == w))
+                .collect();
             if json {
                 println!("{}", serde_json::to_string_pretty(&missions)?);
                 return Ok(());
             }
-            println!("{:<6} {:<17} {:<10} {:<9} TITLE", "ID", "STATE", "PROGRESS", "COST");
-            println!("{}", "-".repeat(70));
+            println!("{:<6} {:<17} {:<10} {:<9} {:<16} TITLE", "ID", "STATE", "PROGRESS", "COST", "PROJECT");
+            println!("{}", "-".repeat(86));
             for m in missions {
                 println!(
-                    "{:<6} {:<17} {:<10} {:<9} {}",
+                    "{:<6} {:<17} {:<10} {:<9} {:<16} {}",
                     m.id,
                     m.mission.state.as_str(),
                     format!("{}/{}", m.mission.passed_count(), m.mission.milestones.len()),
                     format!("${:.2}", m.mission.cost),
+                    m.mission.project,
                     m.mission.title
                 );
+                // Why it stopped, on the same screen, so nobody has to dig it out of the JSON.
+                if m.mission.state == MissionState::Paused {
+                    if let Some(reason) = m.mission.pause_reason.as_deref().filter(|r| !r.trim().is_empty()) {
+                        println!("       paused: {}", reason.trim());
+                    }
+                }
             }
         }
         MissionCommands::Get { id, json } => {
