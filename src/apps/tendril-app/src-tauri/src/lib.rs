@@ -296,6 +296,8 @@ pub fn run() {
             cmd_revoke_api_key,
             cmd_set_project_engine,
             cmd_project_docker,
+            cmd_list_manager_tasks,
+            cmd_telegram,
             cmd_list_project_memory,
             cmd_get_project_memory,
             cmd_put_project_memory,

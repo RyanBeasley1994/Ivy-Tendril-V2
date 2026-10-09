@@ -31,8 +31,26 @@ interface Item {
   run: () => void;
 }
 
-/** Subsequence match with a bonus for prefixes and word starts; null when it does not match. */
+/**
+ * Each word of the query must match somewhere in the text, in any order; null when one does not.
+ * Words, so that "ypf direct" finds "YPF-Direct": matched as one run, the space had to be found in the
+ * text, which a hyphenated project name does not have while its repository's longer label does, and
+ * the palette then offered only the repository.
+ */
 export const fuzzyScore = (query: string, text: string): number | null => {
+  const words = query.toLowerCase().split(/[\s\-_/.]+/).filter(Boolean);
+  if (words.length <= 1) return wordScore(words[0] ?? "", text);
+  let total = 0;
+  for (const word of words) {
+    const score = wordScore(word, text);
+    if (score === null) return null;
+    total += score;
+  }
+  return total;
+};
+
+/** Subsequence match with a bonus for prefixes and word starts; null when it does not match. */
+const wordScore = (query: string, text: string): number | null => {
   const q = query.toLowerCase();
   const t = text.toLowerCase();
   if (!q) return 0;

@@ -359,6 +359,21 @@ pub async fn list_manager_tasks(
     Json(json!({ "tasks": crate::manager_tasks::list(&state.tendril_home, &project.name) })).into_response()
 }
 
+/// `POST /api/projects/:name/manager/tasks/:id/stop` — stops a running task's worker.
+pub async fn stop_manager_task(
+    State(state): State<Arc<AppState>>,
+    Path((name, id)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    match crate::manager_tasks::stop(&state, &project.name, &id).await {
+        Ok(task) => (StatusCode::OK, Json(json!(task))).into_response(),
+        Err(e) => error(StatusCode::BAD_REQUEST, e),
+    }
+}
+
 #[derive(Debug, Default, serde::Deserialize)]
 pub struct CleanTaskRequest {
     #[serde(default)]

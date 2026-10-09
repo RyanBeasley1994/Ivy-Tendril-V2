@@ -189,6 +189,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/push/subscribe", post(push::subscribe_handler))
         .route("/api/push/unsubscribe", post(push::unsubscribe_handler))
         .route("/api/push/test", post(push::test_handler))
+        // The Telegram bot the operator talks to the managers through
+        .route(
+            "/api/telegram",
+            get(crate::telegram::status_handler)
+                .put(crate::telegram::set_handler)
+                .delete(crate::telegram::remove_handler),
+        )
+        .route("/api/telegram/unpair", post(crate::telegram::unpair_handler))
+        .route("/api/telegram/test", post(crate::telegram::test_handler))
         // Missions
         .route(
             "/api/missions",
@@ -395,6 +404,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route(
             "/api/projects/:name/manager/tasks",
             get(projects::list_manager_tasks).post(projects::start_manager_task),
+        )
+        .route(
+            "/api/projects/:name/manager/tasks/:id/stop",
+            post(projects::stop_manager_task),
         )
         .route(
             "/api/projects/:name/manager/tasks/:id/clean",

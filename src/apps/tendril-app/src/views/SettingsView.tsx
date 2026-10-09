@@ -66,6 +66,7 @@ import { RemoteServerSection } from "./settings/RemoteServerSection";
 import { PhoneNotificationsSection } from "./settings/PhoneNotificationsSection";
 import { ApiKeysSection } from "./settings/ApiKeysSection";
 import { GlobalEnginesSection } from "./settings/GlobalEnginesSection";
+import { TelegramSection } from "./settings/TelegramSection";
 
 interface SettingsViewProps {
   serviceInfo: ServiceInfo | null;
@@ -998,6 +999,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
 
                   <GlobalEnginesSection />
+
+                  <TelegramSection />
 
                   <HarnessVisibilitySection config={config} onSaveRaw={saveRawKey} />
 

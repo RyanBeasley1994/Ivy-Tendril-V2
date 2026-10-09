@@ -39,6 +39,34 @@ export interface DockerContainer {
   ports: string;
 }
 
+/** A small job the project's manager handed straight to one agent (`tendril manager task`). */
+export interface ManagerTask {
+  id: string;
+  project: string;
+  title: string;
+  /** The chat session the worker runs in. */
+  sessionId: string;
+  dir: string;
+  branch?: string;
+  ownWorktree: boolean;
+  createdAt: string;
+  /** Absent while the worker is still running. */
+  finishedAt?: string;
+}
+
+/** The Telegram bot the operator talks to the managers through. The token is never sent to the app. */
+export interface TelegramStatus {
+  configured: boolean;
+  botUsername: string;
+  paired: boolean;
+  /** Who the bot answers, once paired. */
+  pairedWith?: string | null;
+  /** The code to send the bot to pair; absent once someone has. */
+  pairCode?: string | null;
+  /** The project whose manager the chat is bound to. */
+  talkingTo?: string | null;
+}
+
 export interface ProjectDocker {
   available: boolean;
   reason?: string;
@@ -89,4 +117,6 @@ export interface GlobalEngine {
   fallbacks: EngineChoice[];
   /** Agents sitting out a rate limit right now, and when each comes back. */
   limited?: { agent: string; until: string }[];
+  /** After an "apply to all projects" save: how many projects had their own setting replaced. */
+  projectsOverridden?: number;
 }

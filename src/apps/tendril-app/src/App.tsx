@@ -1064,6 +1064,13 @@ export const App: React.FC = () => {
             onOpenJob={handleSelectJob}
             onOpenPlan={handleSelectPlan}
             onOpenGit={() => uiStore.setActiveNav("git", { project: project.name })}
+            onOpenChat={(sessionId) => {
+              uiStore.navigate({ appId: "chat" });
+              void import("./state/chatStore").then(async (m) => {
+                await m.chatStore.fetchSessions();
+                await m.chatStore.selectSession(sessionId);
+              });
+            }}
           />
         );
       }
@@ -1087,6 +1094,7 @@ export const App: React.FC = () => {
             projects={projects}
             jobs={jobsState.jobs}
             onOpenProject={(name) => uiStore.setActiveNav(`project-${name}`)}
+            onProjectRemoved={() => void bridge.listProjects().then(setProjects).catch(() => {})}
           />
         );
 

@@ -35,6 +35,12 @@ const REPORT_CHARS: usize = 1500;
 const UNCLEANED_AFTER_MINUTES: i64 = 30;
 /// A task still running after this long is probably stuck.
 const STUCK_AFTER_MINUTES: i64 = 45;
+/// A worker that has written nothing for this long is hung, and is stopped. Chat turns have no
+/// watchdog of their own (a person is normally watching them), and nobody is watching a task. Longer
+/// than a job's ten minutes, because a task's worker runs its builds and tests inside the same turn.
+pub const SILENT_AFTER: chrono::Duration = chrono::Duration::minutes(20);
+/// However busy it looks, a "small job" still going after this long is stopped.
+pub const LONGEST: chrono::Duration = chrono::Duration::minutes(120);
 /// Completed missions older than this are no longer checked for an unshipped branch.
 const MISSION_LOOKBACK_DAYS: i64 = 14;
 
@@ -61,6 +67,9 @@ pub struct Task {
     pub created_at: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub finished_at: Option<String>,
+    /// Why its worker was stopped, when it did not stop by itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stopped: Option<String>,
 }
 
 impl Task {
@@ -236,6 +245,7 @@ pub async fn start(
         own_worktree,
         created_at: chrono::Utc::now().to_rfc3339(),
         finished_at: None,
+        stopped: None,
     };
     let prompt = worker_prompt(project, &dir, task.branch.as_deref(), own_worktree, instruction);
     if let Err(e) = run_turn(state, &task, &prompt).await {
@@ -286,11 +296,15 @@ pub async fn send_back(state: &AppState, project: &str, id: &str, instruction: &
     run_turn(state, &task, &prompt).await?;
     let _guard = FILE_LOCK.lock().await;
     let mut file = read(&state.tendril_home);
+    let now = chrono::Utc::now().to_rfc3339();
     if let Some(t) = file.tasks.iter_mut().find(|t| t.id == id) {
         t.finished_at = None;
+        t.stopped = None;
+        // The clocks that decide whether it is stuck start again with the new round.
+        t.created_at = now.clone();
     }
     write(&state.tendril_home, &file);
-    Ok(Task { finished_at: None, ..task })
+    Ok(Task { finished_at: None, stopped: None, created_at: now, ..task })
 }
 
 /// What a finished task left in its checkout.
@@ -328,6 +342,10 @@ pub fn finished_message(task: &Task, report: &str, left: &Leftovers) -> String {
         None => format!("in `{}`", task.dir),
     };
     let warn = if left.uncommitted > 0 { " Uncommitted work is not finished work." } else { "" };
+    let stopped = match &task.stopped {
+        Some(why) => format!(" It did not finish: it was stopped ({why}). What it left may be half done."),
+        None => String::new(),
+    };
     let clean = if task.own_worktree {
         format!(
             " If it is right, push the branch and open its pull request as your standing orders say (or leave it for the pull request the rest of the request goes into); remove its worktree with `tendril manager task-clean --project \"{}\" {}` once it is pushed.",
@@ -337,7 +355,7 @@ pub fn finished_message(task: &Task, report: &str, left: &Leftovers) -> String {
         " If it is right, carry on with whatever it was holding up.".to_string()
     };
     format!(
-        "Task {id} \"{title}\" has stopped. Its worker's report:\n\n{report}\n\n\
+        "Task {id} \"{title}\" has stopped.{stopped} Its worker's report:\n\n{report}\n\n\
 It left {commits} and {files} {place}.{warn} A report is a claim: check what it changed (`git -C {dir} log --stat {base}..HEAD`) against what you asked for.{clean} \
 If it is not, send it back with what is wrong: `tendril manager task --project \"{project}\" --continue {id} \"<what to fix>\"`.",
         id = task.id,
@@ -350,12 +368,64 @@ If it is not, send it back with what is wrong: `tendril manager task --project \
     )
 }
 
-/// Wakes the manager of every task whose worker has stopped, and marks the task finished.
+/// Why a running task should be stopped now, if it should: its worker has written nothing for too
+/// long, or it has simply gone on too long to be the small job it was handed out as.
+pub fn overdue(
+    started: chrono::DateTime<chrono::Utc>,
+    last_output: chrono::DateTime<chrono::Utc>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<String> {
+    if now - last_output.max(started) >= SILENT_AFTER {
+        Some(format!("its worker wrote nothing for {} minutes", SILENT_AFTER.num_minutes()))
+    } else if now - started >= LONGEST {
+        Some(format!("it had been running for {} minutes", LONGEST.num_minutes()))
+    } else {
+        None
+    }
+}
+
+async fn mark_stopped(state: &AppState, id: &str, why: &str) {
+    let _guard = FILE_LOCK.lock().await;
+    let mut file = read(&state.tendril_home);
+    if let Some(t) = file.tasks.iter_mut().find(|t| t.id == id && t.stopped.is_none()) {
+        t.stopped = Some(why.to_string());
+    }
+    write(&state.tendril_home, &file);
+}
+
+/// Stops a running task's worker. The manager is woken with what it left, as for any task that stops.
+pub async fn stop(state: &AppState, project: &str, id: &str) -> Result<Task, String> {
+    let task = list(&state.tendril_home, project)
+        .into_iter()
+        .find(|t| t.id == id)
+        .ok_or_else(|| format!("No task {id} in project {project}"))?;
+    if !task.running() {
+        return Err(format!("Task {id} has already stopped"));
+    }
+    mark_stopped(state, id, "the manager stopped it").await;
+    state.chat_manager.cancel_session(&task.session_id).await;
+    Ok(task)
+}
+
+/// Wakes the manager of every task whose worker has stopped, and marks the task finished. A worker that
+/// has hung is stopped first, so it is reported on the next pass instead of running for ever.
 pub async fn report_finished(state: &AppState) {
     let running: Vec<Task> = read(&state.tendril_home).tasks.into_iter().filter(Task::running).collect();
-    for task in running {
+    for mut task in running {
         if state.chat_manager.is_generating(&task.session_id).await {
+            let now = chrono::Utc::now();
+            let started = chrono::DateTime::parse_from_rfc3339(&task.created_at).map(|d| d.with_timezone(&chrono::Utc)).unwrap_or(now);
+            let last_output = state.chat_manager.get_session(&task.session_id).await.map(|s| s.updated_at).unwrap_or(started);
+            if let Some(why) = overdue(started, last_output, now) {
+                tracing::warn!("Stopping task {} of {}: {why}", task.id, task.project);
+                mark_stopped(state, &task.id, &why).await;
+                state.chat_manager.cancel_session(&task.session_id).await;
+            }
             continue;
+        }
+        // Read again: the reason it was stopped is written after the list above was taken.
+        if let Some(fresh) = read(&state.tendril_home).tasks.into_iter().find(|t| t.id == task.id) {
+            task.stopped = fresh.stopped;
         }
         let report = state
             .chat_manager
@@ -465,8 +535,8 @@ pub fn task_findings(tasks: &[Task], now: chrono::DateTime<chrono::Utc>) -> Vec<
                     out.push(Finding {
                         key: format!("task {} running", t.id),
                         text: format!(
-                            "task {} \"{}\" has been running for {age} min, far too long for a small task: look at it (`tendril chat get {}`), and replace it if it is stuck",
-                            t.id, t.title, t.session_id
+                            "task {} \"{}\" has been running for {age} min, far too long for a small task: and it is stopped by the daemon if its worker goes silent for 20: if it should not wait that long, stop it (`tendril manager task-stop --project \"{}\" {}`) and hand out a smaller piece",
+                            t.id, t.title, t.project, t.id
                         ),
                     });
                 }
@@ -601,6 +671,7 @@ mod tests {
             own_worktree,
             created_at: chrono::Utc::now().to_rfc3339(),
             finished_at: None,
+            stopped: None,
         }
     }
 
@@ -628,6 +699,23 @@ mod tests {
         // A long report is clipped.
         let long = finished_message(&task("ab12", true), &"x".repeat(5000), &Leftovers::default());
         assert!(long.len() < 3000);
+    }
+
+    #[test]
+    fn a_silent_or_endless_worker_is_stopped_and_a_working_one_is_not() {
+        let now = chrono::Utc::now();
+        let ago = |m: i64| now - chrono::Duration::minutes(m);
+        assert_eq!(overdue(ago(30), ago(2), now), None, "still writing");
+        assert_eq!(overdue(ago(5), ago(5), now), None, "only just started");
+        assert!(overdue(ago(40), ago(21), now).unwrap().contains("wrote nothing for 20 minutes"));
+        // A session last touched before the task began (a task sent back) is timed from the new start.
+        assert_eq!(overdue(ago(3), ago(300), now), None);
+        assert!(overdue(ago(121), ago(1), now).unwrap().contains("running for 120 minutes"));
+        // The manager is told it did not finish.
+        let stopped = Task { stopped: Some("its worker wrote nothing for 20 minutes".into()), ..task("ab12", true) };
+        let text = finished_message(&stopped, "", &Leftovers { commits: 0, uncommitted: 116 });
+        assert!(text.contains("It did not finish: it was stopped (its worker wrote nothing for 20 minutes)"), "{text}");
+        assert!(text.contains("116 uncommitted files"), "{text}");
     }
 
     #[test]

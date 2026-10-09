@@ -313,6 +313,23 @@ async fn the_global_engine_and_fallback_chain_are_set_and_projects_can_override(
     let effective = tendril_core::agents::project_engine::ProjectEngine::load_effective(&h.home, "Demo");
     assert_eq!(effective.role("worker").unwrap().agent, "codex");
 
+    // A plain global change leaves the project's own choice alone...
+    let (_, plain) = h.call("PUT", "/api/engine", Some(&owner), Some(json!({ "roles": { "worker": { "agent": "gemini" } } }))).await;
+    assert_eq!(plain["projectsOverridden"], 0);
+    let load = || tendril_core::agents::project_engine::ProjectEngine::load_effective(&h.home, "Demo");
+    assert_eq!(load().role("worker").unwrap().agent, "codex");
+    // ...and "apply to all projects" replaces it, for the roles named and no others.
+    h.call("PUT", "/api/projects/Demo/engine", Some(&owner), Some(json!({ "roles": { "planner": { "agent": "codex" } } }))).await;
+    let (status, applied) = h
+        .call("PUT", "/api/engine", Some(&owner), Some(json!({ "roles": { "worker": { "agent": "gemini" } }, "applyToAll": true })))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{applied}");
+    assert_eq!(applied["projectsOverridden"], 1, "{applied}");
+    assert_eq!(load().role("worker").unwrap().agent, "gemini");
+    assert_eq!(load().role("planner").unwrap().agent, "codex", "a role not named keeps the project's own");
+    let own = tendril_core::agents::project_engine::ProjectEngine::load(&h.home, "Demo");
+    assert!(own.role("worker").is_none(), "the project's own worker setting is gone, so it follows the global one from now on");
+
     assert_eq!(h.call("PUT", "/api/engine", Some(&owner), Some(json!({ "roles": { "boss": { "agent": "claude" } } }))).await.0, StatusCode::BAD_REQUEST);
     // A public-API key cannot touch it.
     let key = h.key("bot", Scope::Write);

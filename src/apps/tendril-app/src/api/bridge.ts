@@ -103,7 +103,9 @@ export interface ApiKeyRecord {
 import type {
   DiscoveredRepoAsset,
   ProjectMemoryEntry,
+  ManagerTask,
   ProjectDocker,
+  TelegramStatus,
   EngineChoice,
   GlobalEngine,
   MissionEvidence,
@@ -1170,7 +1172,7 @@ export const tauriClient = {
   /** Sets global roles (`null` clears one) and/or replaces the whole fallback chain. */
   async setGlobalEngine(
     this: void,
-    change: { roles?: Record<string, EngineChoice | null>; fallbacks?: EngineChoice[] },
+    change: { roles?: Record<string, EngineChoice | null>; fallbacks?: EngineChoice[]; applyToAll?: boolean },
   ): Promise<GlobalEngine> {
     const res = await invokeOrFetch<Partial<GlobalEngine>>(
       "cmd_set_global_engine",
@@ -1178,7 +1180,12 @@ export const tauriClient = {
       "/api/engine",
       { method: "PUT", body: JSON.stringify(change) },
     );
-    return { roles: res.roles ?? {}, fallbacks: res.fallbacks ?? [], limited: res.limited ?? [] };
+    return {
+      roles: res.roles ?? {},
+      fallbacks: res.fallbacks ?? [],
+      limited: res.limited ?? [],
+      projectsOverridden: res.projectsOverridden,
+    };
   },
 
   /** The engine each role of a project runs on; a role not listed runs on the default. */
@@ -1228,6 +1235,36 @@ export const tauriClient = {
       `/api/projects/${encodeURIComponent(projectName)}/manager`,
       { method: "POST" },
     );
+  },
+
+  /**
+   * The Telegram bot: read its status, set it from a BotFather token, unpair the account, send a test
+   * message, or remove it. Every action answers with the status afterwards (`test` with `{ sent }`).
+   */
+  async telegram(
+    this: void,
+    action: "status" | "set" | "unpair" | "test" | "remove",
+    token?: string,
+  ): Promise<TelegramStatus> {
+    const [path, init]: [string, RequestInit] =
+      action === "status"
+        ? ["/api/telegram", { method: "GET" }]
+        : action === "set"
+          ? ["/api/telegram", { method: "PUT", body: JSON.stringify({ token }) }]
+          : action === "remove"
+            ? ["/api/telegram", { method: "DELETE" }]
+            : [`/api/telegram/${action}`, { method: "POST" }];
+    return invokeOrFetch<TelegramStatus>("cmd_telegram", { action, token: token ?? null }, path, init);
+  },
+
+  /** The tasks the project's manager handed straight to an agent: running, and finished but not cleaned up. */
+  async listManagerTasks(this: void, projectName: string): Promise<ManagerTask[]> {
+    const body = await invokeOrFetch<{ tasks?: ManagerTask[] }>(
+      "cmd_list_manager_tasks",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/manager/tasks`,
+    );
+    return body.tasks ?? [];
   },
 
   /** The Docker containers belonging to the project; `available` is false without Docker. */

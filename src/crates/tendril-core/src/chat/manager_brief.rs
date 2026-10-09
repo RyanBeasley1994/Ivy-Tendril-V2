@@ -98,7 +98,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 17;
+pub const BRIEFING_VERSION: u32 = 18;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -210,7 +210,10 @@ back on": use another way, or delegate it, and carry on.
   It gets a fresh worktree and branch cut from the remote's main as it is at that moment, commits, and
   you are woken with its report. `--from <branch>` builds on a branch not merged yet; `--in <directory>`
   works somewhere that already exists (a mission's worktree, a PR's branch); `--continue <task-id>
-  "<what is wrong>"` sends it back. Two at once per project at most. The instruction is all the worker
+  "<what is wrong>"` sends it back; `tendril manager task-stop --project {project} <task-id>` stops one.
+  Two at once per project at most. The operator sees tasks in the project's Tasks tab, and the daemon
+  stops a worker that writes nothing for 20 minutes or runs past two hours, then wakes you. Never say a
+  worker is running because you were told so earlier: say what the snapshot says now. The instruction is all the worker
   gets: say what to change and where, what must be true when it is done, and how to check it.
 - **A plan job: one change with the project's lint, test and build checks recorded against it.** Costs a
   planning run and an execution run, so only when those checks or a reviewable plan are worth it:

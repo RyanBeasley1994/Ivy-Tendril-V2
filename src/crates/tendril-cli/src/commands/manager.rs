@@ -72,6 +72,14 @@ and --continue to send a finished task back to the same worker with what is wron
         project: String,
     },
 
+    #[command(about = "Stop a running task's worker. The manager is woken with what it left behind")]
+    TaskStop {
+        #[arg(long, help = "The project")]
+        project: String,
+        #[arg(help = "The task id, as `tendril manager tasks` prints it")]
+        id: String,
+    },
+
     #[command(about = "Remove a finished task's worktree, and its branch when its commits are merged or pushed")]
     TaskClean {
         #[arg(long, help = "The project")]
@@ -257,6 +265,11 @@ pub async fn handle_manager_command(cmd: ManagerCommands, tendril_home: &Path) -
                     t["title"].as_str().unwrap_or(""),
                 );
             }
+            Ok(())
+        }
+        ManagerCommands::TaskStop { project, id } => {
+            post_to_manager(tendril_home, &project, &format!("tasks/{id}/stop"), serde_json::json!({})).await?;
+            println!("Task {id} is being stopped. The manager is woken with what it left.");
             Ok(())
         }
         ManagerCommands::TaskClean { project, id, force } => {

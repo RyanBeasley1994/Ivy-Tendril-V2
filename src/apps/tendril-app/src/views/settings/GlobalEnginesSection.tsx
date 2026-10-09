@@ -17,7 +17,7 @@ export const GlobalEnginesSection: React.FC = () => {
   const [agents, setAgents] = React.useState<AgentOption[] | null>(null);
   const [engine, setEngine] = React.useState<GlobalEngine>({ roles: {}, fallbacks: [] });
   const [busy, setBusy] = React.useState<string | null>(null);
-  const [saved, setSaved] = React.useState(false);
+  const [saved, setSaved] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -29,14 +29,23 @@ export const GlobalEnginesSection: React.FC = () => {
     };
   }, []);
 
-  const save = async (change: { roles?: Record<string, EngineChoice | null>; fallbacks?: EngineChoice[] }, key: string) => {
+  const save = async (
+    change: { roles?: Record<string, EngineChoice | null>; fallbacks?: EngineChoice[]; applyToAll?: boolean },
+    key: string,
+  ) => {
     setBusy(key);
     setError(null);
-    setSaved(false);
+    setSaved(null);
     try {
-      setEngine(await bridge.setGlobalEngine(change));
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2200);
+      const next = await bridge.setGlobalEngine(change);
+      setEngine(next);
+      const replaced = next.projectsOverridden ?? 0;
+      setSaved(
+        change.applyToAll
+          ? `Applied to every project${replaced > 0 ? `, replacing ${replaced} project${replaced === 1 ? "'s" : "s'"} own setting` : ""}.`
+          : "Saved.",
+      );
+      window.setTimeout(() => setSaved(null), change.applyToAll ? 5000 : 2200);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -54,7 +63,7 @@ export const GlobalEnginesSection: React.FC = () => {
   return (
     <SettingsSection
       title="Agents by role"
-      hint="The agent and model each role runs on, for every project that doesn't set its own (a project's Models tab overrides these). Changes apply straight away to live missions and managers."
+      hint="The agent and model each role runs on, for every project that doesn't set its own (a project's Models tab overrides these). Changes apply straight away to live missions and managers. “Apply to all projects” also replaces the setting in projects that chose their own."
       testId="global-engines-card"
     >
       {!agents ? (
@@ -76,15 +85,29 @@ export const GlobalEnginesSection: React.FC = () => {
           )}
           <div className="flex flex-col gap-2.5">
             {ENGINE_ROLES.map(({ role, label, hint }) => (
-              <RoleRow
-                key={role}
-                label={label}
-                hint={hint}
-                agents={agents}
-                value={engine.roles[role]}
-                busy={busy === role}
-                onChange={(choice) => void save({ roles: { [role]: choice } }, role)}
-              />
+              <div key={role} className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <RoleRow
+                    label={label}
+                    hint={hint}
+                    agents={agents}
+                    value={engine.roles[role]}
+                    busy={busy === role}
+                    onChange={(choice) => void save({ roles: { [role]: choice } }, role)}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy !== null}
+                  title={`Use this ${label.toLowerCase()} setting in every project, replacing any project's own`}
+                  onClick={() => void save({ roles: { [role]: engine.roles[role] ?? null }, applyToAll: true }, role)}
+                  data-testid={`apply-all-${role}`}
+                >
+                  Apply to all projects
+                </Button>
+              </div>
             ))}
           </div>
 
@@ -154,7 +177,7 @@ export const GlobalEnginesSection: React.FC = () => {
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
-          {saved && <p className="text-xs text-muted-foreground">Saved.</p>}
+          {saved && <p className="text-xs text-muted-foreground" data-testid="engines-saved">{saved}</p>}
         </div>
       )}
     </SettingsSection>

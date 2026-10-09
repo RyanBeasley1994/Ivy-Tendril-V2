@@ -179,10 +179,16 @@ pub struct SetGlobalEngineRequest {
     /// The whole fallback chain, in order, replacing the current one. Omit to leave it alone.
     #[serde(default)]
     pub fallbacks: Option<Vec<RoleAgent>>,
+    /// Also clear each named role's own setting in every project, so all of them run on the global
+    /// one from now on, including the projects that had chosen differently.
+    #[serde(default, rename = "applyToAll")]
+    pub apply_to_all: bool,
 }
 
 /// `PUT /api/engine`: sets the engine for every project that does not override it, and the rate-limit
 /// fallback chain. Live missions and managers of projects without their own setting follow at once.
+/// With `applyToAll`, the projects that do override the named roles have that override removed first,
+/// so the change reaches every project.
 pub async fn set_global_engine(
     State(state): State<Arc<AppState>>,
     Json(body): Json<SetGlobalEngineRequest>,
@@ -206,9 +212,23 @@ pub async fn set_global_engine(
     let settings = load_config(&state.config_path).unwrap_or_default();
     let mut missions_updated = 0usize;
     let mut managers_updated = 0usize;
+    let mut projects_overridden = 0usize;
     for project in settings.projects.iter().map(|p| p.name.clone()) {
-        // A role the project sets itself is not touched by a change to the global one.
-        let own = ProjectEngine::load(&state.tendril_home, &project);
+        // A role the project sets itself is not touched by a change to the global one, unless the
+        // operator asked for the change to go everywhere: then the project's own setting is dropped.
+        let mut own = ProjectEngine::load(&state.tendril_home, &project);
+        if body.apply_to_all {
+            let theirs: Vec<&str> = changed.iter().copied().filter(|r| own.role(r).is_some()).collect();
+            if !theirs.is_empty() {
+                for role in theirs {
+                    own.set(role, None);
+                }
+                if let Err(e) = own.save(&state.tendril_home, &project) {
+                    return error(StatusCode::INTERNAL_SERVER_ERROR, format!("Could not update {project}: {e}"));
+                }
+                projects_overridden += 1;
+            }
+        }
         let inherited: Vec<&str> = changed.iter().copied().filter(|r| own.role(r).is_none()).collect();
         if inherited.is_empty() {
             continue;
@@ -246,6 +266,7 @@ pub async fn set_global_engine(
         "fallbacks": engine.fallbacks,
         "missionsUpdated": missions_updated,
         "managersUpdated": managers_updated,
+        "projectsOverridden": projects_overridden,
     }))
     .into_response()
 }

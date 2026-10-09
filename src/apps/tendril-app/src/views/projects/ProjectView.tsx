@@ -2,7 +2,7 @@ import React from "react";
 import { ArrowLeft, Box, Brain, Network, SquareTerminal } from "lucide-react";
 import { cn } from "@ivy-interactive/components/ui";
 import type { Job, Mission, ProjectSummary } from "../../types/api";
-import type { ProjectDocker, ProjectMemoryEntry } from "../../types/projectAssets";
+import type { ManagerTask, ProjectDocker, ProjectMemoryEntry } from "../../types/projectAssets";
 import { bridge } from "../../api/bridge";
 import { usePortForwards } from "../../api/portForwards";
 import { chatStore } from "../../state/chatStore";
@@ -28,6 +28,8 @@ interface Props {
   onOpenPlan: (planId: string) => void;
   /** Opens the Git page on this project's repositories. */
   onOpenGit?: () => void;
+  /** Opens a chat session: a manager task's worker runs in one. */
+  onOpenChat?: (sessionId: string) => void;
 }
 
 type Status = ReturnType<typeof projectStatus>;
@@ -68,7 +70,7 @@ const useAsync = <T,>(load: () => Promise<T>, deps: React.DependencyList, interv
  * The project page: the manager chat on the left half, always mounted so a running conversation is
  * never torn down, and the project's panels on the right half, in tabs.
  */
-export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMission, onOpenJob, onOpenPlan, onOpenGit }) => {
+export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMission, onOpenJob, onOpenPlan, onOpenGit, onOpenChat }) => {
   const [tab, setTab] = React.useState<Tab>("overview");
   const [side, setSide] = React.useState<Side>("chat");
   const [runId, setRunId] = React.useState<string | null>(null);
@@ -80,6 +82,10 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
     () => projectStatus(project.name, missions, jobs, managerWorking),
     [project.name, missions, jobs, managerWorking],
   );
+
+  // What the manager handed straight to an agent. These are not jobs, so nothing else lists them.
+  const managerTasks = useAsync(() => bridge.listManagerTasks(project.name), [project.name], 8_000) ?? [];
+  const runningTasks = managerTasks.filter((t) => !t.finishedAt).length;
 
   React.useEffect(() => recordRecentProject(project.name), [project.name]);
 
@@ -114,7 +120,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
   const tabs: { value: Tab; label: string; count?: number }[] = [
     { value: "overview", label: "Overview" },
     { value: "missions", label: "Missions", count: status.live.length },
-    { value: "tasks", label: "Tasks", count: status.taskCount },
+    { value: "tasks", label: "Tasks", count: status.taskCount + runningTasks },
     { value: "artifacts", label: "Artifacts" },
     { value: "models", label: "Models" },
     { value: "runtime", label: "Runtime" },
@@ -165,7 +171,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
           className={cn("min-w-0 flex-col lg:flex lg:w-1/2", side === "panels" ? "flex flex-1" : "hidden")}
           aria-label="Project panels"
         >
-          <SummaryStrip status={status} />
+          <SummaryStrip status={status} runningTasks={runningTasks} />
           <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border/70 px-3" aria-label="Project panels">
             {tabs.map((t) => (
               <button
@@ -206,7 +212,9 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
               ) : (
                 <MissionsPanel project={project} missions={missions} onOpen={openRun} />
               ))}
-            {tab === "tasks" && <TasksPanel status={status} onOpenJob={onOpenJob} />}
+            {tab === "tasks" && (
+              <TasksPanel status={status} managerTasks={managerTasks} onOpenJob={onOpenJob} onOpenChat={onOpenChat} />
+            )}
             {tab === "artifacts" && (
               <ArtifactsPanel
                 project={project.name}
@@ -300,7 +308,7 @@ const MissionCard: React.FC<{ mission: Mission; onOpen: () => void }> = ({ missi
 };
 
 /** The numbers that matter, always in view above the tabs. */
-const SummaryStrip: React.FC<{ status: Status }> = ({ status }) => (
+const SummaryStrip: React.FC<{ status: Status; runningTasks: number }> = ({ status, runningTasks }) => (
   <div className="flex shrink-0 flex-col gap-2.5 border-b border-border/70 px-4 py-3">
     <div className="flex items-center gap-3">
       <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{status.headline}</span>
@@ -314,7 +322,7 @@ const SummaryStrip: React.FC<{ status: Status }> = ({ status }) => (
     </div>
     <div className="flex gap-5 font-mono text-[11px] text-muted-foreground">
       <span><b className="font-medium text-foreground">{status.live.length}</b> missions</span>
-      <span><b className="font-medium text-foreground">{status.taskCount}</b> tasks</span>
+      <span><b className="font-medium text-foreground">{status.taskCount + runningTasks}</b> tasks</span>
       <span><b className="font-medium text-foreground">{status.milestonesPassed}/{status.milestonesTotal}</b> milestones</span>
       <span className="ml-auto"><b className="font-medium text-foreground">${status.cost.toFixed(2)}</b> spent</span>
     </div>
@@ -482,9 +490,67 @@ const MissionsPanel: React.FC<{ project: ProjectSummary; missions: Mission[]; on
   );
 };
 
-const TasksPanel: React.FC<{ status: Status; onOpenJob: (id: string) => void }> = ({ status, onOpenJob }) => (
+/** Finished manager tasks listed under the running ones. */
+const RECENT_FINISHED_TASKS = 3;
+
+const TasksPanel: React.FC<{
+  status: Status;
+  managerTasks: ManagerTask[];
+  onOpenJob: (id: string) => void;
+  onOpenChat?: (sessionId: string) => void;
+}> = ({ status, managerTasks, onOpenJob, onOpenChat }) => {
+  // What is running comes first, newest on top; under it only the last few that finished.
+  const newest = (a: ManagerTask, b: ManagerTask) =>
+    (b.finishedAt ?? b.createdAt).localeCompare(a.finishedAt ?? a.createdAt);
+  const running = managerTasks.filter((t) => !t.finishedAt).sort(newest);
+  const finished = managerTasks.filter((t) => t.finishedAt).sort(newest);
+  const shown = [...running, ...finished.slice(0, RECENT_FINISHED_TASKS)];
+  const hidden = finished.length - Math.min(finished.length, RECENT_FINISHED_TASKS);
+  return (
   <PanelBody>
-    <Card title="Running tasks" meta={<Pill>{status.taskCount}</Pill>} bodyClassName="divide-y divide-border/60">
+    <Card
+      title="Handed to a worker by the manager"
+      meta={<Pill tone={running.length > 0 ? "ok" : undefined}>{running.length} running</Pill>}
+      bodyClassName="divide-y divide-border/60"
+    >
+      {managerTasks.length === 0 && <Empty>No tasks. Small jobs the manager hands straight to an agent show up here.</Empty>}
+      {shown.map((task) => {
+        const isRunning = !task.finishedAt;
+        const since = Date.now() - new Date(task.finishedAt ?? task.createdAt).getTime();
+        return (
+          <button
+            key={task.id}
+            type="button"
+            onClick={() => onOpenChat?.(task.sessionId)}
+            disabled={!onOpenChat}
+            data-testid={`manager-task-${task.id}`}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left hover:bg-secondary/50"
+          >
+            <span className={isRunning ? "text-success" : "text-muted-foreground"}><Dot live={isRunning} /></span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-[12.5px] text-foreground">{task.title}</span>
+              {task.branch && (
+                <span className="truncate font-mono text-[10.5px] text-muted-foreground">{task.branch}</span>
+              )}
+            </span>
+            <span className="hidden shrink-0 font-mono text-[10.5px] text-muted-foreground sm:inline">
+              {isRunning ? `started ${formatAge(since)} ago` : `finished ${formatAge(since)} ago`}
+            </span>
+            {isRunning ? (
+              <Pill tone="ok" dot live>Running</Pill>
+            ) : (
+              <Pill tone={task.ownWorktree ? "warn" : "mute"}>{task.ownWorktree ? "Finished · not cleaned up" : "Finished"}</Pill>
+            )}
+          </button>
+        );
+      })}
+      {hidden > 0 && (
+        <div className="px-4 py-2 text-center text-[11.5px] text-muted-foreground">
+          {hidden} older finished task{hidden === 1 ? "" : "s"} not shown
+        </div>
+      )}
+    </Card>
+    <Card title="Running jobs" meta={<Pill>{status.taskCount}</Pill>} bodyClassName="divide-y divide-border/60">
       {status.taskCount === 0 && <Empty>Nothing running.</Empty>}
       {status.managerWorking && (
         <div className="flex items-center gap-2.5 px-4 py-2.5">
@@ -516,7 +582,8 @@ const TasksPanel: React.FC<{ status: Status; onOpenJob: (id: string) => void }> 
       ))}
     </Card>
   </PanelBody>
-);
+  );
+};
 
 const RuntimePanel: React.FC<{ project: ProjectSummary }> = ({ project }) => {
   const forwards = usePortForwards();

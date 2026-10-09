@@ -5,6 +5,7 @@ pub mod event_buffer;
 pub mod local_file_guard;
 pub mod manager_scheduler;
 pub mod manager_tasks;
+pub mod telegram;
 pub mod master;
 pub mod patrol;
 pub mod pr_sync;
@@ -219,6 +220,7 @@ pub async fn run_server(
 
     spawn_mission_driver(state.clone());
     manager_scheduler::spawn_manager_scheduler(state.clone());
+    telegram::spawn(state.clone());
     spawn_worktree_reaper(tendril_home.clone());
     spawn_cost_backfill(tendril_home.clone());
     // No background release check: it polled upstream Ivy Tendril's GitHub releases, which this fork

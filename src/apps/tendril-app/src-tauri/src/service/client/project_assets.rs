@@ -185,6 +185,42 @@ impl TendrilClient {
         .await
     }
 
+    /// The Telegram bot: its status, or one of the changes Settings makes to it.
+    pub async fn telegram(&self, action: &str, token: Option<String>) -> Result<serde_json::Value, BridgeError> {
+        let (method, path, body) = match action {
+            "status" => (reqwest::Method::GET, "/api/telegram".to_string(), None),
+            "set" => (
+                reqwest::Method::PUT,
+                "/api/telegram".to_string(),
+                Some(serde_json::json!({ "token": token.unwrap_or_default() })),
+            ),
+            "remove" => (reqwest::Method::DELETE, "/api/telegram".to_string(), None),
+            "unpair" | "test" => (reqwest::Method::POST, format!("/api/telegram/{action}"), None),
+            other => {
+                return Err(BridgeError::new("TELEGRAM_FAILED", format!("'{other}' is not something Telegram settings can do")))
+            }
+        };
+        self.project_assets_request(method, &path, body, "TELEGRAM_FAILED", "update the Telegram bot", None)
+            .await
+    }
+
+    /// The tasks the project's manager handed straight to an agent: running, and finished but not yet
+    /// cleaned up.
+    pub async fn list_manager_tasks(
+        &self,
+        project_name: &str,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/manager/tasks", path_segment(project_name)),
+            None,
+            "MANAGER_TASKS_FAILED",
+            "list the manager's tasks",
+            None,
+        )
+        .await
+    }
+
     /// The Docker containers that belong to the project.
     pub async fn project_docker(
         &self,

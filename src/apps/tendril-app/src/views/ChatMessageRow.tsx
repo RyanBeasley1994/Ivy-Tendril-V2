@@ -162,6 +162,20 @@ const systemEventIconTone = (kind: string, jobState: JobDisplayState): string =>
   return "";
 };
 
+/** When a reply was sent: the time alone if that was today, with the date in front otherwise. */
+export const formatReplyTime = (timestamp: string, now = new Date()): string | null => {
+  const at = new Date(timestamp);
+  if (Number.isNaN(at.getTime())) return null;
+  const time = at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (at.toDateString() === now.toDateString()) return time;
+  const date = at.toLocaleDateString([], {
+    day: "numeric",
+    month: "short",
+    ...(at.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+  return `${date}, ${time}`;
+};
+
 export const ChatMessageRow: React.FC<ChatMessageRowProps> = React.memo(function ChatMessageRow({
   message,
   inProgressAnswers: propInProgressAnswers,
@@ -176,6 +190,7 @@ export const ChatMessageRow: React.FC<ChatMessageRowProps> = React.memo(function
   const { t } = useTranslation("chat");
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+  const replyTime = isUser || isSystem ? null : formatReplyTime(message.timestamp);
 
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -408,6 +423,16 @@ export const ChatMessageRow: React.FC<ChatMessageRowProps> = React.memo(function
                 </div>
               )}
               {parsedTurn && <TurnMetrics metrics={parsedTurn.metrics} isLiveTurn={isLiveTurn} />}
+              {!isLiveTurn && replyTime && (
+                <time
+                  dateTime={message.timestamp}
+                  title={new Date(message.timestamp).toLocaleString()}
+                  data-testid="message-time"
+                  className="mt-1.5 block font-mono text-[10.5px] text-muted-foreground"
+                >
+                  {replyTime}
+                </time>
+              )}
             </div>
           )}
 

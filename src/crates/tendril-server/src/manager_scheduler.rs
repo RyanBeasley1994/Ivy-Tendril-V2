@@ -347,7 +347,8 @@ async fn patrol(state: &AppState, patrol_state: &mut crate::patrol::PatrolState)
 /// A manager's turn just ended: decide whether that is worth a push, and send it.
 async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
     let cfg = crate::push::PushConfig::load(&state.tendril_home);
-    if !cfg.enabled() {
+    // Telegram is one more place the same notices go, and the only one a reply can come back from.
+    if !cfg.enabled() && !crate::telegram::enabled(&state.tendril_home) {
         return;
     }
     let manager = manager_session_id(project);
@@ -366,6 +367,7 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
     let text = crate::push::plain(&reply.content);
     if briefing {
         let _ = crate::push::send(&cfg, &format!("{project} · morning briefing"), &crate::push::clip(&text, 900), false).await;
+        crate::telegram::notify(state, project, &format!("{project} · morning briefing"), reply.content.trim()).await;
         return;
     }
 
@@ -406,15 +408,18 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
                     .unwrap_or_else(|| crate::push::clip(&text, 300))
             };
             let _ = crate::push::send(&cfg, &format!("{project} · needs you"), &body, true).await;
+            // Telegram has room for the whole reply, and the operator answers from it.
+            crate::telegram::notify(state, project, &format!("{project} · needs you"), reply.content.trim()).await;
         }
         Some(crate::push::TurnOutcome::WorkComplete) => {
             let _ = crate::push::send(&cfg, &format!("{project} · work complete"), &crate::push::clip(&text, 300), false).await;
+            crate::telegram::notify(state, project, &format!("{project} · work complete"), reply.content.trim()).await;
         }
         None => {}
     }
 }
 
-fn project_repo_dir(state: &AppState, project: &str) -> Option<PathBuf> {
+pub(crate) fn project_repo_dir(state: &AppState, project: &str) -> Option<PathBuf> {
     let settings = tendril_core::config::load_config(&state.config_path).ok()?;
     let home = state.tendril_home.to_string_lossy().to_string();
     settings

@@ -1,6 +1,13 @@
 import React from "react";
-import { FolderGit2, History, Plus, Search } from "lucide-react";
-import { cn } from "@ivy-interactive/components/ui";
+import { FolderGit2, History, Plus, Search, Trash2 } from "lucide-react";
+import {
+  cn,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@ivy-interactive/components/ui";
 import type { Job, Mission, ProjectSummary } from "../../types/api";
 import { bridge } from "../../api/bridge";
 import { projectStatus, type ProjectStatus } from "../../utils/projectStatus";
@@ -10,13 +17,35 @@ import { useManagerActivity } from "../../state/managerActivity";
 import { Page, PageHeader } from "../../components/page/Page";
 import { Dot, Kbd, Pill, PrimaryButton, Seg } from "../../components/page/kit";
 import { fuzzyScore } from "./ProjectPalette";
+import { RemoveProjectDialog } from "../dialogs/RemoveProjectDialog";
 
 interface Props {
   projects: ProjectSummary[];
   jobs: Job[];
   onOpenProject: (name: string) => void;
   onAddProject?: () => void;
+  /** Called after a project was removed from here, so the list can be read again. */
+  onProjectRemoved?: (name: string) => void;
 }
+
+/** Right-click on a project: open it, or remove it from Tendril. */
+const ProjectMenu: React.FC<{ onOpen: () => void; onRemove: () => void; children: React.ReactNode }> = ({
+  onOpen,
+  onRemove,
+  children,
+}) => (
+  <ContextMenu>
+    <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+    <ContextMenuContent className="min-w-44">
+      <ContextMenuItem onSelect={onOpen}>Open</ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onSelect={onRemove} className="text-destructive focus:text-destructive">
+        <Trash2 className="size-3.5" aria-hidden="true" />
+        Remove project…
+      </ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenu>
+);
 
 export const useMissions = (intervalMs = 15_000): Mission[] => {
   const [missions, setMissions] = React.useState<Mission[]>([]);
@@ -83,12 +112,15 @@ const Stat: React.FC<{ label: string; value: React.ReactNode }> = ({ label, valu
   </div>
 );
 
-const ProjectCard: React.FC<{
-  project: ProjectSummary;
-  status: ProjectStatus;
-  owner?: string | null;
-  onOpen: () => void;
-}> = ({ project, status, owner, onOpen }) => {
+const ProjectCard = React.forwardRef<
+  HTMLButtonElement,
+  {
+    project: ProjectSummary;
+    status: ProjectStatus;
+    owner?: string | null;
+    onOpen: () => void;
+  } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "type" | "className">
+>(({ project, status, owner, onOpen, ...trigger }, ref) => {
   const needsYou = status.attention.length > 0;
   const live = status.live.length > 0;
   const livePct = (() => {
@@ -98,6 +130,8 @@ const ProjectCard: React.FC<{
 
   return (
     <button
+      ref={ref}
+      {...trigger}
       type="button"
       onClick={onOpen}
       className="group flex flex-col gap-3.5 rounded-[14px] border border-border bg-card p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-primary/40 hover:bg-secondary/40"
@@ -145,9 +179,11 @@ const ProjectCard: React.FC<{
       </div>
     </button>
   );
-};
+});
+ProjectCard.displayName = "ProjectCard";
 
-export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProject, onAddProject }) => {
+export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProject, onAddProject, onProjectRemoved }) => {
+  const [removing, setRemoving] = React.useState<string | null>(null);
   const missions = useMissions();
   const recents = useRecentProjects();
   const activity = useManagerActivity();
@@ -237,8 +273,8 @@ export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProjec
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
             {jumpBack.map(({ project, status }, i) => (
+              <ProjectMenu key={project.name} onOpen={() => onOpenProject(project.name)} onRemove={() => setRemoving(project.name)}>
               <button
-                key={project.name}
                 type="button"
                 onClick={() => onOpenProject(project.name)}
                 className={cn(
@@ -255,6 +291,7 @@ export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProjec
                 </div>
                 <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{status.live.length ? `${status.progress}%` : "resume"}</span>
               </button>
+              </ProjectMenu>
             ))}
           </div>
         </section>
@@ -312,11 +349,19 @@ export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProjec
           )}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
             {g.rows.map(({ project, status, owner }) => (
-              <ProjectCard key={project.name} project={project} status={status} owner={owner} onOpen={() => onOpenProject(project.name)} />
+              <ProjectMenu key={project.name} onOpen={() => onOpenProject(project.name)} onRemove={() => setRemoving(project.name)}>
+                <ProjectCard project={project} status={status} owner={owner} onOpen={() => onOpenProject(project.name)} />
+              </ProjectMenu>
             ))}
           </div>
         </section>
       ))}
+      <RemoveProjectDialog
+        isOpen={removing !== null}
+        onClose={() => setRemoving(null)}
+        projectName={removing ?? ""}
+        onRemoved={(name) => onProjectRemoved?.(name)}
+      />
     </Page>
   );
 };
