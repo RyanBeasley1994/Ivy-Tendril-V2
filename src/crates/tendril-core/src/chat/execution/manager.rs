@@ -247,6 +247,9 @@ impl ChatExecutionManager {
     pub async fn delete_session(&self, id: &str) -> Result<()> {
         self.cancel_session(id).await;
         storage_delete(&self.tendril_home, id)?;
+        // A manager's chat deleted (the app's `/clear`) is a manager started over: its next turn opens
+        // a new Claude Code session rather than resuming the one that remembers everything.
+        crate::chat::agent_session::forget(&self.tendril_home, id);
         self.sessions.write().await.remove(id);
         self.queued_messages.write().await.remove(id);
         Ok(())
@@ -331,6 +334,15 @@ impl ChatExecutionManager {
             }
         }
         None
+    }
+
+    /// Takes the next queued item only if it is an event the daemon queued, leaving anything the user
+    /// typed where it is.
+    pub async fn dequeue_event(&self, session_id: &str) -> Option<ChatQueuedItem> {
+        let mut map = self.queued_messages.write().await;
+        let queue = map.get_mut(session_id)?;
+        let is_event = queue.first()?.role.as_deref().is_some_and(super::prompt::is_event_role);
+        is_event.then(|| queue.remove(0))
     }
 
     pub async fn get_queued_messages(&self, session_id: &str) -> Vec<ChatQueuedItem> {

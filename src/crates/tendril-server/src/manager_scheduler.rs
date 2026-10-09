@@ -96,7 +96,8 @@ async fn take_due(tendril_home: &Path) -> Vec<Wake> {
     due
 }
 
-/// The mission states a manager has to react to.
+/// The mission states a manager has to react to. A cancelled mission is not one: somebody decided that,
+/// there is nothing to do about it, and a turn spent saying "noted" is a turn wasted.
 fn is_manager_business(state: MissionState) -> bool {
     matches!(
         state,
@@ -104,7 +105,6 @@ fn is_manager_business(state: MissionState) -> bool {
             | MissionState::Paused
             | MissionState::Review
             | MissionState::Completed
-            | MissionState::Cancelled
     )
 }
 
@@ -163,7 +163,6 @@ fn describe(state: MissionState) -> &'static str {
         MissionState::Paused => "is paused",
         MissionState::Review => "passed validation and is in review: check it against what the operator asked for, then push it, open its pull request and close it, as your standing orders say",
         MissionState::Completed => "is completed: if the request it belongs to has more to do, take the next step; if that was the last of it, check the request's \"done when\" and close it in the Goals memory",
-        MissionState::Cancelled => "was cancelled",
         _ => "changed state",
     }
 }
@@ -460,13 +459,19 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                     .collect();
             let first_pass = seen.is_none();
             let previous_states = seen.clone().unwrap_or_default();
+            // Everything that changed for one project this tick goes to its manager as one message, so
+            // it is one turn: after a restart, or when several missions move together, a wake each
+            // would make the manager orient itself over and over.
+            let mut changed: std::collections::BTreeMap<&str, Vec<String>> = std::collections::BTreeMap::new();
             for (id, (now_state, project, title, reason)) in &current {
                 let Some(why) = plan_wakeup(first_pass, previous_states.get(id).copied(), *now_state) else {
                     continue;
                 };
+                changed.entry(project.as_str()).or_default().push(wakeup_message(id, title, *now_state, reason.as_deref(), why));
+            }
+            for (project, messages) in changed {
                 let Some(manager) = manager_exists(&state, project).await else { continue };
-                let message = wakeup_message(id, title, *now_state, reason.as_deref(), why);
-                if let Err(e) = state.chat_manager.notify_event(&manager, &message).await {
+                if let Err(e) = state.chat_manager.notify_event(&manager, &messages.join("\n\n")).await {
                     tracing::debug!("Could not wake manager {manager}: {e}");
                 }
             }
@@ -703,6 +708,7 @@ mod tests {
         assert!(!is_manager_business(MissionState::Running));
         assert!(!is_manager_business(MissionState::Validating));
         assert!(!is_manager_business(MissionState::Planning));
+        assert!(!is_manager_business(MissionState::Cancelled), "nothing to do about it, so no turn spent on it");
     }
 
     #[test]

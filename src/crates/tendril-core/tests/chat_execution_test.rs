@@ -2289,3 +2289,98 @@ async fn test_a_fence_split_across_deltas_is_consolidated_into_one_answered_chun
 
     let _ = std::fs::remove_dir_all(&test_dir);
 }
+
+/// A manager on Claude lives in one Claude Code session: its first turn opens it, every later turn
+/// resumes it with only what is new, and deleting the chat (the app's `/clear`) starts a new one.
+#[tokio::test]
+async fn a_manager_opens_one_claude_session_and_resumes_it() {
+    use tendril_core::chat::agent_session;
+    use tendril_core::chat::manager_brief::{manager_briefing, manager_session_id};
+
+    let test_dir = std::env::temp_dir().join(format!("tendril-manager-session-test-{}", uuid::Uuid::new_v4().simple()));
+    std::fs::create_dir_all(&test_dir).expect("Failed to create test dir");
+
+    let launches: Arc<Mutex<Vec<AgentLaunchConfig>>> = Arc::default();
+    let seen = launches.clone();
+    let mgr = Arc::new(
+        ChatExecutionManager::new(test_dir.clone())
+            .with_spec_builder(Arc::new(move |_agent, config| {
+                seen.lock().unwrap().push(config.clone());
+                AgentProcessSpec {
+                    command: "sh".to_string(),
+                    args: vec![
+                        "-c".to_string(),
+                        r#"echo '{"type":"system","subtype":"init","session_id":"native-1"}'; echo '{"type":"assistant","message":{"content":[{"type":"text","text":"On it."}]}}'; echo '{"type":"result","subtype":"success","is_error":false,"result":"On it.","session_id":"native-1"}'"#.to_string(),
+                    ],
+                    environment: HashMap::new(),
+                    working_directory: config.working_directory.clone(),
+                    stdin_content: None,
+                    redirect_stdin: false,
+                    temp_files: vec![],
+                }
+            }))
+            .with_persist_interval(Duration::from_millis(20)),
+    );
+
+    let id = manager_session_id("Acme");
+    mgr.get_or_create_session_with_id(&id, "Manager · Acme").await.unwrap();
+    let briefing = manager_briefing("Acme", &[], "", None);
+    mgr.add_message(
+        &id,
+        tendril_core::chat::ChatMessage {
+            id: "briefing".into(),
+            role: "system".into(),
+            content: briefing.clone(),
+            timestamp: chrono::Utc::now(),
+            agent_id: None,
+            model_id: None,
+            raw_stream: None,
+            effort: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let wait = |mgr: Arc<ChatExecutionManager>, id: String| async move {
+        for _ in 0..200 {
+            if !mgr.is_generating(&id).await {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("the turn never ended");
+    };
+
+    mgr.start_session_turn(&id, "Rename the flag please", ChatTurnOptions::default()).await.unwrap();
+    wait(mgr.clone(), id.clone()).await;
+    mgr.notify_event(&id, "Task ab12 has stopped.").await.unwrap();
+    wait(mgr.clone(), id.clone()).await;
+
+    let (first, second) = {
+        let all = launches.lock().unwrap();
+        assert_eq!(all.len(), 2, "one launch per turn");
+        (all[0].clone(), all[1].clone())
+    };
+    // Opening: a new session id, the briefing as system prompt and not in the prompt, nothing resumed.
+    assert!(first.session_id.as_deref().is_some_and(|s| uuid::Uuid::parse_str(s).is_ok()), "{:?}", first.session_id);
+    assert_eq!(first.extra_arguments, vec!["--append-system-prompt".to_string(), briefing.clone()]);
+    assert!(!first.prompt.contains("# You are the Factory Manager"), "the briefing is not sent twice");
+    assert!(first.prompt.contains("Rename the flag please"));
+
+    // Resuming: the id Claude reported, the briefing again as system prompt, and only what is new.
+    assert_eq!(second.session_id, None);
+    assert_eq!(
+        second.extra_arguments,
+        vec!["--append-system-prompt".to_string(), briefing, "--resume".to_string(), "native-1".to_string()]
+    );
+    assert!(second.prompt.contains("Task ab12 has stopped."));
+    assert!(!second.prompt.contains("Rename the flag please"), "the conversation is not replayed: {}", second.prompt);
+    assert!(!second.prompt.contains("Previous Conversation"));
+
+    // `/clear` in the app deletes the manager's chat; the next manager starts a new session.
+    assert_eq!(agent_session::get(&test_dir, &id).map(|a| a.id).as_deref(), Some("native-1"));
+    mgr.delete_session(&id).await.unwrap();
+    assert_eq!(agent_session::get(&test_dir, &id), None);
+
+    let _ = std::fs::remove_dir_all(&test_dir);
+}

@@ -4,7 +4,7 @@
 use super::events::ChatEvent;
 use super::manager::{ChatExecutionManager, ChatTurnOptions, LiveTurn};
 use super::outcome::{compose_turn_content, TurnOutcome, STDERR_TAIL_LINES};
-use super::prompt::{build_chat_agent_prompt, is_event_role};
+use super::prompt::is_event_role;
 use super::streaming::next_text_delta;
 use super::titles::is_default_chat_title;
 use crate::agents::eventwire::EventWireNormalizer;
@@ -209,13 +209,20 @@ impl ChatExecutionManager {
                     }
                     None => None,
                 };
-                let built_prompt = build_chat_agent_prompt(
-                    &current_history,
-                    &current_prompt,
-                    &s_id,
-                    &current_role,
-                    &mgr.spawned_jobs(&s_id).await,
-                );
+                // A manager is told where its project stands, so it does not spend its first tool calls
+                // finding out.
+                let manager_state = if super::super::manager_brief::is_manager_session(&s_id) {
+                    let (home, id) = (mgr.tendril_home.clone(), s_id.clone());
+                    tokio::task::spawn_blocking(move || {
+                        crate::chat::manager_snapshot::project_of(&home, &id)
+                            .map(|project| crate::chat::manager_snapshot::snapshot(&home, &project, Utc::now()))
+                    })
+                    .await
+                    .ok()
+                    .flatten()
+                } else {
+                    None
+                };
                 // The agent this turn really starts on: the session's, unless that agent is rate limited
                 // right now and a fallback can cover for it. The session itself is not changed, so the
                 // turn after the limit resets is back on the agent the operator chose.
@@ -230,16 +237,62 @@ impl ChatExecutionManager {
                 let fallbacks = crate::agents::project_engine::GlobalEngine::load(&mgr.tendril_home).fallbacks;
                 let used = crate::agents::cooldown::resolve(&fallbacks, Some(&planned_engine), &agent_to_use_clone, Utc::now())
                     .unwrap_or_else(|| planned_engine.clone());
+                // A manager on Claude lives in one Claude Code session: opened on its first turn, resumed
+                // with only what is new on every turn after (`crate::chat::agent_session`). Its briefing
+                // rides along as system prompt each time, so it is never part of what gets compacted and
+                // a changed briefing takes effect at once. On any other agent, and for every other chat,
+                // the conversation is replayed in the prompt as before.
+                let is_manager = super::super::manager_brief::is_manager_session(&s_id);
+                let turn_directory = current_options
+                    .working_directory
+                    .clone()
+                    .or_else(|| plan_context.as_ref().and_then(|c| c.working_directory.clone()))
+                    .unwrap_or_else(|| mgr.tendril_home.clone());
+                let lives_in_one_session = is_manager && used.agent.eq_ignore_ascii_case("claude");
+                let briefing = current_history
+                    .iter()
+                    .find(|m| m.role == "system" && super::super::manager_brief::is_briefing(&m.content))
+                    .map(|m| m.content.clone())
+                    .filter(|_| lives_in_one_session);
+                let resumed = if lives_in_one_session {
+                    crate::chat::agent_session::get(&mgr.tendril_home, &s_id)
+                        .filter(|a| a.directory == turn_directory.to_string_lossy())
+                } else {
+                    None
+                };
+                let opened = (lives_in_one_session && resumed.is_none()).then(|| Uuid::new_v4().to_string());
+                let replayed: Vec<ChatMessage> = match (&resumed, &briefing) {
+                    // Resumed: Claude Code already holds the conversation.
+                    (Some(_), _) => Vec::new(),
+                    // Opening: the latest messages once, so a new session picks up where the last left off.
+                    (None, Some(b)) => current_history.iter().filter(|m| &m.content != b).cloned().collect(),
+                    (None, None) => current_history.clone(),
+                };
+                let built_prompt = super::prompt::build_chat_agent_prompt_with_state(
+                    &replayed,
+                    &current_prompt,
+                    &s_id,
+                    &current_role,
+                    &mgr.spawned_jobs(&s_id).await,
+                    manager_state.as_deref(),
+                );
+                let mut session_arguments: Vec<String> = Vec::new();
+                if let Some(b) = &briefing {
+                    session_arguments.extend(["--append-system-prompt".to_string(), b.clone()]);
+                }
+                if let Some(a) = &resumed {
+                    session_arguments.extend(["--resume".to_string(), a.id.clone()]);
+                }
+                let mut agent_session_id = resumed.as_ref().map(|a| a.id.clone()).or_else(|| opened.clone());
+
                 let launch_config = AgentLaunchConfig {
+                    session_id: opened.clone(),
+                    extra_arguments: session_arguments,
                     prompt: match &plan_context {
                         Some(ctx) => format!("{}{}", ctx.briefing, built_prompt),
                         None => built_prompt,
                     },
-                    working_directory: current_options
-                        .working_directory
-                        .clone()
-                        .or_else(|| plan_context.as_ref().and_then(|c| c.working_directory.clone()))
-                        .unwrap_or_else(|| mgr.tendril_home.clone()),
+                    working_directory: turn_directory.clone(),
                     model: used.model.clone(),
                     effort: used.effort.clone(),
                     environment_variables: HashMap::from([(
@@ -314,6 +367,12 @@ impl ChatExecutionManager {
                                                 stderr_tail.remove(0);
                                             }
                                             stderr_tail.push(text.to_string());
+                                        }
+                                    }
+
+                                    if lives_in_one_session && !evt.is_stderr {
+                                        if let Some(id) = crate::chat::agent_session::session_id_in(&evt.raw_line) {
+                                            agent_session_id = Some(id);
                                         }
                                     }
 
@@ -416,6 +475,7 @@ impl ChatExecutionManager {
                 // tool that is genuinely still running would get a fake result written over it.
                 let outcome = TurnOutcome::from_run(run_handle.await, stderr_tail);
                 let limit_message: Option<String>;
+                let said_nothing: bool;
 
                 // The turn is over, so its buffer stops being live. The lock is held across the
                 // whole handover - deregister, snapshot, write - because this is the one flush an
@@ -426,6 +486,7 @@ impl ChatExecutionManager {
                 {
                     let buf = live.lock().await;
                     mgr.live_turns.lock().await.remove(&s_id);
+                    said_nothing = buf.text.trim().is_empty();
 
                     let mut raw_stream_lines = buf.lines.clone();
                     raw_stream_lines.extend(build_missing_result_lines(
@@ -449,6 +510,44 @@ impl ChatExecutionManager {
                 // Clean up active cancellation
                 mgr.active_cancellations.lock().await.remove(&s_id);
 
+                // Remember the session a manager's turn ran in. A turn that was cancelled, timed out or
+                // rate limited leaves the session as good as it was, so it is kept. Two things forget
+                // it: a turn on another agent, which leaves a gap the session knows nothing about, and a
+                // resume that died by itself without a word, which means the session cannot be resumed
+                // (cleaned up, moved, corrupted) and must not be tried again.
+                if is_manager {
+                    let dead_resume = resumed.is_some()
+                        && !outcome.is_success()
+                        && outcome.ended_by_itself()
+                        && said_nothing
+                        && limit_message.is_none();
+                    if !lives_in_one_session || dead_resume {
+                        crate::chat::agent_session::forget(&mgr.tendril_home, &s_id);
+                    } else if let Some(id) = agent_session_id.take().filter(|_| outcome.is_success()) {
+                        crate::chat::agent_session::set(
+                            &mgr.tendril_home,
+                            &s_id,
+                            crate::chat::agent_session::AgentSession { id, directory: turn_directory.to_string_lossy().to_string() },
+                        );
+                    }
+                    // Run the request a dead resume swallowed again: with the session forgotten, that
+                    // opens a fresh one with the recent conversation replayed. Once only, because that
+                    // attempt is not a resume.
+                    if dead_resume {
+                        mgr.enqueue_message_first(
+                            &s_id,
+                            crate::chat::ChatQueuedItem {
+                                id: Uuid::new_v4().to_string(),
+                                prompt: current_prompt.clone(),
+                                attachments: None,
+                                created_at: Utc::now(),
+                                role: (current_role != "user").then(|| current_role.clone()),
+                            },
+                        )
+                        .await;
+                    }
+                }
+
                 // The agent hit a rate or usage limit: it sits out until the limit resets, and if a
                 // fallback can cover for it the same request is run again straight away on that fallback.
                 if let Some(message) = limit_message {
@@ -471,7 +570,18 @@ impl ChatExecutionManager {
                 }
 
                 // Check if there are queued messages to dequeue
-                if let Some(next_item) = mgr.dequeue_message(&s_id).await {
+                if let Some(mut next_item) = mgr.dequeue_message(&s_id).await {
+                    // Events that piled up behind a manager's turn are handled together: three missions
+                    // finishing while it was busy is one turn to react to, not three that each replay
+                    // the conversation.
+                    if super::super::manager_brief::is_manager_session(&s_id)
+                        && next_item.role.as_deref().is_some_and(is_event_role)
+                    {
+                        while let Some(more) = mgr.dequeue_event(&s_id).await {
+                            next_item.prompt.push_str("\n\nAlso, while you were busy:\n");
+                            next_item.prompt.push_str(&more.prompt);
+                        }
+                    }
                     current_prompt = next_item.prompt;
                     // Almost always the user's, but not necessarily: a job that finished while this turn
                     // was running is queued behind it as a `system` item, and replaying that as a user

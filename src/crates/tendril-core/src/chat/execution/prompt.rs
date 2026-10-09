@@ -19,6 +19,58 @@ pub fn build_chat_agent_prompt(
     role: &str,
     spawned_jobs: &[ChatSpawnedJob],
 ) -> String {
+    build_chat_agent_prompt_with_state(history, prompt, session_id, role, spawned_jobs, None)
+}
+
+/// How many of a manager's latest messages are replayed. Its session lives as long as its project, and
+/// replaying all of it made every wake cost more than the one before; what is older than this is either
+/// in the Goals memory, where its briefing tells it to put anything that must last, or no longer matters.
+pub const MANAGER_HISTORY_MESSAGES: usize = 24;
+/// How much of an event the daemon sent earlier is replayed. It was acted on in the turn it arrived;
+/// afterwards the first lines are enough to say what it was.
+const MANAGER_PAST_EVENT_CHARS: usize = 400;
+
+/// The history a manager is shown: its briefing, then only the latest messages, with old events clipped.
+fn manager_history(prior: Vec<&ChatMessage>) -> Vec<(String, String)> {
+    let label = |m: &ChatMessage| match m.role.to_ascii_lowercase().as_str() {
+        "user" => "User",
+        "system" => "System Event",
+        _ => "Assistant",
+    };
+    let mut out = Vec::new();
+    let (briefing, rest): (Vec<&ChatMessage>, Vec<&ChatMessage>) =
+        prior.into_iter().partition(|m| m.role == "system" && crate::chat::manager_brief::is_briefing(&m.content));
+    if let Some(b) = briefing.first() {
+        out.push(("Your briefing".to_string(), b.content.clone()));
+    }
+    let skipped = rest.len().saturating_sub(MANAGER_HISTORY_MESSAGES);
+    if skipped > 0 {
+        out.push((
+            "Earlier".to_string(),
+            format!("({skipped} earlier messages are not shown. What still matters from them is in the Goals memory.)"),
+        ));
+    }
+    for m in &rest[skipped..] {
+        let content = if m.role.eq_ignore_ascii_case("system") && m.content.chars().count() > MANAGER_PAST_EVENT_CHARS {
+            format!("{}… (clipped; already handled)", m.content.chars().take(MANAGER_PAST_EVENT_CHARS).collect::<String>())
+        } else {
+            m.content.clone()
+        };
+        out.push((label(m).to_string(), content));
+    }
+    out
+}
+
+/// [`build_chat_agent_prompt`], with a section on where things stand placed just before the request.
+/// `state` is a manager's project snapshot ([`crate::chat::manager_snapshot`]); other chats pass `None`.
+pub fn build_chat_agent_prompt_with_state(
+    history: &[ChatMessage],
+    prompt: &str,
+    session_id: &str,
+    role: &str,
+    spawned_jobs: &[ChatSpawnedJob],
+    state: Option<&str>,
+) -> String {
     let mut out = String::new();
     // A project's manager is briefed to act and report in a line, never to advise and ask. The framing
     // every other chat gets ("guide the user through the next steps", "advise the user ... suggested next
@@ -26,10 +78,9 @@ pub fn build_chat_agent_prompt(
     let manager = is_manager_session(session_id);
 
     // V1 puts this first, before the history: what the session has already set running is context for
-    // everything below it, and for a turn that *is* a job event it is the subject.
-    if manager {
-        out.push_str(&manager_jobs_section(spawned_jobs));
-    } else if !spawned_jobs.is_empty() {
+    // everything below it, and for a turn that *is* a job event it is the subject. A manager's goes
+    // after its history instead, next to the rest of what is current.
+    if !manager && !spawned_jobs.is_empty() {
         out.push_str("# Jobs Spawned in this Chat Session\n");
         out.push_str("The following jobs were spawned in this chat session:\n\n");
         for job in spawned_jobs {
@@ -48,7 +99,17 @@ pub fn build_chat_agent_prompt(
         .iter()
         .filter(|m| !m.content.trim().is_empty())
         .collect();
-    if !prior.is_empty() {
+    if manager {
+        if !prior.is_empty() {
+            out.push_str("# Previous Conversation Discussion History\n\n");
+            for (label, content) in manager_history(prior) {
+                out.push_str(&format!("### {label}\n{content}\n\n"));
+            }
+            out.push_str("---\n\n");
+        }
+        out.push_str(state.unwrap_or_default());
+        out.push_str(&manager_jobs_section(spawned_jobs));
+    } else if !prior.is_empty() {
         out.push_str("# Previous Conversation Discussion History\n");
         out.push_str(
             "The following is the previous conversation history in this chat session:\n\n",
@@ -97,7 +158,7 @@ pub fn build_chat_agent_prompt(
 }
 
 /// What a manager is told after an event the daemon woke it with.
-const MANAGER_EVENT_INSTRUCTION: &str = "This came from the daemon, not from the operator, who may not be watching. Handle it the way your briefing says: act first, then reply with one short line saying what you did. If it needs nothing from you, say so in a few words and stop. Do not recap other work, and do not ask the operator anything you can decide yourself.\n";
+const MANAGER_EVENT_INSTRUCTION: &str = "This came from the daemon, not from the operator, who may not be watching. Handle it the way your briefing says: act first, then reply with one short line saying what you did. If it needs nothing from you, run no commands, say so in a few words and stop. Do not recap other work, and do not ask the operator anything you can decide yourself.\n";
 
 /// How many finished jobs a manager is shown. Its session lives as long as the project does, so the
 /// full list only grows; the ones still going and the latest to finish are what a turn can act on, and
@@ -315,6 +376,38 @@ mod tests {
         // Any other chat keeps V1's wording.
         let plain = build_chat_agent_prompt(&[], "done", "0d1f-some-chat", "system", &jobs);
         assert!(plain.contains("Evaluate this completed job event") && plain.contains("# Jobs Spawned in this Chat Session"));
+    }
+
+    #[test]
+    fn a_manager_is_replayed_its_briefing_and_only_its_latest_messages() {
+        let msg = |role: &str, content: String| ChatMessage {
+            id: Uuid::new_v4().to_string(),
+            role: role.to_string(),
+            content,
+            timestamp: Utc::now(),
+            agent_id: None,
+            model_id: None,
+            raw_stream: None,
+            effort: None,
+        };
+        let mut history = vec![msg("system", "# You are the Factory Manager for project \"Acme\"\nrules".into())];
+        for i in 0..40 {
+            history.push(msg("system", format!("event {i} {}", "x".repeat(900))));
+            history.push(msg("assistant", format!("reply {i}")));
+        }
+        let state = "# Where the project stands\nNothing is in flight.\n---\n\n";
+        let text = build_chat_agent_prompt_with_state(&history, "Patrol", "manager-acme", "system", &[], Some(state));
+        assert!(text.contains("### Your briefing\n# You are the Factory Manager"), "the briefing is always there");
+        assert!(text.contains("(56 earlier messages are not shown"), "{}", &text[..600]);
+        assert!(!text.contains("reply 27\n") && text.contains("reply 28\n") && text.contains("reply 39\n"));
+        assert!(text.contains("(clipped; already handled)") && !text.contains(&"x".repeat(500)));
+        // What is current comes after the history and just before the event.
+        let (h, s, e) = (text.find("reply 39").unwrap(), text.find("# Where the project stands").unwrap(), text.find("# Current Event").unwrap());
+        assert!(h < s && s < e);
+        assert!(text.contains("run no commands"));
+        // Any other chat is replayed whole.
+        let plain = build_chat_agent_prompt(&history, "hi", "0d1f-chat", "user", &[]);
+        assert!(plain.contains("reply 0\n") && plain.contains(&"x".repeat(900)));
     }
 
     #[test]
