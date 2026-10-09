@@ -7,19 +7,23 @@
     "notInteger": "{{key}} must be an integer, got '{{value}}'."
   },
   "sections": {
-    "codingAgent": "Coding Agent",
-    "plans": "Plans",
+    "codingAgent": "Coding agents",
+    "plans": "Plans & levels",
     "appearance": "Appearance",
     "projects": "Projects",
-    "vault": "Team Vault",
-    "promptwares": "Workflow Agents",
+    "vault": "Team vault",
+    "promptwares": "Workflow agents",
     "levels": "Levels",
     "notifications": "Notifications",
-    "security": "Security & Tunneling",
-    "advanced": "Advanced",
+    "security": "Remote access",
+    "advanced": "Limits",
     "newsletter": "Newsletter",
     "fallback": "Configuration",
-    "git": "Git & Branches"
+    "git": "Git & branches",
+    "models": "Models & roles",
+    "apiKeys": "API keys",
+    "telegram": "Telegram",
+    "system": "System"
   },
   "nav": {
     "ariaLabel": "Configuration sections",
@@ -457,5 +461,12 @@
     "scopeRead": "read-only",
     "scopeWrite": "read + message",
     "revoke": "Revoke key"
+  },
+  "groups": {
+    "agents": "Agents and models",
+    "work": "Work",
+    "reach": "Reaching you",
+    "access": "Access",
+    "app": "This app"
   }
 }

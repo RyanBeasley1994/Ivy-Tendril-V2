@@ -180,6 +180,32 @@ async fn the_bot_pairs_one_account_talks_to_a_manager_and_answers_nobody_else() 
     says(&fake, 7, 7, "private", "/end");
     until(&fake, "unbound", |f| f.sent.iter().any(|(_, t)| t.starts_with("Stopped talking to Demo-App"))).await;
 
+    // A manager's notice arrives while not in a conversation. Replying to it sends that one message
+    // and brings back the one answer, without starting a conversation.
+    tendril_server::telegram::notify(&state, "Demo-App", "Demo-App · needs you", "**Which** database?").await;
+    until(&fake, "the notice arrived", |f| f.sent.iter().any(|(_, t)| t.starts_with("Demo-App · needs you\nWhich database?"))).await;
+    let notice_id = fake.lock().unwrap().sent.len() as i64;
+    {
+        let mut f = fake.lock().unwrap();
+        f.next_update += 1;
+        let update_id = f.next_update;
+        f.inbox.push(json!({
+            "update_id": update_id,
+            "message": {
+                "chat": { "id": 7, "type": "private" }, "from": { "id": 7, "first_name": "Ryan", "username": "ryan" },
+                "text": "postgres", "reply_to_message": { "message_id": notice_id }
+            }
+        }));
+    }
+    until(&fake, "the one-off was acknowledged", |f| f.sent.iter().any(|(_, t)| t.starts_with("Sent to Demo-App's manager"))).await;
+    until(&fake, "its answer came back as a notice", |f| {
+        f.sent.iter().any(|(_, t)| t.starts_with("Demo-App\nOn it.") && t.contains("Reply to this message"))
+    })
+    .await;
+    let (_, after) = call(&router, "GET", "/api/telegram", Some(&secret), None).await;
+    assert!(after["talkingTo"].is_null(), "a reply to a notice must not start a conversation: {after}");
+    assert!(!fake.lock().unwrap().sent.iter().any(|(_, t)| t.contains("Now talking to")), "nor say it did");
+
     // Unpairing forgets the account and issues a different code.
     let (_, unpaired) = call(&router, "POST", "/api/telegram/unpair", Some(&secret), None).await;
     assert_eq!(unpaired["paired"], false);

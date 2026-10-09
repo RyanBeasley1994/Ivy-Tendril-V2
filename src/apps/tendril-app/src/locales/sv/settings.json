@@ -8,18 +8,22 @@
   },
   "sections": {
     "codingAgent": "Kodningsagent",
-    "plans": "Planer",
+    "plans": "Planer och nivåer",
     "appearance": "Utseende",
     "projects": "Projekt",
     "vault": "Team Vault",
     "promptwares": "Arbetsflödesagenter",
     "levels": "Nivåer",
     "notifications": "Aviseringar",
-    "security": "Säkerhet och tunnling",
-    "advanced": "Avancerat",
+    "security": "Fjärråtkomst",
+    "advanced": "Gränser",
     "newsletter": "Nyhetsbrev",
     "fallback": "Konfiguration",
-    "git": "Git och grenar"
+    "git": "Git och grenar",
+    "models": "Modeller och roller",
+    "telegram": "Telegram",
+    "apiKeys": "API-nycklar",
+    "system": "System"
   },
   "nav": {
     "ariaLabel": "Konfigurationsavsnitt",
@@ -414,5 +418,12 @@
     "nativeHint": "Forge pushar grenen, skapar eller uppdaterar PR:en, tillämpar dina val och mergar själv – på sekunder och utan tokens. Agenten anropas bara för mergekonflikter eller ovanliga grenar. Stäng av för att skicka varje PR via agenten.",
     "skipHooksLabel": "Hoppa över pre-push-hooks när PR skapas",
     "skipHooksHint": "Pushar plangrenar med --no-verify och HUSKY=0, så att en repo-hook som kör hela testsviten igen inte blockerar PR:en. Planens egna verifieringar har redan gått igenom. Påverkar bara pushen i Skapa PR: commits behåller sina hooks och dina egna pushar ändras inte."
+  },
+  "groups": {
+    "agents": "Agenter och modeller",
+    "work": "Arbete",
+    "reach": "Nå dig",
+    "access": "Åtkomst",
+    "app": "Den här appen"
   }
 }

@@ -380,5 +380,12 @@
     "removal": {
       "consequence": "El archivo se elimina de la carpeta Memory del proyecto."
     }
+  },
+  "tabs": {
+    "label": "Ajustes del proyecto",
+    "general": "General",
+    "checks": "Comprobaciones",
+    "environment": "Entorno",
+    "agent": "Agentes"
   }
 }

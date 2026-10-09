@@ -344,8 +344,15 @@ async fn patrol(state: &AppState, patrol_state: &mut crate::patrol::PatrolState)
     }
 }
 
+/// Whether work that was running in a project has now stopped, remembering for next time whether any
+/// is running. True once per stretch of work, not on every idle turn after it.
+fn work_finished(had_work: &mut HashMap<String, bool>, project: &str, still_working: bool) -> bool {
+    let before = had_work.insert(project.to_string(), still_working).unwrap_or(false);
+    before && !still_working
+}
+
 /// A manager's turn just ended: decide whether that is worth a push, and send it.
-async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
+async fn on_turn_end(state: &AppState, project: &str, briefing: bool, had_work: &mut HashMap<String, bool>) {
     let cfg = crate::push::PushConfig::load(&state.tendril_home);
     // Telegram is one more place the same notices go, and the only one a reply can come back from.
     if !cfg.enabled() && !crate::telegram::enabled(&state.tendril_home) {
@@ -359,10 +366,6 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
     let reply = &session.messages[idx];
     let started_by_user = idx > 0 && session.messages[idx - 1].role == "user";
     let seconds = (chrono::Utc::now() - reply.timestamp).num_seconds();
-    // A turn the operator typed and watched finish tells them nothing new.
-    if !briefing && started_by_user && seconds < crate::push::WATCHED_TURN_SECONDS {
-        return;
-    }
 
     let text = crate::push::plain(&reply.content);
     if briefing {
@@ -388,10 +391,23 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
         .filter(|j| j.project.eq_ignore_ascii_case(project))
         .filter(|j| matches!(j.status, tendril_core::models::JobStatus::Running | tendril_core::models::JobStatus::Queued))
         .count();
+    let running_tasks = crate::manager_tasks::list(&state.tendril_home, project).iter().filter(|t| t.running()).count();
     let still_working = running_jobs > 0
+        || running_tasks > 0
         || missions.iter().any(|f| {
             matches!(f.mission.state, MissionState::Planning | MissionState::Running | MissionState::Validating)
         });
+    // "Work complete" is news once: when work that was running has stopped, or when the operator asked
+    // for something and this is the answer. A manager woken by the patrol with nothing running, saying
+    // again that nothing has changed, has completed nothing, and telling the operator so every twenty
+    // minutes is how a notification gets muted.
+    let something_finished = work_finished(had_work, project, still_working) || started_by_user;
+    // A turn the operator typed and watched finish tells them nothing new. Checked only now, after the
+    // record of whether work is running was brought up to date: a quick turn is often the one that
+    // starts the work whose end is the news.
+    if started_by_user && seconds < crate::push::WATCHED_TURN_SECONDS {
+        return;
+    }
 
     match crate::push::classify_turn_end(&reply.content, waiting.len(), still_working) {
         Some(crate::push::TurnOutcome::NeedsYou) => {
@@ -411,6 +427,7 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool) {
             // Telegram has room for the whole reply, and the operator answers from it.
             crate::telegram::notify(state, project, &format!("{project} · needs you"), reply.content.trim()).await;
         }
+        Some(crate::push::TurnOutcome::WorkComplete) if !something_finished => {}
         Some(crate::push::TurnOutcome::WorkComplete) => {
             let _ = crate::push::send(&cfg, &format!("{project} · work complete"), &crate::push::clip(&text, 300), false).await;
             crate::telegram::notify(state, project, &format!("{project} · work complete"), reply.content.trim()).await;
@@ -434,6 +451,7 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
     tokio::spawn(async move {
         let mut seen: Option<HashMap<String, MissionState>> = None;
         let mut was_working: HashMap<String, bool> = HashMap::new();
+        let mut had_work: HashMap<String, bool> = HashMap::new();
         let mut engine_alerts: HashMap<(String, String), std::time::Instant> = HashMap::new();
         let mut corrections: HashMap<String, (std::time::Instant, u32)> = HashMap::new();
         let mut patrol_state = crate::patrol::PatrolState::default();
@@ -571,7 +589,7 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                 if before == Some(true) && !working {
                     let briefing = briefing_pending.remove(&project);
                     correct_refusals(&state, &project, &mut corrections).await;
-                    on_turn_end(&state, &project, briefing).await;
+                    on_turn_end(&state, &project, briefing, &mut had_work).await;
                 }
             }
 
@@ -703,6 +721,17 @@ mod tests {
         assert!(!may_correct(&mut history, "A", t), "no loop on a command that can never work");
         assert!(may_correct(&mut history, "B", t), "another project is unaffected");
         assert!(may_correct(&mut history, "A", t + CORRECTION_WINDOW + Duration::from_secs(1)), "a fresh window");
+    }
+
+    #[test]
+    fn work_complete_is_said_once_when_work_stops_and_not_on_every_idle_turn_after() {
+        let mut had = HashMap::new();
+        assert!(!work_finished(&mut had, "A", false), "nothing was running: nothing completed");
+        assert!(!work_finished(&mut had, "A", true), "work started");
+        assert!(!work_finished(&mut had, "A", true), "still going");
+        assert!(work_finished(&mut had, "A", false), "it stopped: that is the news");
+        assert!(!work_finished(&mut had, "A", false), "a patrol turn later, with nothing changed, is not");
+        assert!(!work_finished(&mut had, "B", false), "another project is its own story");
     }
 
     #[test]

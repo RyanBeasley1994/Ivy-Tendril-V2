@@ -9,8 +9,9 @@
 //!   Until `/end`, every message typed is handed to that manager exactly as typing it in the app would,
 //!   and everything said in that manager's chat comes back.
 //! * A manager that needs the operator, or whose work is complete, sends a notice here whether or not
-//!   the chat is bound, with the pull request's link when it names one. Replying to a notice answers
-//!   that manager, and binds the chat to it so the conversation carries on.
+//!   the chat is bound, with the pull request's link when it names one. Replying to a notice sends that
+//!   one message to its manager and brings back the one answer; it does not start a conversation. Only
+//!   `/manager` does that.
 //! * `/status` is answered by the daemon from what it already knows, so it costs no manager turn.
 //!
 //! The daemon polls Telegram (`getUpdates`), so it needs no public address and no webhook.
@@ -326,6 +327,61 @@ async fn status_text(state: &AppState, bound: Option<&str>) -> String {
 /// What was typed from Telegram lately, so the forwarder does not send the operator their own words back.
 type Echoes = Arc<std::sync::Mutex<VecDeque<String>>>;
 
+/// Managers that were sent a one-off reply to a notice and whose answer is still to come. The answer
+/// is brought back once, as a notice, without binding the chat to that manager.
+static AWAITING_ANSWER: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+/// The last thing each manager said that already went to Telegram, so the scheduler's notice for the
+/// same reply is not a second copy of it.
+static ALREADY_SENT: std::sync::Mutex<Vec<(String, String)>> = std::sync::Mutex::new(Vec::new());
+
+fn remember_sent(project: &str, content: &str) {
+    if let Ok(mut sent) = ALREADY_SENT.lock() {
+        sent.retain(|(p, _)| p != project);
+        sent.push((project.to_string(), content.trim().to_string()));
+    }
+}
+
+fn was_sent(project: &str, content: &str) -> bool {
+    ALREADY_SENT.lock().map(|sent| sent.iter().any(|(p, c)| p == project && c == content.trim())).unwrap_or(false)
+}
+
+/// A manager's words as Telegram should show them. Managers are told to write plain text, but what
+/// they write is rendered as Markdown everywhere else, so the marks creep in; Telegram shows them raw.
+/// Lines are kept, because a manager's short lines are the formatting.
+pub fn plain_text(text: &str) -> String {
+    let mut out = Vec::new();
+    for line in text.trim().lines() {
+        let fence = line.trim_start().starts_with("```");
+        if fence {
+            continue;
+        }
+        let line = line.trim_end();
+        // A heading is a line; a bullet keeps a plain dash.
+        let line = line.trim_start_matches('#').trim_start();
+        let line = match line.strip_prefix("* ").or_else(|| line.strip_prefix("• ")) {
+            Some(rest) => format!("- {rest}"),
+            None => line.to_string(),
+        };
+        out.push(line.replace("**", "").replace("__", "").replace('`', ""));
+    }
+    // Never more than one empty line in a row.
+    let mut text = String::new();
+    let mut blank = false;
+    for line in out {
+        if line.trim().is_empty() {
+            if !blank && !text.is_empty() {
+                text.push('\n');
+            }
+            blank = true;
+        } else {
+            text.push_str(&line);
+            text.push('\n');
+            blank = false;
+        }
+    }
+    text.trim_end().to_string()
+}
+
 async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, reply_to: Option<i64>, echoes: &Echoes) {
     let home = &state.tendril_home;
     match parse(text) {
@@ -367,15 +423,20 @@ async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, rep
             }
         }
         Command::Text(text) => {
-            // A reply to a notice is for the manager the notice came from, and carries on from there.
+            // A reply to a notice is for the manager the notice came from: this one message, and its
+            // one answer back. It does not start a conversation; only `/manager` does.
             let from_notice = reply_to.and_then(|id| settings.notices.iter().find(|(m, _)| *m == id).map(|(_, p)| p.clone()));
             let Some(project) = from_notice.clone().or_else(|| settings.bound.clone()) else {
                 send(settings, "You are not talking to a manager. /manager <project> to pick one, /status to see them.").await;
                 return;
             };
-            if from_notice.is_some() && settings.bound.as_deref() != Some(project.as_str()) {
-                change(home, |s| s.bound = Some(project.clone())).await;
-                send(settings, &format!("Now talking to {project}'s manager. /end to stop.")).await;
+            let one_off = from_notice.is_some() && settings.bound.as_deref() != Some(project.as_str());
+            if one_off {
+                if let Ok(mut awaiting) = AWAITING_ANSWER.lock() {
+                    if !awaiting.contains(&project) {
+                        awaiting.push(project.clone());
+                    }
+                }
             }
             if let Ok(mut recent) = echoes.lock() {
                 recent.push_back(text.clone());
@@ -386,6 +447,9 @@ async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, rep
             match tell_manager(state, &project, &text).await {
                 Ok(true) => {
                     send(settings, "It is busy: your message is queued and it will take it up next.").await;
+                }
+                Ok(false) if one_off => {
+                    send(settings, &format!("Sent to {project}'s manager. Its answer will come back here.")).await;
                 }
                 Ok(false) => {}
                 Err(e) => {
@@ -480,9 +544,22 @@ pub async fn notify(state: &AppState, project: &str, title: &str, body: &str) {
     if !settings.paired() || settings.bound.as_deref().is_some_and(|b| b.eq_ignore_ascii_case(project)) {
         return;
     }
+    // Already brought back as the answer to a one-off reply.
+    if was_sent(project, body) {
+        return;
+    }
+    remember_sent(project, body);
+    send_notice(state, &settings, project, title, body).await;
+}
+
+/// Sends one notice and remembers which manager it came from, so a reply to it finds its way back.
+async fn send_notice(state: &AppState, settings: &Settings, project: &str, title: &str, body: &str) {
     let links = pr_links(state, project, body).await;
-    let text = with_links(&format!("{title}\n{body}\n\nReply to this message to answer {project}'s manager."), &links);
-    if let Some(message_id) = send(&settings, &text).await {
+    let text = with_links(
+        &format!("{title}\n{}\n\nReply to this message to answer {project}'s manager.", plain_text(body)),
+        &links,
+    );
+    if let Some(message_id) = send(settings, &text).await {
         let project = project.to_string();
         change(&state.tendril_home, |s| {
             s.notices.push((message_id, project));
@@ -500,7 +577,7 @@ pub fn forwarded(role: &str, content: &str, typed_here: bool) -> Option<String> 
         return None;
     }
     match role {
-        "assistant" => Some(content.to_string()),
+        "assistant" => Some(plain_text(content)).filter(|t| !t.is_empty()),
         // Their own words came from this chat: sending them back is noise. Typed in the app, they are
         // part of the conversation being followed.
         "user" if typed_here => None,
@@ -523,7 +600,24 @@ async fn forward_chat(state: Arc<AppState>, echoes: Echoes) {
         };
         let ChatEvent::MessageAdded { session_id, message } = event else { continue };
         let settings = load(&state.tendril_home);
-        let Some(project) = settings.bound.clone().filter(|_| settings.paired()) else { continue };
+        if !settings.paired() {
+            continue;
+        }
+        // The answer to a one-off reply: brought back once, as a notice, and the chat stays unbound.
+        let answered = AWAITING_ANSWER.lock().ok().and_then(|awaiting| {
+            awaiting.iter().find(|p| manager_session_id(p) == session_id).cloned()
+        });
+        if let Some(project) = answered.filter(|p| settings.bound.as_deref() != Some(p.as_str())) {
+            if message.role == "assistant" && !message.content.trim().is_empty() && sent.insert(message.id.clone()) {
+                if let Ok(mut awaiting) = AWAITING_ANSWER.lock() {
+                    awaiting.retain(|p| p != &project);
+                }
+                remember_sent(&project, &message.content);
+                send_notice(&state, &settings, &project, &project, message.content.trim()).await;
+            }
+            continue;
+        }
+        let Some(project) = settings.bound.clone() else { continue };
         if session_id != manager_session_id(&project) {
             continue;
         }
@@ -718,6 +812,14 @@ mod tests {
         assert_eq!(forwarded("system", "# You are the Factory Manager for project \"x\"", false), None);
         let event = forwarded("system", &format!("Task ab12 has stopped. {}", "x".repeat(900)), false).unwrap();
         assert!(event.starts_with("[event] Task ab12 has stopped.") && event.chars().count() < 320, "{event}");
+    }
+
+    #[test]
+    fn a_managers_markdown_is_made_plain_for_telegram_and_its_lines_are_kept() {
+        let text = "## Status\n\n**PR 46** is `green`.\n\n\n* adapter next\n- then docs\n```\nlong log\n```\nNothing needed from you.";
+        assert_eq!(plain_text(text), "Status\n\nPR 46 is green.\n\n- adapter next\n- then docs\nlong log\nNothing needed from you.");
+        assert_eq!(plain_text("Done, it's in PR 12."), "Done, it's in PR 12.");
+        assert_eq!(plain_text("snake_case_name stays"), "snake_case_name stays");
     }
 
     #[test]

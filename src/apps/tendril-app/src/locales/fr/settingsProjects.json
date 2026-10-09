@@ -380,5 +380,12 @@
     "removal": {
       "consequence": "Le fichier est supprimé du dossier Memory du projet."
     }
+  },
+  "tabs": {
+    "label": "Paramètres du projet",
+    "general": "Général",
+    "checks": "Vérifications",
+    "environment": "Environnement",
+    "agent": "Agents"
   }
 }

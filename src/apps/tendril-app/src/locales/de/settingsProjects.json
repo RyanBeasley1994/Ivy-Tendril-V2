@@ -377,5 +377,12 @@
     "removal": {
       "consequence": "Die Datei wird aus dem Memory-Ordner des Projekts gelöscht."
     }
+  },
+  "tabs": {
+    "label": "Projekteinstellungen",
+    "general": "Allgemein",
+    "checks": "Prüfungen",
+    "environment": "Umgebung",
+    "agent": "Agenten"
   }
 }

@@ -8,18 +8,22 @@
   },
   "sections": {
     "codingAgent": "编程智能体",
-    "plans": "计划",
+    "plans": "计划与级别",
     "appearance": "外观",
     "projects": "项目",
     "vault": "团队保管库",
     "promptwares": "工作流智能体",
     "levels": "级别",
     "notifications": "通知",
-    "security": "安全与穿透",
-    "advanced": "高级",
+    "security": "远程访问",
+    "advanced": "限制",
     "newsletter": "新闻通讯",
     "fallback": "配置",
-    "git": "Git 与分支"
+    "git": "Git 与分支",
+    "models": "模型与角色",
+    "telegram": "Telegram",
+    "apiKeys": "API 密钥",
+    "system": "系统"
   },
   "nav": {
     "ariaLabel": "配置分区",
@@ -412,5 +416,12 @@
     "nativeHint": "Forge 自己推送分支、创建或更新 PR、应用您的选项并合并，只需几秒且不消耗 token。只有解决合并冲突或恢复异常分支时才调用代理。关闭后所有 PR 都经由代理创建。",
     "skipHooksLabel": "创建 PR 时跳过 pre-push 钩子",
     "skipHooksHint": "使用 --no-verify 和 HUSKY=0 推送计划分支，避免重新运行整套测试的仓库钩子阻塞 PR。计划自身的验证已经通过。只影响“创建 PR”的推送：提交仍保留钩子，您自己的推送不受影响。"
+  },
+  "groups": {
+    "agents": "代理与模型",
+    "work": "工作",
+    "reach": "联系你",
+    "access": "访问",
+    "app": "此应用"
   }
 }

@@ -387,5 +387,12 @@
     "removal": {
       "consequence": "The file is deleted from the project's Memory folder."
     }
+  },
+  "tabs": {
+    "label": "Project settings",
+    "general": "General",
+    "checks": "Checks",
+    "environment": "Environment",
+    "agent": "Agents"
   }
 }

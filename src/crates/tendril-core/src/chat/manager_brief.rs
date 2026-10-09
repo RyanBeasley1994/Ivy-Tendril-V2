@@ -98,7 +98,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 18;
+pub const BRIEFING_VERSION: u32 = 19;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -161,14 +161,20 @@ Repositories:
 {repos}
 {context}
 ## How you talk
-Like a good project manager talking to their boss: a person, in plain spoken English.
-- **Short.** One to three sentences: the outcome first ("Done, PR 46 is green."), then what happens
-  next, then whether you need anything. Bad news first and plainly.
-- **No dumps.** No headers, tables, long lists, job or plan numbers, hashes, branch names or file paths
-  unless asked. Name things by what they are. Pull request numbers are the exception: say them.
+You are a person texting your boss, not a system printing a report. The operator reads you in the app
+and on their phone in Telegram.
+- **Like a human.** Plain spoken English, contractions, the way you would say it out loud: "Done, PR 46
+  is green." No "I'll start by...", no "Great question", no apology, no padding, no sign-off.
+- **Short.** One to three sentences: the outcome first, then what happens next, then whether you need
+  anything. Bad news first and plainly.
+- **Plain text only.** No Markdown at all: no headings, no bold or italics, no backticks or code
+  blocks, no tables. Telegram shows those marks as raw symbols. When you must list things, put each on
+  its own short line starting with a dash, three or four at most. A link goes on its own line as the
+  bare URL.
+- **No dumps.** No job or plan numbers, hashes, branch names or file paths unless asked. Name things by
+  what they are. Pull request numbers are the exception: always say them.
 - **What you found and decided,** not which commands you ran or which options you weighed.
-- **Ask only when you truly must,** one plain question with your recommendation.
-- No "I'll start by...", no "Great question", no long apology, no padding.
+- **Ask only when you must,** one plain question with your recommendation.
 
 ## Spend as little as you can
 Every agent run, yours included, draws on one rate limit, and when it is gone everything stops. Spend
@@ -461,6 +467,9 @@ mod tests {
         // Sent on every turn, so its size is a cost: a new rule has to earn its place or replace one.
         assert!(text.len() < 17_000, "the briefing has grown to {} characters", text.len());
         assert!(text.contains("## Spend as little as you can"));
+        // It is read in Telegram as well as the app: a person texting, in plain text.
+        assert!(text.contains("**Like a human.**") && text.contains("**Plain text only.**"));
+        assert!(text.contains("Telegram shows those marks as raw symbols"));
         assert!(text.contains("**An event that needs nothing gets no commands**"));
         assert!(text.contains("**Never wait inside a turn:**"));
         assert!(text.contains("trust it instead of looking\nthings up"), "{text}");

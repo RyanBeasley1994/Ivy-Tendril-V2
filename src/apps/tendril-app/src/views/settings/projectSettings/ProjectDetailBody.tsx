@@ -65,6 +65,10 @@ import { DeleteProjectDialog } from "../../dialogs/DeleteProjectDialog";
 import { RemoveProjectDialog } from "../../dialogs/RemoveProjectDialog";
 import { ImportRepoAssetsDialog } from "../../dialogs/ImportRepoAssetsDialog";
 import { ProjectMemorySection } from "./ProjectMemorySection";
+import { Seg } from "../../../components/page/kit";
+
+const PROJECT_SETTINGS_TABS = ["general", "checks", "environment", "agent"] as const;
+type ProjectSettingsTab = (typeof PROJECT_SETTINGS_TABS)[number];
 import {
   EnvFileBlade,
   McpServerBlade,
@@ -163,6 +167,7 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
   onDeleted,
 }) => {
   const { t } = useTranslation("settingsProjects");
+  const [tab, setTab] = React.useState<ProjectSettingsTab>("general");
   const { push, pop } = useBlades();
   const [error, setError] = React.useState<string | null>(null);
   const [repoDraft, setRepoDraft] = React.useState("");
@@ -531,6 +536,18 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           moved up there with it, as the blade's `headerAction`. */}
       <SaveError message={error} />
 
+      {/* One long page held eleven unrelated blocks. They are the same blocks, sorted by what you
+          came to change: the project itself, what proves its work, what it runs in, and what its
+          agents may do. */}
+      <Seg
+        label={t("tabs.label")}
+        value={tab}
+        onChange={setTab}
+        options={PROJECT_SETTINGS_TABS.map((value) => ({ value, label: t(`tabs.${value}`) }))}
+        className="w-fit"
+      />
+
+      {tab === "general" && (<>
       <SubSection title={t("basic.title")} hint={t("basic.hint")}>
         <form
           className="space-y-4"
@@ -576,9 +593,11 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           </Button>
         </form>
       </SubSection>
+      </>)}
 
       {/* Section 2: repositories. V1's `ProjectRepoPickerView` is a list, not a table, with the
           base branch editable per row. Its Sync button is omitted: no bridge method syncs a repo. */}
+      {tab === "general" && (<>
       <SubSection
         title={t("repositories.title")}
         hint={t("repositories.hint")}
@@ -664,8 +683,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           <p className="text-xs text-muted-foreground">{t("repositories.note")}</p>
         </div>
       </SubSection>
+      </>)}
 
       {/* Section 3: review actions. */}
+      {tab === "checks" && (<>
       <SubSection
         title={t("reviewActions.title")}
         hint={t("reviewActions.hint")}
@@ -734,8 +755,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           }}
         />
       </SubSection>
+      </>)}
 
       {/* Section 4: verifications, with the run order the project's own array encodes. */}
+      {tab === "checks" && (<>
       <SubSection
         title={t("verifications.title")}
         hint={t("verifications.hint")}
@@ -774,8 +797,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           </div>
         )}
       </SubSection>
+      </>)}
 
       {/* Section 5: ports. */}
+      {tab === "environment" && (<>
       <SubSection
         title={t("ports.title")}
         hint={t("ports.hint")}
@@ -821,8 +846,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           {t("ports.mergeLimitation")}
         </Callout.Warning>
       </SubSection>
+      </>)}
 
       {/* Section 6: environment files. */}
+      {tab === "environment" && (<>
       <SubSection
         title={t("envFiles.title")}
         hint={t("envFiles.hint")}
@@ -876,8 +903,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           }}
         />
       </SubSection>
+      </>)}
 
       {/* Section 7: agent behaviour, `isBeta` in V1. */}
+      {tab === "agent" && (<>
       {isBeta && (
         <SubSection title={t("agentBehavior.title")} testId="project-agent-behavior">
           <div>
@@ -894,10 +923,12 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           </div>
         </SubSection>
       )}
+      </>)}
 
       {/* Security. No V1 counterpart at all: `ProjectDetailView` never exposed the seven flattened
           `AgentSecurityConfig` keys that `apply_security_settings` reads on every job launch. They
           belong to one project, so they live here rather than as a top-level settings section. */}
+      {tab === "agent" && (<>
       <SubSection title={t("security.title")} hint={t("security.hint")} testId="project-security">
         <form
           className="space-y-4"
@@ -1042,8 +1073,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           </Button>
         </form>
       </SubSection>
+      </>)}
 
       {/* Section 8: local permissions (MCP), `isBeta` in V1. */}
+      {tab === "agent" && (<>
       {isBeta && (
         <SubSection
           title={t("mcpServers.title")}
@@ -1115,8 +1148,10 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           />
         </SubSection>
       )}
+      </>)}
 
       {/* Section 9: customizations (skills and memories), `isBeta` in V1. */}
+      {tab === "agent" && (<>
       {isBeta && (
         <SubSection
           title={t("skills.title")}
@@ -1187,6 +1222,7 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           <ProjectMemorySection projectName={project.name} requestRemoval={requestAnyRemoval} />
         </SubSection>
       )}
+      </>)}
 
       {/* Section 10: danger zone — two actions, because "delete" used to mean neither.
           V1 offers one button, labelled "Delete Project", which calls `SettingsApp.onDeleteProject`
@@ -1196,6 +1232,7 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           conflated are now two buttons with the verbs that happen, each saying its own consequence.
           Remove is listed first and is the outline button: it is the one that is almost always
           meant, and the destructive fill is reserved for the one that is not. */}
+      {tab === "general" && (<>
       <SubSection title={t("dangerZone.title")} testId="project-danger-zone">
         <div className="space-y-4">
           <div className="space-y-2">
@@ -1224,6 +1261,7 @@ export const ProjectDetailBody: React.FC<ProjectSettingsViewProps> = ({
           </div>
         </div>
       </SubSection>
+      </>)}
 
       <RemoveProjectDialog
         isOpen={isRemoving}

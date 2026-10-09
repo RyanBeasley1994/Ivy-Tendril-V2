@@ -783,9 +783,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const isProjectTag = selected === SettingsTag.Projects || selected.startsWith(PROJECT_TAG_PREFIX);
   /** `TagSecurity` and `TagTunnel` select the same row and the same view. */
   const securitySelected = selected === SettingsTag.Security || selected === SettingsTag.Tunnel;
+  /** Levels are part of how plans are written, so the old `levels` link opens Plans. */
+  const plansSelected = selected === SettingsTag.Plans || selected === SettingsTag.Levels;
   const knownTags = new Set<string>([
     ...sections.map((section) => section.tag),
     SettingsTag.Tunnel,
+    SettingsTag.Levels,
   ]);
   const showsProject =
     !isEditingConfig && !isAddingProject && isProjectTag && selectedProject !== null;
@@ -814,9 +817,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         data-testid="settings-sidebar"
         className="hidden w-56 shrink-0 gap-1 overflow-y-auto border-r border-border p-2 md:flex md:flex-col"
       >
-        {sections.map((section) =>
-          section.expandable ? (
-            <React.Fragment key={section.tag}>
+        {sections.map((section, sectionIndex) => (
+          <React.Fragment key={section.tag}>
+            {section.group !== sections[sectionIndex - 1]?.group && (
+              <div
+                className="px-2.5 pb-1 pt-3 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground first:pt-1"
+                data-testid="settings-group"
+              >
+                {section.group}
+              </div>
+            )}
+          {section.expandable ? (
+            <React.Fragment>
               <SidebarExpandableRow
                 icon={section.icon}
                 label={section.label}
@@ -861,21 +873,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </React.Fragment>
           ) : (
             <SidebarRow
-              key={section.tag}
               icon={section.icon}
               label={section.label}
               selected={
                 section.tag === SettingsTag.Security
                   ? securitySelected && !isEditingConfig && !isAddingProject
-                  : on(section.tag)
+                  : section.tag === SettingsTag.Plans
+                    ? plansSelected && !isEditingConfig && !isAddingProject
+                    : on(section.tag)
               }
               onClick={() => selectSection(section.tag)}
               testId={`settings-row-${section.tag}`}
             />
-          ),
-        )}
-        {/* An action row, not a section: V1 passes `false` for selected because it never becomes
-            the selection. */}
+          )}
+          </React.Fragment>
+        ))}
+        {/* An action, not a page: it never becomes the selection. It belongs with the daemon's own
+            settings, so it closes the last group. */}
         <SidebarRow
           icon={OpenConfigIcon}
           label={t("nav.openConfig")}
@@ -897,7 +911,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 ? SettingsTag.Projects
                 : securitySelected
                   ? SettingsTag.Security
-                  : selected;
+                  : plansSelected
+                    ? SettingsTag.Plans
+                    : selected;
             const CurrentIcon = sections.find((section) => section.tag === pickerValue)?.icon;
             return (
               <Select value={pickerValue} onValueChange={selectSection}>
@@ -998,19 +1014,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onSaveRaw={saveRawKey}
                   />
 
-                  <GlobalEnginesSection />
-
-                  <TelegramSection />
-
                   <HarnessVisibilitySection config={config} onSaveRaw={saveRawKey} />
+                </>
+              )}
 
-                  {/* No V1 counterpart: V2 resolves models itself, and the catalogue governs which model
-                    the agent above is launched with, so it sits inside that row rather than as its own. */}
+              {/* Which agent and model does the work: per role, what takes over on a rate limit, and
+                  the catalogue those models are picked from. */}
+              {on(SettingsTag.Models) && (
+                <>
+                  <GlobalEnginesSection />
                   <ModelCatalogCard />
                 </>
               )}
 
-              {on(SettingsTag.Plans) && (
+              {on(SettingsTag.Telegram) && <TelegramSection />}
+
+              {plansSelected && !isEditingConfig && !isAddingProject && (
                 <SettingsSection
                   title={t("plans.title")}
                   hint={t("plans.hint")}
@@ -1053,6 +1072,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </SettingsSection>
               )}
 
+              {plansSelected && !isEditingConfig && !isAddingProject && (
+                <LevelsSection levels={levels} onSaveRaw={saveRawKey} />
+              )}
+
               {on(SettingsTag.Appearance) && (
                 <AppearanceSection
                   settings={appearance}
@@ -1087,7 +1110,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
               )}
 
-              {on(SettingsTag.Levels) && <LevelsSection levels={levels} onSaveRaw={saveRawKey} />}
 
               {on(SettingsTag.Git) && <GitBranchSection config={config} onSaveRaw={saveRawKey} />}
 
@@ -1146,10 +1168,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {securitySelected && !isEditingConfig && !isAddingProject && (
                 <>
                   <RemoteServerSection />
-                  <ApiKeysSection />
                   <SecurityTunnelingSection />
                 </>
               )}
+
+              {on(SettingsTag.ApiKeys) && <ApiKeysSection />}
 
               {on(SettingsTag.Advanced) && (
                 <>
@@ -1247,9 +1270,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </form>
                   </SettingsSection>
 
-                  {/* No V1 counterpart: V2 supervises the daemon itself, so its diagnostics live here rather
-          than in the C# app. They are part of Advanced rather than a top-level row, because V1's
-          sidebar has no row for them and an extra row is itself a structural divergence. */}
+                </>
+              )}
+
+              {/* The daemon itself: whether the app can reach it, and the service that keeps it running. */}
+              {on(SettingsTag.System) && (
+                <>
                   <SettingsSection
                     title={t("diagnostics.title")}
                     action={

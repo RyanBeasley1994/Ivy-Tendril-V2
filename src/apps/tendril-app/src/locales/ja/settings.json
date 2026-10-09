@@ -8,18 +8,22 @@
   },
   "sections": {
     "codingAgent": "コーディングエージェント",
-    "plans": "計画",
+    "plans": "プランとレベル",
     "appearance": "外観",
     "projects": "プロジェクト",
     "vault": "チーム Vault",
     "promptwares": "ワークフローエージェント",
     "levels": "レベル",
     "notifications": "通知",
-    "security": "セキュリティとトンネル",
-    "advanced": "詳細設定",
+    "security": "リモートアクセス",
+    "advanced": "上限",
     "newsletter": "ニュースレター",
     "fallback": "構成",
-    "git": "Git とブランチ"
+    "git": "Git とブランチ",
+    "models": "モデルとロール",
+    "telegram": "Telegram",
+    "apiKeys": "API キー",
+    "system": "システム"
   },
   "nav": {
     "ariaLabel": "構成のセクション",
@@ -412,5 +416,12 @@
     "nativeHint": "Forge 自身がブランチをプッシュし、PR を作成・更新し、オプションを適用してマージします。数秒で、トークンも使いません。エージェントはマージの競合解決や特殊なブランチの復旧にのみ使われます。オフにするとすべての PR をエージェント経由で作成します。",
     "skipHooksLabel": "PR 作成時に pre-push フックをスキップ",
     "skipHooksHint": "プランのブランチを --no-verify と HUSKY=0 でプッシュし、テストスイート全体を再実行するリポジトリのフックで PR が止まらないようにします。プランの検証はすでに通過しています。影響するのは「PR を作成」のプッシュのみで、コミットのフックやあなた自身のプッシュは変わりません。"
+  },
+  "groups": {
+    "agents": "エージェントとモデル",
+    "work": "作業",
+    "reach": "通知と連絡",
+    "access": "アクセス",
+    "app": "このアプリ"
   }
 }

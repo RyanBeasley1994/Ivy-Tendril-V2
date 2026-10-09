@@ -8,18 +8,22 @@
   },
   "sections": {
     "codingAgent": "Coding-Agent",
-    "plans": "Pläne",
+    "plans": "Pläne & Stufen",
     "appearance": "Erscheinungsbild",
     "projects": "Projekte",
     "vault": "Team Vault",
     "promptwares": "Workflow-Agenten",
     "levels": "Stufen",
     "notifications": "Benachrichtigungen",
-    "security": "Sicherheit & Tunneling",
-    "advanced": "Erweitert",
+    "security": "Fernzugriff",
+    "advanced": "Limits",
     "newsletter": "Newsletter",
     "fallback": "Konfiguration",
-    "git": "Git & Branches"
+    "git": "Git & Branches",
+    "models": "Modelle & Rollen",
+    "telegram": "Telegram",
+    "apiKeys": "API-Schlüssel",
+    "system": "System"
   },
   "nav": {
     "ariaLabel": "Konfigurationsabschnitte",
@@ -414,5 +418,12 @@
     "nativeHint": "Forge pusht den Branch, erstellt oder aktualisiert den PR, wendet deine Optionen an und merged selbst – in Sekunden und ohne Tokens. Der Agent wird nur für Merge-Konflikte oder ungewöhnliche Branches gerufen. Ausschalten, um jeden PR über den Agenten zu erstellen.",
     "skipHooksLabel": "Pre-Push-Hooks beim Erstellen von PRs überspringen",
     "skipHooksHint": "Pusht Plan-Branches mit --no-verify und HUSKY=0, damit ein Repo-Hook, der die ganze Testsuite erneut ausführt, den PR nicht blockiert. Die Prüfungen des Plans sind bereits bestanden. Betrifft nur den Push von „PR erstellen“: Commits behalten ihre Hooks, deine eigenen Pushes bleiben unverändert."
+  },
+  "groups": {
+    "agents": "Agenten und Modelle",
+    "work": "Arbeit",
+    "reach": "Benachrichtigung",
+    "access": "Zugriff",
+    "app": "Diese App"
   }
 }

@@ -377,5 +377,12 @@
     "removal": {
       "consequence": "Filen tas bort från projektets Memory-mapp."
     }
+  },
+  "tabs": {
+    "label": "Projektinställningar",
+    "general": "Allmänt",
+    "checks": "Kontroller",
+    "environment": "Miljö",
+    "agent": "Agenter"
   }
 }

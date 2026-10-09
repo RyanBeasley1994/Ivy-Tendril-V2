@@ -8,18 +8,22 @@
   },
   "sections": {
     "codingAgent": "Agent de codage",
-    "plans": "Plans",
+    "plans": "Plans et niveaux",
     "appearance": "Apparence",
     "projects": "Projets",
     "vault": "Team Vault",
     "promptwares": "Agents de flux de travail",
     "levels": "Niveaux",
     "notifications": "Notifications",
-    "security": "Sécurité et tunnels",
-    "advanced": "Avancé",
+    "security": "Accès à distance",
+    "advanced": "Limites",
     "newsletter": "Newsletter",
     "fallback": "Configuration",
-    "git": "Git et branches"
+    "git": "Git et branches",
+    "models": "Modèles et rôles",
+    "telegram": "Telegram",
+    "apiKeys": "Clés d'API",
+    "system": "Système"
   },
   "nav": {
     "ariaLabel": "Sections de configuration",
@@ -416,5 +420,12 @@
     "nativeHint": "Forge pousse la branche, crée ou met à jour la PR, applique vos options et fusionne lui-même, en quelques secondes et sans jetons. L'agent n'intervient que pour résoudre les conflits ou récupérer une branche inhabituelle. Désactivez pour faire passer chaque PR par l'agent.",
     "skipHooksLabel": "Ignorer les hooks pre-push lors de la création des PR",
     "skipHooksHint": "Pousse les branches des plans avec --no-verify et HUSKY=0, pour qu'un hook du dépôt qui relance toute la suite de tests ne bloque pas la PR. Les vérifications du plan ont déjà réussi. Seul le push de « Créer la PR » est concerné : les commits gardent leurs hooks et vos propres push ne changent pas."
+  },
+  "groups": {
+    "agents": "Agents et modèles",
+    "work": "Travail",
+    "reach": "Vous joindre",
+    "access": "Accès",
+    "app": "Cette application"
   }
 }

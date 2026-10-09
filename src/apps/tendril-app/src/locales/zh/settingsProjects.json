@@ -374,5 +374,12 @@
     "removal": {
       "consequence": "该文件将从项目的 Memory 文件夹中删除。"
     }
+  },
+  "tabs": {
+    "label": "项目设置",
+    "general": "常规",
+    "checks": "检查",
+    "environment": "环境",
+    "agent": "代理"
   }
 }

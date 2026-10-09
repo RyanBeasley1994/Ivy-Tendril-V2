@@ -1,14 +1,17 @@
 import {
+  Activity,
   Bell,
   Bot,
   Cog,
+  Cpu,
   Feather,
   FileText,
   Folder,
   FolderGit2,
   GitBranch,
-  ListOrdered,
+  KeyRound,
   Lock,
+  Send,
   Sun,
   Wand,
 } from "lucide-react";
@@ -34,6 +37,12 @@ export const SettingsTag = {
   /** V1 keeps a separate tag that selects the same row and the same view as `security`. */
   Tunnel: "tunnel",
   Advanced: "advanced",
+  /** Which agent and model each role runs on, the rate-limit fallbacks and the model catalogue. */
+  Models: "models",
+  Telegram: "telegram",
+  ApiKeys: "api-keys",
+  /** The daemon itself: its connection, its service and its config file. */
+  System: "system",
 } as const;
 
 export type SettingsTagValue = (typeof SettingsTag)[keyof typeof SettingsTag];
@@ -59,49 +68,57 @@ export interface SettingsSection {
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   /** `Projects` is the one expandable row, with a sub-item per project plus "Add Project". */
   expandable?: boolean;
+  /** The heading this row sits under in the sidebar. */
+  group: string;
 }
 
 /**
- * `SettingsApp.Build`'s `sections` list plus its `rows` list, in order: Coding Agent, Plans,
- * Appearance, Projects, Team Vault (beta only), Workflow Agents, Levels, Notifications, Security &
- * Tunneling, Advanced. "Open config.yaml" is deliberately absent - V1 renders it as an
- * action row that never becomes the selection, so it is not a section.
+ * The settings pages, grouped by what they are for rather than in the order they were added:
  *
- * `sections` is also what drives the `Breakpoint.Mobile`/`Tablet` `MobileItemPicker`, which is why
- * one list produces both presentations here too.
+ * - **Agents and models**: the coding agents installed, which one each role runs on, and the workflow
+ *   agents that run on them.
+ * - **Work**: the projects, how plans are written and sized, branches, and the team vault.
+ * - **Reaching you**: how the daemon gets your attention, and how you answer from your phone.
+ * - **Access**: who and what may reach the daemon from outside.
+ * - **This app**: how it looks, its limits, and the daemon underneath.
  *
- * The labels are translated with the `t` it is handed, so the list is built at render time and
- * rebuilt when the language changes; the tags never are, because they are the deep links.
+ * Each page holds one concern. The tags are deep links (`settings:<tag>`), so the ones that existed
+ * keep their spelling; `levels` now opens Plans, which is where levels live, and `tunnel` still opens
+ * remote access.
+ *
+ * `sections` also drives the mobile picker, which is why one list produces both presentations. The
+ * labels are translated with the `t` it is handed, so the list is rebuilt when the language changes.
  */
 export function settingsSections(isBeta: boolean, t: TFunction<"settings">): SettingsSection[] {
+  const agents = t("groups.agents");
+  const work = t("groups.work");
+  const reach = t("groups.reach");
+  const access = t("groups.access");
+  const app = t("groups.app");
   return [
-    { label: t("sections.codingAgent"), tag: SettingsTag.CodingAgent, icon: Bot },
-    { label: t("sections.plans"), tag: SettingsTag.Plans, icon: Feather },
-    { label: t("sections.appearance"), tag: SettingsTag.Appearance, icon: Sun },
-    { label: t("sections.projects"), tag: SettingsTag.Projects, icon: Folder, expandable: true },
-    // `if (isBeta) sections.Add(("Team Vault", ...))` - the vault row is gated, not always present.
+    { label: t("sections.codingAgent"), tag: SettingsTag.CodingAgent, icon: Bot, group: agents },
+    { label: t("sections.models"), tag: SettingsTag.Models, icon: Cpu, group: agents },
+    // "Workflow Agents" rather than plain "Agents": the row above is the external CLI a workflow
+    // agent *runs on*, and two rows both reading "Agent" would be two things under one word.
+    { label: t("sections.promptwares"), tag: SettingsTag.Promptwares, icon: Wand, group: agents },
+
+    { label: t("sections.projects"), tag: SettingsTag.Projects, icon: Folder, expandable: true, group: work },
+    { label: t("sections.plans"), tag: SettingsTag.Plans, icon: Feather, group: work },
+    { label: t("sections.git"), tag: SettingsTag.Git, icon: GitBranch, group: work },
+    // The vault row is gated, not always present.
     ...(isBeta
-      ? [
-          {
-            label: t("sections.vault"),
-            tag: SettingsTag.Vault,
-            icon: FolderGit2,
-          } as SettingsSection,
-        ]
+      ? [{ label: t("sections.vault"), tag: SettingsTag.Vault, icon: FolderGit2, group: work } as SettingsSection]
       : []),
-    /**
-     * "Workflow Agents" rather than plain "Agents": `promptwares` is what config, the API and the
-     * daemon call these, but the operator-facing name is now "agent" — and this list already has a
-     * "Coding Agent" row five above, for the external CLI (Claude Code, Codex, ...) that a workflow
-     * agent *runs on*. Two rows both reading "Agent" would be two different things under one word,
-     * so the qualifier stays. The tag is untouched: it is the `settings:promptwares` deep link.
-     */
-    { label: t("sections.promptwares"), tag: SettingsTag.Promptwares, icon: Wand },
-    { label: t("sections.levels"), tag: SettingsTag.Levels, icon: ListOrdered },
-    { label: t("sections.git"), tag: SettingsTag.Git, icon: GitBranch },
-    { label: t("sections.notifications"), tag: SettingsTag.Notifications, icon: Bell },
-    { label: t("sections.security"), tag: SettingsTag.Security, icon: Lock },
-    { label: t("sections.advanced"), tag: SettingsTag.Advanced, icon: Cog },
+
+    { label: t("sections.notifications"), tag: SettingsTag.Notifications, icon: Bell, group: reach },
+    { label: t("sections.telegram"), tag: SettingsTag.Telegram, icon: Send, group: reach },
+
+    { label: t("sections.security"), tag: SettingsTag.Security, icon: Lock, group: access },
+    { label: t("sections.apiKeys"), tag: SettingsTag.ApiKeys, icon: KeyRound, group: access },
+
+    { label: t("sections.appearance"), tag: SettingsTag.Appearance, icon: Sun, group: app },
+    { label: t("sections.advanced"), tag: SettingsTag.Advanced, icon: Cog, group: app },
+    { label: t("sections.system"), tag: SettingsTag.System, icon: Activity, group: app },
   ];
 }
 

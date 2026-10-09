@@ -374,5 +374,12 @@
     "removal": {
       "consequence": "ファイルはプロジェクトの Memory フォルダーから削除されます。"
     }
+  },
+  "tabs": {
+    "label": "プロジェクト設定",
+    "general": "一般",
+    "checks": "チェック",
+    "environment": "環境",
+    "agent": "エージェント"
   }
 }
