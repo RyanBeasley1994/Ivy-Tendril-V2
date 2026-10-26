@@ -26,6 +26,20 @@
       "unreachable": "Não foi possível acessar o daemon para buscar os modelos: {{error}}"
     }
   },
+  "kimi": {
+    "fetchModels": {
+      "label": "Obter modelos",
+      "busy": "Carregando…"
+    },
+    "found_one": "{{count}} modelo encontrado no config.toml do Kimi Code.",
+    "found_other": "{{count}} modelos encontrados no config.toml do Kimi Code.",
+    "fastMode": {
+      "label": "Modo rápido",
+      "hint": "Executa cada perfil com o alias -highspeed do seu modelo: mais rápido, cobrado a uma taxa maior.",
+      "unavailable": "O modo rápido precisa de um alias -highspeed no config.toml do Kimi Code. Clique em Obter modelos após kimi login."
+    },
+    "staleServer": "Este servidor ainda não suporta a leitura de modelos Kimi. Atualize o servidor Tendril ao qual você está conectado."
+  },
   "profiles": {
     "title": "Modelos por Perfil",
     "hint": {
@@ -131,5 +145,9 @@
     "title": "Harness nos seletores",
     "hint": "Escolha quais agentes de código aparecem ao criar um plano ou escolher os agentes de uma missão. O agente padrão sempre aparece.",
     "default": "Padrão"
+  },
+  "sidebarUsage": {
+    "title": "Limites de uso na barra lateral",
+    "hint": "Escolha quais agentes mostram suas janelas de limite no rodapé da barra lateral. Agentes cujo provedor não publica uso não mostram nada."
   }
 }

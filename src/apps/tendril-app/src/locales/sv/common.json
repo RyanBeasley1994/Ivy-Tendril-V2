@@ -110,6 +110,7 @@
     },
     "usage": {
       "title": "{{agent}} · {{window}}-gräns",
+      "window": "{{window}}-gräns",
       "used": "{{percent}} använt",
       "resets": "Återställs om {{countdown}}"
     }

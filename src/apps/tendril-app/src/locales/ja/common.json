@@ -110,6 +110,7 @@
     },
     "usage": {
       "title": "{{agent}} · {{window}} 制限",
+      "window": "{{window}} の上限",
       "used": "{{percent}} 使用",
       "resets": "{{countdown}} 後にリセット"
     }

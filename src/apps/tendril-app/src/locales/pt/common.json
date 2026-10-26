@@ -110,6 +110,7 @@
     },
     "usage": {
       "title": "{{agent}} · limite de {{window}}",
+      "window": "Limite de {{window}}",
       "used": "{{percent}} usado",
       "resets": "Reinicia em {{countdown}}"
     }

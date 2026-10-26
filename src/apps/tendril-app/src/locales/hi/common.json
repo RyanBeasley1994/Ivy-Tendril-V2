@@ -110,6 +110,7 @@
     },
     "usage": {
       "title": "{{agent}} · {{window}} सीमा",
+      "window": "{{window}} सीमा",
       "used": "{{percent}} उपयोग",
       "resets": "{{countdown}} में रीसेट"
     }

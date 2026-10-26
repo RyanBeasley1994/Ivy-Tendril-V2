@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use tendril_core::agents::catalog::{
     all_agents_for_proxy_base_url, apply_codex_local_config, OPENAI_PROXY_AGENT_ID,
 };
+use tendril_core::agents::kimi_config::discover_kimi_models;
 use tendril_core::agents::probe::{
     all_sign_in_hints, check_auth, check_install, validate_model, AgentAuthResult,
     AgentInstallStatus, ProbeCredentials,
@@ -74,6 +75,12 @@ pub async fn fetch_provider_models_handler(
 ) -> impl IntoResponse {
     let snapshot = state.settings_snapshot();
     let agent = normalize_agent_name(request.agent.as_deref().unwrap_or(OPENAI_PROXY_AGENT_ID));
+
+    // Kimi's models are aliases in its own `config.toml` on this host, not something an endpoint
+    // lists, so there is no URL or key to ask with.
+    if agent == "kimi" {
+        return Json(discover_kimi_models());
+    }
 
     let base_url = request
         .base_url

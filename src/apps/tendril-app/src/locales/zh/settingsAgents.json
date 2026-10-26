@@ -24,6 +24,20 @@
       "unreachable": "无法连接到守护进程以获取模型：{{error}}"
     }
   },
+  "kimi": {
+    "fetchModels": {
+      "label": "获取模型",
+      "busy": "加载中…"
+    },
+    "found_one": "在 Kimi Code 的 config.toml 中找到 {{count}} 个模型。",
+    "found_other": "在 Kimi Code 的 config.toml 中找到 {{count}} 个模型。",
+    "fastMode": {
+      "label": "快速模式",
+      "hint": "每个配置档使用其模型的 -highspeed 别名运行：更快，但计费更高。",
+      "unavailable": "快速模式需要 Kimi Code 的 config.toml 中有 -highspeed 别名。请在 kimi login 后点击“获取模型”。"
+    },
+    "staleServer": "此服务器尚不支持读取 Kimi 模型。请更新你连接的 Tendril 服务器。"
+  },
   "profiles": {
     "title": "配置文件模型",
     "hint": {
@@ -129,5 +143,9 @@
     "title": "选择器中的执行代理",
     "hint": "选择创建计划或为使命选择代理时显示哪些编码代理。默认代理始终显示。",
     "default": "默认"
+  },
+  "sidebarUsage": {
+    "title": "侧边栏用量限额",
+    "hint": "选择在侧边栏底部显示哪些编码代理的速率限制窗口。提供方不公开用量的代理不显示任何内容。"
   }
 }

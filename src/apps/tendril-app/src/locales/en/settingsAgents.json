@@ -25,6 +25,20 @@
       "unreachable": "Could not reach the daemon to fetch models: {{error}}"
     }
   },
+  "kimi": {
+    "fetchModels": {
+      "label": "Get models",
+      "busy": "Loading..."
+    },
+    "found_one": "Found {{count}} model in Kimi Code's config.toml.",
+    "found_other": "Found {{count}} models in Kimi Code's config.toml.",
+    "fastMode": {
+      "label": "Fast mode",
+      "hint": "Runs each profile on its model's -highspeed alias: faster, billed at a higher rate.",
+      "unavailable": "Fast mode needs a -highspeed alias in Kimi Code's config.toml. Press Get models after kimi login."
+    },
+    "staleServer": "This server does not support reading Kimi models yet. Update the Tendril server you are connected to."
+  },
   "profiles": {
     "title": "Profile Models",
     "hint": {
@@ -130,5 +144,9 @@
     "title": "Harnesses in pickers",
     "hint": "Choose which coding agents appear when you create a plan or pick a mission's agents. The default agent always shows.",
     "default": "Default"
+  },
+  "sidebarUsage": {
+    "title": "Sidebar usage limits",
+    "hint": "Choose which coding agents' rate-limit windows appear at the foot of the sidebar. Agents whose provider publishes no usage show nothing."
   }
 }

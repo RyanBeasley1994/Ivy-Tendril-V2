@@ -25,6 +25,20 @@
       "unreachable": "Det gick inte att nå daemonen för att hämta modeller: {{error}}"
     }
   },
+  "kimi": {
+    "fetchModels": {
+      "label": "Hämta modeller",
+      "busy": "Läser in…"
+    },
+    "found_one": "Hittade {{count}} modell i Kimi Codes config.toml.",
+    "found_other": "Hittade {{count}} modeller i Kimi Codes config.toml.",
+    "fastMode": {
+      "label": "Snabbläge",
+      "hint": "Kör varje profil på modellens -highspeed-alias: snabbare, debiteras till ett högre pris.",
+      "unavailable": "Snabbläge kräver ett -highspeed-alias i Kimi Codes config.toml. Tryck på Hämta modeller efter kimi login."
+    },
+    "staleServer": "Den här servern kan inte läsa Kimi-modeller än. Uppdatera Tendril-servern du är ansluten till."
+  },
   "profiles": {
     "title": "Profilmodeller",
     "hint": {
@@ -130,5 +144,9 @@
     "title": "Harness i väljare",
     "hint": "Välj vilka kodagenter som visas när du skapar en plan eller väljer ett uppdrags agenter. Standardagenten visas alltid.",
     "default": "Standard"
+  },
+  "sidebarUsage": {
+    "title": "Användningsgränser i sidofältet",
+    "hint": "Välj vilka kodagenters gränsfönster som visas längst ned i sidofältet. Agenter vars leverantör inte publicerar användning visar ingenting."
   }
 }

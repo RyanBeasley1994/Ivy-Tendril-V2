@@ -24,6 +24,20 @@
       "unreachable": "モデルを取得するためにデーモンに接続できませんでした：{{error}}"
     }
   },
+  "kimi": {
+    "fetchModels": {
+      "label": "モデルを取得",
+      "busy": "読み込み中…"
+    },
+    "found_one": "Kimi Code の config.toml に {{count}} 個のモデルが見つかりました。",
+    "found_other": "Kimi Code の config.toml に {{count}} 個のモデルが見つかりました。",
+    "fastMode": {
+      "label": "高速モード",
+      "hint": "各プロファイルをモデルの -highspeed エイリアスで実行します。高速ですが料金は高くなります。",
+      "unavailable": "高速モードには Kimi Code の config.toml に -highspeed エイリアスが必要です。kimi login の後に「モデルを取得」を押してください。"
+    },
+    "staleServer": "このサーバーはまだ Kimi のモデル読み取りに対応していません。接続先の Tendril サーバーを更新してください。"
+  },
   "profiles": {
     "title": "プロファイルのモデル",
     "hint": {
@@ -129,5 +143,9 @@
     "title": "ピッカーに表示するハーネス",
     "hint": "プラン作成時やミッションのエージェント選択時に表示するコーディングエージェントを選びます。既定のエージェントは常に表示されます。",
     "default": "既定"
+  },
+  "sidebarUsage": {
+    "title": "サイドバーの使用量上限",
+    "hint": "サイドバー下部にレート制限ウィンドウを表示するエージェントを選びます。使用量を公開しないプロバイダーのエージェントは何も表示しません。"
   }
 }

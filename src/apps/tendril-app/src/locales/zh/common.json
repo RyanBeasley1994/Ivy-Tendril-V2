@@ -110,6 +110,7 @@
     },
     "usage": {
       "title": "{{agent}} · {{window}} 限额",
+      "window": "{{window}} 限额",
       "used": "已用 {{percent}}",
       "resets": "{{countdown}} 后重置"
     }

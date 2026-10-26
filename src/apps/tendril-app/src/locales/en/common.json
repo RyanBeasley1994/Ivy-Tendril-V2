@@ -116,6 +116,7 @@
     },
     "usage": {
       "title": "{{agent}} · {{window}} limit",
+      "window": "{{window}} limit",
       "used": "{{percent}} used",
       "resets": "Resets in {{countdown}}"
     }

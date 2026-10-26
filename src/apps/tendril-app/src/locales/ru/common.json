@@ -110,6 +110,7 @@
     },
     "usage": {
       "title": "{{agent}} · лимит {{window}}",
+      "window": "Лимит {{window}}",
       "used": "использовано {{percent}}",
       "resets": "Сброс через {{countdown}}"
     }

@@ -59,6 +59,7 @@ const ConfigEditorView = React.lazy(() =>
 import { AppearanceSection } from "./settings/AppearanceSection";
 import { CodingAgentSection } from "./settings/CodingAgentSection";
 import { HarnessVisibilitySection } from "./settings/HarnessVisibilitySection";
+import { SidebarUsageSection } from "./settings/SidebarUsageSection";
 import { GitBranchSection } from "./settings/GitBranchSection";
 import { LevelsSection } from "./settings/LevelsSection";
 import { SecurityTunnelingSection } from "./settings/SecurityTunnelingSection";
@@ -1015,6 +1016,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
 
                   <HarnessVisibilitySection config={config} onSaveRaw={saveRawKey} />
+
+                  <SidebarUsageSection config={config} onSaveRaw={saveRawKey} />
                 </>
               )}
 

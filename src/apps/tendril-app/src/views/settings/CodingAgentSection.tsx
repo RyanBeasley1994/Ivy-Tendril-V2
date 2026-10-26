@@ -5,7 +5,7 @@ import { Button, Callout, Input, Label, Switch } from "@ivy-interactive/componen
 import { Check, ExternalLink } from "lucide-react";
 import { agentsApi } from "../../api/agentsApi";
 import { providerModelsApi } from "../../api/providerModelsApi";
-import { Trans, useTranslation, type TFunction } from "../../i18n";
+import { i18n, Trans, useTranslation, type TFunction } from "../../i18n";
 import { notificationsStore } from "../../state/notificationsStore";
 import { describeBridgeError, type TendrilConfig } from "../../types/api";
 import {
@@ -67,6 +67,16 @@ import {
  * routes that V2 grew for them, since neither answer can be computed in a webview.
  */
 
+/**
+ * The suffix Kimi gives the faster, pricier variant of a model alias - `kimi_config::KIMI_FAST_SUFFIX`.
+ * Fast mode is not a flag `kimi` takes: it is the `-highspeed` alias run in place of the plain one.
+ */
+const KIMI_FAST_SUFFIX = "-highspeed";
+const kimiFastVariant = (id: string): string =>
+  id.endsWith(KIMI_FAST_SUFFIX) ? id : `${id}${KIMI_FAST_SUFFIX}`;
+const kimiBaseVariant = (id: string): string =>
+  id.endsWith(KIMI_FAST_SUFFIX) ? id.slice(0, -KIMI_FAST_SUFFIX.length) : id;
+
 /** `EffortLevels.Claude`, V1's fallback when neither the model nor the descriptor names any. */
 const FALLBACK_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
@@ -104,6 +114,7 @@ const unknownAgentMessage = (t: TFunction<"settingsAgents">, value: string): str
  */
 type DiscoveryNote =
   | { kind: "found"; count: number }
+  | { kind: "kimiFound"; count: number }
   | { kind: "customNames" }
   | { kind: "unreachable"; error: string };
 
@@ -111,6 +122,8 @@ const discoveryNoteText = (t: TFunction<"settingsAgents">, note: DiscoveryNote):
   switch (note.kind) {
     case "found":
       return t("byo.discovery.found", { count: note.count });
+    case "kimiFound":
+      return t("kimi.found", { count: note.count });
     case "customNames":
       return t("byo.discovery.customNames");
     case "unreachable":
@@ -564,7 +577,10 @@ export const CodingAgentSection: React.FC<{
             // A successful fetch is what puts the pane in select mode - V1 sets
             // `useCustomModelNames` to false right here.
             setCustomNames(false);
-            setDiscoveryNote({ kind: "found", count: outcome.models.length });
+            setDiscoveryNote({
+              kind: agent === "kimi" ? "kimiFound" : "found",
+              count: outcome.models.length,
+            });
             applyDiscoveredDefaults(outcome.models, outcome.defaults);
             break;
           case "customNames":
@@ -594,7 +610,10 @@ export const CodingAgentSection: React.FC<{
             setApiKeyError(outcome.message);
             break;
           case "baseUrlError":
-            setBaseUrlError(outcome.message);
+            // Kimi needs no URL, so a daemon asking for one predates Kimi model discovery - the
+            // server this pane is connected to has to be updated, not a field corrected.
+            if (agent === "kimi") setApiKeyError(i18n.t("settingsAgents:kimi.staleServer"));
+            else setBaseUrlError(outcome.message);
             break;
         }
       } catch (err) {
@@ -624,6 +643,42 @@ export const CodingAgentSection: React.FC<{
     // is being typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isByo, finalAgent, savedApiKey, savedBaseUrl]);
+
+  /**
+   * Kimi's models are the aliases in its own `config.toml`, read by the daemon. Local and free, so the
+   * pane reads them once on opening the card rather than waiting for "Get models".
+   */
+  const isKimi = finalAgent === "kimi";
+  React.useEffect(() => {
+    if (!isKimi || attempted.current.has("kimi")) return;
+    attempted.current.add("kimi");
+    void fetchModels("kimi", "", null);
+  }, [isKimi, fetchModels]);
+
+  const offersModel = (id: string) => modelOptions.some((option) => option.value === id);
+  /** On when every tier runs a `-highspeed` alias - derived, so it can never disagree with the tiers. */
+  const kimiFast =
+    isKimi && PROFILE_TIERS.every((tier) => shownTierModel(tier).endsWith(KIMI_FAST_SUFFIX));
+  /** Off and unusable until the config declares a `-highspeed` alias for at least one tier's model. */
+  const kimiFastAvailable =
+    isKimi &&
+    PROFILE_TIERS.some((tier) => offersModel(kimiFastVariant(shownTierModel(tier))));
+
+  /**
+   * Swaps each tier onto its model's `-highspeed` alias, or back off it. A tier whose counterpart the
+   * config does not declare keeps the model it had, because `kimi -m` would refuse an undeclared alias.
+   */
+  const setKimiFast = (on: boolean) => {
+    setProfiles((prev) => {
+      const next = { ...prev };
+      for (const tier of PROFILE_TIERS) {
+        const shown = isTierUnset(prev[tier].model) ? resolvedTierModel(tier) : prev[tier].model;
+        const target = on ? kimiFastVariant(shown) : kimiBaseVariant(shown);
+        if (target !== shown && offersModel(target)) next[tier] = { ...prev[tier], model: target };
+      }
+      return next;
+    });
+  };
 
   const agentIdChanged = finalAgent !== normalizeAgentName(savedAgent || "claude");
   const profilesChanged = JSON.stringify(profiles) !== JSON.stringify(savedProfiles);
@@ -808,6 +863,50 @@ export const CodingAgentSection: React.FC<{
           {/* V1 puts the strip above the whole `profileModels` stack, which in this build is the
               section it heads. First child, so the quota is read before the models it constrains. */}
           <AgentUsageStrip agent={finalAgent} />
+
+          {isKimi && (
+            <div className="mb-3 space-y-2" data-testid="kimi-models-block">
+              <div className="flex flex-wrap items-center gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-testid="fetch-kimi-models"
+                  disabled={isFetchingModels}
+                  onClick={() => void fetchModels("kimi", "", null)}
+                >
+                  {isFetchingModels ? t("kimi.fetchModels.busy") : t("kimi.fetchModels.label")}
+                </Button>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="kimi-fast-mode"
+                    data-testid="kimi-fast-mode"
+                    checked={kimiFast}
+                    disabled={!kimiFastAvailable && !kimiFast}
+                    onCheckedChange={setKimiFast}
+                  />
+                  <Label htmlFor="kimi-fast-mode" className="text-xs font-medium text-foreground">
+                    {t("kimi.fastMode.label")}
+                  </Label>
+                </div>
+              </div>
+              {apiKeyError ? (
+                <p className="text-xs text-destructive" data-testid="kimi-models-error">
+                  {apiKeyError}
+                </p>
+              ) : (
+                discoveryNote && (
+                  <p className="text-xs text-muted-foreground" data-testid="model-discovery-note">
+                    {discoveryNoteText(t, discoveryNote)}
+                  </p>
+                )
+              )}
+              <p className="text-xs text-muted-foreground">
+                {kimiFastAvailable || kimiFast
+                  ? t("kimi.fastMode.hint")
+                  : t("kimi.fastMode.unavailable")}
+              </p>
+            </div>
+          )}
 
           {isByo && modelOptions.length > 0 && (
             <div className="mb-3 flex items-center gap-3">

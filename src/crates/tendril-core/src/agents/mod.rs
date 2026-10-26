@@ -8,6 +8,7 @@ pub mod eventwire;
 // Deliberately not re-exported below: `instructions::compile` and `instructions::TEMPLATE` are too
 // generically named to live in `agents::*` alongside everything else.
 pub mod instructions;
+pub mod kimi_config;
 pub mod model_cache;
 // Deliberately not re-exported below: `model_sorting::sort_models` and its `Version` are too
 // generically named to live in `agents::*` alongside everything else.

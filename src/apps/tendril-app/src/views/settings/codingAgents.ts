@@ -569,6 +569,25 @@ export function catalogAgentFor(
  */
 export const HIDDEN_AGENTS_KEY = "hiddenAgents";
 
+/** `config.yaml`'s list of agents whose rate-limit windows the sidebar shows. Absent means the default. */
+export const SIDEBAR_USAGE_KEY = "sidebarUsageAgents";
+/** Fired on `window` after that list is saved, so the sidebar re-reads it without a reload. */
+export const SIDEBAR_USAGE_CHANGED_EVENT = "tendril:sidebar-usage-changed";
+
+/**
+ * The agents the sidebar shows usage for, normalised: the saved list, or the configured default agent
+ * when nothing has been chosen yet. An empty saved list is a real choice - show none.
+ */
+export function readSidebarUsageAgents(config: TendrilConfig | null | undefined): string[] {
+  const value = config?.raw?.[SIDEBAR_USAGE_KEY];
+  if (!Array.isArray(value)) return [normalizeAgentName(config?.codingAgent || "claude")];
+  return [
+    ...new Set(
+      value.filter((v): v is string => typeof v === "string").map((v) => normalizeAgentName(v)),
+    ),
+  ];
+}
+
 /** The hidden agent ids, normalised. A missing or malformed value hides nothing. */
 export function readHiddenAgents(config: TendrilConfig | null | undefined): string[] {
   const value = config?.raw?.[HIDDEN_AGENTS_KEY];
