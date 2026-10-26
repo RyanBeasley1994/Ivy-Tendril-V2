@@ -8,8 +8,7 @@ import { initI18n } from "./i18n";
 import { startupLanguage, syncDocumentLanguage } from "./state/language";
 import { applyAppZoom } from "./state/zoom";
 import { isTauri } from "./utils/tauri";
-import { loopbackPort } from "./utils/loopbackUrl";
-import { openUrl } from "./utils/opener";
+import { installExternalLinkHandler } from "./utils/externalLinks";
 import { registerPwa, trackVisualViewport } from "./pwa/register";
 import "./index.css";
 
@@ -35,21 +34,11 @@ if (isTauri() && /Mac/.test(navigator.platform)) {
   document.documentElement.classList.add("tauri-macos");
 }
 
-// A loopback link anywhere in the app (a chat answer saying "serving on http://localhost:5173", a plan,
-// a log) means the *server's* loopback when connected to a remote one: open it through a port forward
-// rather than letting the webview navigate to this machine's.
+// Every external link opens in the system browser rather than navigating the app's own webview. A
+// loopback one (a chat answer saying "serving on http://localhost:5173") is port-forwarded first when
+// connected to a remote server, so it opens the *server's* dev server. See `utils/externalLinks`.
 if (isTauri()) {
-  document.addEventListener(
-    "click",
-    (e) => {
-      const anchor = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!anchor || loopbackPort(anchor.href) === null) return;
-      e.preventDefault();
-      e.stopPropagation();
-      void openUrl(anchor.href);
-    },
-    true,
-  );
+  installExternalLinkHandler();
 }
 
 const rootElement = document.getElementById("root");
