@@ -88,6 +88,11 @@ impl EventWireNormalizer {
             return self.typed(kind, &value, trimmed);
         }
 
+        // Kimi Code: chat-completion messages, one per line, with no `type` at all.
+        if let Some(role) = value.get("role").and_then(|r| r.as_str()) {
+            return kimi_message(role, &value);
+        }
+
         // `{"delta": …}` / `{"text": …}`: what a thin wrapper around a provider emits.
         if let Some(text) = simple_text(&value) {
             return vec![text_event(&text, true)];
@@ -985,6 +990,73 @@ fn cursor_tool_result(result: Option<&Value>) -> (String, bool) {
     (value_to_text(success), false)
 }
 
+// ── Kimi Code (`kimi`) ──────────────────────────────────────────────────────────────────────────
+
+/// One line of `kimi --prompt … --output-format stream-json`, which is a chat-completion message
+/// rather than an event: `{"role":"assistant","content":…,"tool_calls":[…]}`, then one
+/// `{"role":"tool","tool_call_id":…,"content":…}` per call, then the next assistant message.
+///
+/// Each assistant message is whole, not a chunk, so its prose *replaces* the answer (`delta: false`):
+/// the "Let me check the directory." that precedes a tool call is narration, and the answer is the
+/// last message the run writes. Thinking is never written to stdout, and neither is usage, so there
+/// is nothing to turn into a `thinking` event or a priced `result` -- the run's cost is unknown,
+/// which is what an absent `usage` says.
+///
+/// A tool result carries no error flag, so every result is reported as a success.
+fn kimi_message(role: &str, value: &Value) -> Vec<String> {
+    match role {
+        "assistant" => {
+            let mut out = Vec::new();
+            let text = value.get("content").map(value_to_text).unwrap_or_default();
+            if !text.trim().is_empty() {
+                out.push(text_event(&text, false));
+            }
+            for call in value
+                .get("tool_calls")
+                .and_then(|c| c.as_array())
+                .into_iter()
+                .flatten()
+            {
+                let id = call
+                    .get("id")
+                    .and_then(|i| i.as_str())
+                    .map(sanitize_tool_use_id)
+                    .unwrap_or_default();
+                if id.is_empty() {
+                    continue;
+                }
+                let function = call.get("function");
+                let name = function
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("tool");
+                // `arguments` is a JSON-encoded string, as in the OpenAI wire format. One that does
+                // not parse is still shown, wrapped, rather than dropped.
+                let args = function.and_then(|f| f.get("arguments")).map(|a| match a {
+                    Value::String(raw) => serde_json::from_str(raw).unwrap_or_else(|_| a.clone()),
+                    other => other.clone(),
+                });
+                out.push(tool_call_event(&id, name, args.as_ref(), None));
+            }
+            out
+        }
+        "tool" => {
+            let id = value
+                .get("tool_call_id")
+                .and_then(|i| i.as_str())
+                .map(sanitize_tool_use_id)
+                .unwrap_or_default();
+            if id.is_empty() {
+                return Vec::new();
+            }
+            let output = value.get("content").map(value_to_text).unwrap_or_default();
+            vec![tool_result_event(&id, None, &output, false)]
+        }
+        // `user` echoes the prompt back; anything else is a role Kimi has not sent yet.
+        _ => Vec::new(),
+    }
+}
+
 /// A `tool_use_id` with anything that would break a single-line id taken out.
 ///
 /// Cursor's ids are sometimes two ids joined by a newline. The id is what pairs a `tool_call` with
@@ -1832,6 +1904,47 @@ mod tests {
                 r#"{"type":"tool_call","subtype":"started","tool_call":{"toolCallId":"tc-2"}}"#,
                 false
             )
+            .is_empty());
+    }
+
+    /// The example in Kimi's own print-mode docs: narration with a tool call, the tool's result, then
+    /// the answer. Each assistant message replaces the answer, so the narration does not survive.
+    #[test]
+    fn test_kimi_messages_become_text_and_tool_cards() {
+        let mut n = EventWireNormalizer::new();
+
+        let call = n.normalize(
+            r#"{"role":"assistant","content":"Let me check the current directory.","tool_calls":[{"type":"function","id":"tc_1","function":{"name":"Shell","arguments":"{\"command\":\"ls\"}"}}]}"#,
+            false,
+        );
+        assert_eq!(kinds(&call), vec!["text", "tool_call"]);
+        assert_eq!(field(&call[1], "tool_use_id"), "tc_1");
+        assert_eq!(field(&call[1], "tool_name"), "Shell");
+        let input: Value = serde_json::from_str(&call[1]).unwrap();
+        assert_eq!(input["input"]["command"], "ls");
+
+        let result = n.normalize(
+            r#"{"role":"tool","tool_call_id":"tc_1","content":"file1.py\nfile2.py"}"#,
+            false,
+        );
+        assert_eq!(kinds(&result), vec!["tool_result"]);
+        assert_eq!(field(&result[0], "tool_use_id"), "tc_1");
+
+        let answer = n.normalize(
+            r#"{"role":"assistant","content":"There are two Python files in the current directory."}"#,
+            false,
+        );
+        assert_eq!(
+            event_wire_text(&answer[0]),
+            Some((
+                "There are two Python files in the current directory.".to_string(),
+                false
+            ))
+        );
+
+        // The prompt echoed back is not part of the answer.
+        assert!(n
+            .normalize(r#"{"role":"user","content":"hi"}"#, false)
             .is_empty());
     }
 }

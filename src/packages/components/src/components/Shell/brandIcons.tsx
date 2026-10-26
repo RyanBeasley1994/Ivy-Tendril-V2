@@ -102,6 +102,13 @@ const CursorIcon = svgIcon(
   "M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23",
 );
 
+// The Moonshot AI mark, which is what Kimi ships under, inlined from Simple Icons for the reason
+// `CursorIcon` above is: `Icon.tsx` renders it through react-icons' `SiMoonshotai`.
+const KimiIcon = svgIcon(
+  "0 0 24 24",
+  "m1.053 16.91 9.538 2.55a21 20.981 0 0 0 .06 2.031l5.956 1.592a12 11.99 0 0 1-15.554-6.172m-1.02-5.79 11.352 3.035a21 20.981 0 0 0-.469 2.01l10.817 2.89a12 11.99 0 0 1-1.845 2.004L.658 15.918a12 11.99 0 0 1-.625-4.796m1.593-5.146L13.573 9.17a21 20.981 0 0 0-1.01 1.874l11.297 3.02a21 20.981 0 0 1-.67 2.362l-11.55-3.087L.125 10.26a12 11.99 0 0 1 1.499-4.285ZM6.067 1.58l11.285 3.016a21 20.981 0 0 0-1.688 1.719l7.824 2.091a21 20.981 0 0 1 .513 2.664L2.107 5.218a12 11.99 0 0 1 3.96-3.638M21.68 4.866 7.222 1.003A12 11.99 0 0 1 21.68 4.866",
+);
+
 const ChevronUpIcon = ({ size = 16, className }: BrandIconProps) => (
   <ChevronUp size={size} className={className} />
 );
@@ -127,6 +134,7 @@ export const brandIcons: Record<string, React.FC<BrandIconProps>> = {
   Discord: DiscordIcon,
   Apple: AppleIcon,
   Cursor: CursorIcon,
+  Kimi: KimiIcon,
   ChevronUp: ChevronUpIcon,
   Terminal: TerminalIcon,
   MessageCircle: MessageCircleIcon,

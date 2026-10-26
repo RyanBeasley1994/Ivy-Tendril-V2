@@ -30,7 +30,7 @@ use tokio::process::Command;
 use crate::agents::provider_models::{test_model_prompt, ModelValidation, ModelValidationStatus};
 use crate::agents::providers::{
     apple_base_url, format_cursor_model, resolve_copilot_binary, resolve_cursor_binary,
-    resolve_opencode_binary, APPLE_MODEL_ID, APPLE_WIRE_MODEL_ID,
+    resolve_kimi_binary, resolve_opencode_binary, APPLE_MODEL_ID, APPLE_WIRE_MODEL_ID,
 };
 use crate::agents::resolution::normalize_agent_name;
 use crate::config::dirs_home;
@@ -589,6 +589,23 @@ pub fn sign_in_hint(agent: &str) -> Option<AgentSignInHint> {
             ),
         },
 
+        "kimi" => AgentSignInHint {
+            agent: key.to_string(),
+            binary: Some("kimi".to_string()),
+            install: step(
+                "Installs the `kimi` launcher to ~/.local/bin, which Tendril also looks in when a \
+                 desktop launch does not have it on PATH.",
+                vec![HintCommand::run(
+                    "curl -LsSf https://code.kimi.com/install.sh | bash",
+                )],
+            ),
+            auth: step(
+                "A device-code sign-in: it prints a URL and a code, and waits until you approve it \
+                 in the browser. The token lands in ~/.kimi-code, where every later run finds it.",
+                vec![HintCommand::run("kimi login")],
+            ),
+        },
+
         "apple" => AgentSignInHint {
             agent: key.to_string(),
             // `probe_binary` resolves `apple` to `fm` rather than to the OpenCode it is launched
@@ -685,6 +702,7 @@ const SIGN_IN_HINT_CARDS: &[&str] = &[
     "antigravity",
     "opencode",
     "cursor",
+    "kimi",
     "apple",
     "openaiproxy_card",
     "anthropic_card",
@@ -791,6 +809,8 @@ fn probe_binary(agent: &str) -> (String, Vec<String>) {
         // The binary is `cursor-agent`, not `cursor` -- `cursor` is the editor. Resolved through
         // `providers` so the probe finds the same copy a launch would.
         "cursor" => (resolve_cursor_binary(), vec![]),
+        // Resolved through `providers` so a launcher only in ~/.local/bin is found here too.
+        "kimi" => (resolve_kimi_binary(), vec![]),
         other => (other.to_string(), vec![]),
     }
 }
@@ -915,6 +935,7 @@ pub async fn check_auth(agent: &str, creds: &ProbeCredentials) -> AgentAuthResul
         "opencode" => opencode_auth().await,
         "apple" => apple_auth().await,
         "cursor" => cursor_auth().await,
+        "kimi" => kimi_auth().await,
         other if is_proxy_agent(other) => proxy_auth(other, creds).await,
         other => AgentAuthResult::failed(
             AuthStatus::Unknown,
@@ -1192,6 +1213,90 @@ async fn cursor_auth() -> AgentAuthResult {
     }
 
     AgentAuthResult::failed(AuthStatus::CheckFailed, combined)
+}
+
+/// A real one-turn prompt, as `claude_auth` does: Kimi has no status subcommand, and where its OAuth
+/// token lives under `~/.kimi-code` is the CLI's own business.
+///
+/// Print mode documents its exit codes: `0` done, `1` a permanent failure (configuration, sign-in,
+/// quota), `75` a transient one (rate limit, a 5xx, a timeout). Only `1` can mean "not signed in".
+async fn kimi_auth() -> AgentAuthResult {
+    let binary = resolve_kimi_binary();
+    let out = run_probe(
+        &binary,
+        &argv(&[], &["--prompt", "ping"]),
+        Duration::from_secs(30),
+    )
+    .await;
+
+    if out.exit_code == 0 {
+        return AgentAuthResult::authenticated().with_method("oauth");
+    }
+
+    let combined = out.combined();
+    let lower = combined.to_ascii_lowercase();
+    if out.exit_code == 1
+        && (lower.contains("login")
+            || lower.contains("log in")
+            || lower.contains("auth")
+            || lower.contains("api key")
+            || lower.contains("api_key"))
+    {
+        return AgentAuthResult::signed_out(AuthStatus::NotAuthenticated, combined, "kimi");
+    }
+
+    AgentAuthResult::failed(AuthStatus::CheckFailed, combined)
+}
+
+/// Whether `kimi` will run this model alias, asked by launching it on a one-word prompt. The alias
+/// is resolved against the user's own `config.toml`, so nothing short of a real run knows.
+async fn kimi_model(model: &str) -> ModelValidation {
+    let binary = resolve_kimi_binary();
+    let mut args = Vec::new();
+    if let Some(explicit) = explicit_model(model) {
+        args.push("--model".to_string());
+        args.push(explicit.to_string());
+    }
+    args.push("--prompt".to_string());
+    args.push("ping".to_string());
+
+    let out = run_probe(&binary, &args, Duration::from_secs(30)).await;
+
+    if out.exit_code == 0 {
+        return validation(ModelValidationStatus::Ok, model, None);
+    }
+    if out.timed_out() {
+        return validation(ModelValidationStatus::Timeout, model, None);
+    }
+
+    let combined = out.combined();
+    let lower = combined.to_ascii_lowercase();
+
+    match classify_provider_error(Some(&combined)) {
+        ProviderErrorKind::Quota => {
+            return validation(ModelValidationStatus::RateLimit, model, Some(combined));
+        }
+        ProviderErrorKind::Auth | ProviderErrorKind::None => {}
+    }
+    // `75` is Kimi's own "try again": a rate limit or a server error, never a bad id.
+    if out.exit_code == 75 {
+        return validation(ModelValidationStatus::RateLimit, model, Some(combined));
+    }
+    if lower.contains("model") && (lower.contains("not found") || lower.contains("unknown")) {
+        return validation(ModelValidationStatus::InvalidModel, model, Some(combined));
+    }
+    if lower.contains("login") || lower.contains("auth") {
+        return validation(ModelValidationStatus::AuthError, model, Some(combined));
+    }
+
+    validation(
+        ModelValidationStatus::Unknown,
+        model,
+        Some(format!(
+            "exit={}\nstdout: {}\nstderr: {}",
+            out.exit_code, out.stdout, out.stderr
+        )),
+    )
 }
 
 /// V1 `OpenCodeHealthCheck.CheckAuthAsync`: the credential file first, then the CLI's own count.
@@ -1506,6 +1611,7 @@ pub async fn validate_model(agent: &str, model: &str, creds: &ProbeCredentials) 
         "opencode" => opencode_model(model).await,
         "apple" => apple_model(model).await,
         "cursor" => cursor_model(model).await,
+        "kimi" => kimi_model(model).await,
         other if is_proxy_agent(other) => proxy_model(model, creds).await,
         other => validation(
             ModelValidationStatus::Unknown,
@@ -2025,6 +2131,7 @@ mod tests {
             ("copilot", "copilot"),
             ("antigravity", "agy"),
             ("cursor", "cursor-agent"),
+            ("kimi", "kimi"),
             ("apple", "fm"),
             ("opencode", "opencode"),
         ] {

@@ -257,6 +257,12 @@ const AGENT_PREREQUISITES: &[AgentPrerequisite] = &[
         install_url: "https://cursor.com/cli",
     },
     AgentPrerequisite {
+        label: "Kimi",
+        command: "kimi",
+        version_arg: "--version",
+        install_url: "https://www.kimi.com/code",
+    },
+    AgentPrerequisite {
         label: "Antigravity",
         command: "agy",
         version_arg: "--version",

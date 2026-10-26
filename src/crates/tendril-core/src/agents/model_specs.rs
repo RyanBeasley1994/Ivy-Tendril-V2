@@ -575,6 +575,19 @@ pub static SPECS: &[ModelSpec] = &[
         cache_read_per_million: 0.0,
         cache_write_per_million: 0.0,
     },
+    // The model behind Kimi Code's own `kimi-code/kimi-for-coding` alias. A Kimi Code plan is a
+    // subscription with no per-token rate, so the row is all zeroes and `is_priced` reports the run as
+    // unpriced rather than free. `context_window: 0` because Moonshot publishes none for the alias.
+    ModelSpec {
+        model_id: Cow::Borrowed("kimi-for-coding"),
+        display_name: Cow::Borrowed("Kimi for Coding"),
+        context_window: 0,
+        max_output_tokens: 0,
+        input_per_million: 0.0,
+        output_per_million: 0.0,
+        cache_read_per_million: 0.0,
+        cache_write_per_million: 0.0,
+    },
     // Cursor's own four priced house models, rated from cursor.com/docs/models. They are here so a
     // run on one reports a real cost; they are deliberately NOT in the `cursor` catalog row, because
     // the picker should keep steering at the vendor models whose ladders Tendril can reason about.

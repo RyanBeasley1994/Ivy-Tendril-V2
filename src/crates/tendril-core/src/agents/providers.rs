@@ -65,6 +65,7 @@ pub fn build_agent_spec(provider: &str, config: &AgentLaunchConfig) -> AgentProc
         "opencode" => build_opencode_spec(config),
         "copilot" => build_copilot_spec(config),
         "cursor" => build_cursor_spec(config),
+        "kimi" => build_kimi_spec(config),
         "ivy" => build_ivy_spec(config),
         "openaiproxy" | "proxy" => build_openai_proxy_spec(config),
         "apple" => build_apple_spec(config),
@@ -135,6 +136,7 @@ pub fn build_agent_pty_spec(provider: &str, config: &AgentPtyConfig) -> AgentPty
     let mut argv: Vec<String> = Vec::new();
     // A prompt passed as a flag, rather than as the trailing positional argument.
     let mut prompt_flag: Option<&str> = None;
+    let mut takes_initial_prompt = true;
 
     match normalized.as_str() {
         "antigravity" | "agy" => {
@@ -199,6 +201,19 @@ pub fn build_agent_pty_spec(provider: &str, config: &AgentPtyConfig) -> AgentPty
                 }
             }
         }
+        // `--auto` is Kimi's "never ask" mode, the counterpart of Claude's
+        // `--dangerously-skip-permissions` above. Kimi has no flag that seeds an interactive session
+        // with a task -- `--prompt` makes the run non-interactive -- so an initial prompt is dropped
+        // below rather than passed as a positional argument the CLI would reject.
+        "kimi" => {
+            argv.push(resolve_kimi_binary());
+            argv.push("--auto".to_string());
+            if let Some(model) = model {
+                argv.push("--model".to_string());
+                argv.push(model.to_string());
+            }
+            takes_initial_prompt = false;
+        }
         // All four are OpenCode: `ivy` and the proxies are the same CLI pointed at a different
         // base URL, which is why they always shared `build_opencode_spec`. They used to resolve a
         // separately-shipped `ivy-agent` rebuild of it; Tendril bundles OpenCode itself now, so
@@ -228,7 +243,7 @@ pub fn build_agent_pty_spec(provider: &str, config: &AgentPtyConfig) -> AgentPty
         .initial_prompt
         .as_deref()
         .map(str::trim)
-        .filter(|p| !p.is_empty())
+        .filter(|p| !p.is_empty() && takes_initial_prompt)
     {
         if let Some(flag) = prompt_flag {
             argv.push(flag.to_string());
@@ -1294,6 +1309,96 @@ fn build_cursor_spec(config: &AgentLaunchConfig) -> AgentProcessSpec {
 }
 
 // ---------------------------------------------------------------------------
+// Kimi Code (kimi)
+// ---------------------------------------------------------------------------
+
+/// The longest prompt passed to `kimi --prompt` as the argument itself. Kimi reads its prompt from
+/// that argument and not from stdin, and one argument is capped by the OS: 128 KiB on Linux
+/// (`MAX_ARG_STRLEN`), and the *whole* command line at 32K characters on Windows. A longer prompt is
+/// written to a file the agent is told to read instead.
+const KIMI_INLINE_PROMPT_LIMIT: usize = if cfg!(windows) { 24 * 1024 } else { 96 * 1024 };
+
+fn build_kimi_spec(config: &AgentLaunchConfig) -> AgentProcessSpec {
+    // No permission flag: `--prompt` refuses `--yolo`, `--auto` and `--plan`, because a print-mode
+    // run already never asks -- tool calls run under the `auto` policy and only the static deny rules
+    // in the user's own config still apply.
+    let mut args = vec!["--output-format".to_string(), "stream-json".to_string()];
+
+    // An alias from the user's `config.toml` (`kimi-code/kimi-for-coding`). Absent, the CLI runs
+    // that file's `default_model`. There is no effort flag to pair it with.
+    if let Some(m) = config.model.as_deref().map(str::trim) {
+        if !m.is_empty() && !m.eq_ignore_ascii_case("default") {
+            args.push("--model".to_string());
+            args.push(m.to_string());
+        }
+    }
+
+    // `--add-dir` is the same flag Copilot and Cursor take, so a `Write(/path/**)` allowlist rule
+    // widens the workspace here too.
+    for dir in merge_dirs(
+        &config.writable_directories,
+        &extract_copilot_dirs(&config.allowed_tools),
+    ) {
+        args.push("--add-dir".to_string());
+        args.push(dir);
+    }
+
+    if let Some(sid) = config.session_id.as_deref().filter(|s| !s.is_empty()) {
+        args.push("--session".to_string());
+        args.push(sid.to_string());
+    }
+
+    // Not rendered, each for want of a flag: MCP servers (Kimi reads them from its own config, not
+    // from a file named on the command line), tool allow- and deny-lists, the sandbox and a system
+    // prompt. The system prompt is prepended to the task instead, as `build_cursor_spec` does.
+
+    args.extend(config.extra_arguments.clone());
+
+    let prompt = match config.system_prompt.as_deref().filter(|s| !s.is_empty()) {
+        Some(sys) => format!("{}\n\n---\n\n{}", sys, config.prompt),
+        None => config.prompt.clone(),
+    };
+
+    let mut temp_files = Vec::new();
+    let inline = if prompt.len() <= KIMI_INLINE_PROMPT_LIMIT {
+        prompt
+    } else {
+        match write_temp_prompt(&prompt, "tendril-kimi-prompt") {
+            Some(path) => {
+                let pointer = format!(
+                    "Your full instructions are in the file {}. Read the whole file first, then \
+                     carry out those instructions exactly; they are your entire task.",
+                    path.to_string_lossy().replace('\\', "/")
+                );
+                args.push("--add-dir".to_string());
+                args.push(std::env::temp_dir().to_string_lossy().to_string());
+                temp_files.push(path);
+                pointer
+            }
+            // Inline anyway: the launch may still fit, and failing it here would be certain.
+            None => prompt,
+        }
+    };
+    args.push("--prompt".to_string());
+    args.push(inline);
+
+    let mut env = default_environment();
+    for (k, v) in &config.environment_variables {
+        env.insert(k.clone(), v.clone());
+    }
+
+    AgentProcessSpec {
+        command: resolve_kimi_binary(),
+        args,
+        environment: env,
+        working_directory: config.working_directory.clone(),
+        stdin_content: None,
+        redirect_stdin: false,
+        temp_files,
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Ivy Agent (ivy)
 // ---------------------------------------------------------------------------
 fn build_ivy_spec(config: &AgentLaunchConfig) -> AgentProcessSpec {
@@ -2210,6 +2315,38 @@ pub fn resolve_cursor_binary() -> String {
     }
 
     "cursor-agent".to_string()
+}
+
+/// The Kimi Code CLI to launch: `$HOME/.tendril/bin`, then `PATH`, then `~/.local/bin`, which is
+/// where its installer (and `uv tool install`) puts the launcher -- a directory a GUI-launched daemon
+/// often does not have on its `PATH`.
+///
+/// Falls back to the bare name so a missing install fails as `kimi`'s own "not found".
+pub fn resolve_kimi_binary() -> String {
+    let file = if cfg!(windows) { "kimi.exe" } else { "kimi" };
+    let home = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .ok();
+
+    if let Some(home) = &home {
+        let tendril_managed = Path::new(home).join(".tendril").join("bin").join(file);
+        if tendril_managed.is_file() {
+            return tendril_managed.to_string_lossy().to_string();
+        }
+    }
+
+    if let Some(p) = find_on_path("kimi") {
+        return p.to_string_lossy().to_string();
+    }
+
+    if let Some(home) = &home {
+        let candidate = Path::new(home).join(".local").join("bin").join(file);
+        if candidate.is_file() {
+            return candidate.to_string_lossy().to_string();
+        }
+    }
+
+    "kimi".to_string()
 }
 
 /// Tests for the `PATH` an agent is launched with. Inline rather than in `tests/` because the

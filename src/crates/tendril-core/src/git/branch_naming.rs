@@ -72,7 +72,7 @@ impl GitSettings {
             || self.mission_branch_template.is_some()
     }
 
-    fn prefix(&self) -> &str {
+    pub fn prefix(&self) -> &str {
         self.branch_prefix.as_deref().unwrap_or(DEFAULT_BRANCH_PREFIX)
     }
 }

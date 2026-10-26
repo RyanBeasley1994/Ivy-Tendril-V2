@@ -120,6 +120,9 @@ pub fn default_profiles(agent: &str) -> [TierDefault; 3] {
         "ivy" => ivy_tiers(),
         // `fm serve` serves one model and takes no effort argument, so every tier is the same run.
         "apple" => tiers((None, None), (None, None), (None, None)),
+        // `kimi` has no effort flag, and its model ids are aliases out of the user's own
+        // `config.toml`, so every tier runs whatever `default_model` names there.
+        "kimi" => tiers((None, None), (None, None), (None, None)),
         "openaiproxy" | "proxy" => openai_proxy_tiers(proxy_base_url().as_deref()),
         // claude, and any id we do not know: Claude is the default provider.
         _ => tiers(

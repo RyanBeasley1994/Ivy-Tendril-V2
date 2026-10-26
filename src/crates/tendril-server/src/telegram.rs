@@ -7,7 +7,8 @@
 //!
 //! * `/manager <name>` picks a project (the name need not be exact) and binds the chat to its manager.
 //!   Until `/end`, every message typed is handed to that manager exactly as typing it in the app would,
-//!   and everything said in that manager's chat comes back.
+//!   and what that manager says comes back. Messages sent to the manager, whether typed here, in the
+//!   app or by the scheduler, and daemon events are not relayed.
 //! * A manager that needs the operator, or whose work is complete, sends a notice here whether or not
 //!   the chat is bound, with the pull request's link when it names one. Replying to a notice sends that
 //!   one message to its manager and brings back the one answer; it does not start a conversation. Only
@@ -23,20 +24,18 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tendril_core::chat::execution::{ChatEvent, ChatTurnOptions};
-use tendril_core::chat::manager_brief::{is_briefing, manager_session_id};
+use tendril_core::chat::manager_brief::manager_session_id;
 use tendril_core::chat::models::ChatQueuedItem;
 use tendril_core::config::load_config;
 use tokio::sync::Mutex;
 
 /// Telegram refuses a message longer than 4096 characters.
 const MAX_MESSAGE_CHARS: usize = 3900;
-/// How much of a daemon event is forwarded: enough to say what it was.
-const EVENT_CHARS: usize = 300;
 /// Notices remembered so a reply to one can be routed to its manager.
 const MAX_NOTICES: usize = 50;
 /// Seconds one `getUpdates` call waits for a message before returning empty.
@@ -324,9 +323,6 @@ async fn status_text(state: &AppState, bound: Option<&str>) -> String {
     }
 }
 
-/// What was typed from Telegram lately, so the forwarder does not send the operator their own words back.
-type Echoes = Arc<std::sync::Mutex<VecDeque<String>>>;
-
 /// Managers that were sent a one-off reply to a notice and whose answer is still to come. The answer
 /// is brought back once, as a notice, without binding the chat to that manager.
 static AWAITING_ANSWER: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
@@ -382,7 +378,7 @@ pub fn plain_text(text: &str) -> String {
     text.trim_end().to_string()
 }
 
-async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, reply_to: Option<i64>, echoes: &Echoes) {
+async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, reply_to: Option<i64>) {
     let home = &state.tendril_home;
     match parse(text) {
         Command::Start(_) | Command::Help => {
@@ -438,12 +434,6 @@ async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, rep
                     }
                 }
             }
-            if let Ok(mut recent) = echoes.lock() {
-                recent.push_back(text.clone());
-                while recent.len() > 20 {
-                    recent.pop_front();
-                }
-            }
             match tell_manager(state, &project, &text).await {
                 Ok(true) => {
                     send(settings, "It is busy: your message is queued and it will take it up next.").await;
@@ -462,7 +452,7 @@ async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, rep
 
 /// One update from Telegram. Anything that is not the paired account in its private chat is dropped,
 /// except the one message that pairs it.
-async fn handle_update(state: &Arc<AppState>, update: &Value, echoes: &Echoes) {
+async fn handle_update(state: &Arc<AppState>, update: &Value) {
     let message = &update["message"];
     let (Some(chat_id), Some(user_id), Some(text)) =
         (message["chat"]["id"].as_i64(), message["from"]["id"].as_i64(), message["text"].as_str())
@@ -471,7 +461,7 @@ async fn handle_update(state: &Arc<AppState>, update: &Value, echoes: &Echoes) {
     };
     let settings = load(&state.tendril_home);
     if settings.is_operator(chat_id, user_id) {
-        handle_text(state, &settings, text, message["reply_to_message"]["message_id"].as_i64(), echoes).await;
+        handle_text(state, &settings, text, message["reply_to_message"]["message_id"].as_i64()).await;
         return;
     }
     // Pairing: only before anyone is paired, only in a private chat, only with the code Settings shows.
@@ -571,25 +561,17 @@ async fn send_notice(state: &AppState, settings: &Settings, project: &str, title
 }
 
 /// How a message in the bound manager's chat reads in Telegram, or `None` for one not worth sending.
-pub fn forwarded(role: &str, content: &str, typed_here: bool) -> Option<String> {
-    let content = content.trim();
-    if content.is_empty() {
-        return None;
-    }
+/// Only what the manager says is sent: messages to it (the operator's, the scheduler's, the briefing)
+/// and daemon events stay in the app.
+pub fn forwarded(role: &str, content: &str) -> Option<String> {
     match role {
-        "assistant" => Some(plain_text(content)).filter(|t| !t.is_empty()),
-        // Their own words came from this chat: sending them back is noise. Typed in the app, they are
-        // part of the conversation being followed.
-        "user" if typed_here => None,
-        "user" => Some(format!("You, in the app:\n{content}")),
-        "system" if is_briefing(content) || content.starts_with("Engine switched by the operator") => None,
-        "system" => Some(format!("[event] {}", crate::push::clip(&crate::push::plain(content), EVENT_CHARS))),
+        "assistant" => Some(plain_text(content.trim())).filter(|t| !t.is_empty()),
         _ => None,
     }
 }
 
-/// Sends everything said in the bound manager's chat to Telegram, as it is said.
-async fn forward_chat(state: Arc<AppState>, echoes: Echoes) {
+/// Sends what the bound manager says to Telegram, as it is said.
+async fn forward_chat(state: Arc<AppState>) {
     let mut events = state.chat_manager.subscribe_events();
     let mut sent: HashSet<String> = HashSet::new();
     loop {
@@ -621,27 +603,21 @@ async fn forward_chat(state: Arc<AppState>, echoes: Echoes) {
         if session_id != manager_session_id(&project) {
             continue;
         }
-        let typed_here = message.role == "user"
-            && echoes.lock().map(|mut recent| match recent.iter().position(|t| t == message.content.trim()) {
-                Some(i) => recent.remove(i).is_some(),
-                None => false,
-            })
-            .unwrap_or(false);
         // A reply is announced twice, as an empty stub when its turn starts and whole when it ends;
         // only the whole one has anything to send, and it is sent once.
-        let Some(text) = forwarded(&message.role, &message.content, typed_here) else { continue };
+        let Some(text) = forwarded(&message.role, &message.content) else { continue };
         if !sent.insert(message.id.clone()) {
             continue;
         }
         if sent.len() > 2000 {
             sent.clear();
         }
-        let links = if message.role == "assistant" { pr_links(&state, &project, &text).await } else { Vec::new() };
+        let links = pr_links(&state, &project, &text).await;
         send(&settings, &with_links(&text, &links)).await;
     }
 }
 
-async fn poll(state: Arc<AppState>, echoes: Echoes) {
+async fn poll(state: Arc<AppState>) {
     loop {
         let settings = load(&state.tendril_home);
         if settings.token.is_empty() {
@@ -657,7 +633,7 @@ async fn poll(state: Arc<AppState>, echoes: Echoes) {
                     if let Some(id) = update["update_id"].as_i64() {
                         change(&state.tendril_home, |s| s.offset = s.offset.max(id + 1)).await;
                     }
-                    handle_update(&state, &update, &echoes).await;
+                    handle_update(&state, &update).await;
                 }
             }
             Err(e) => {
@@ -669,9 +645,8 @@ async fn poll(state: Arc<AppState>, echoes: Echoes) {
 }
 
 pub fn spawn(state: Arc<AppState>) {
-    let echoes: Echoes = Arc::default();
-    tokio::spawn(poll(state.clone(), echoes.clone()));
-    tokio::spawn(forward_chat(state, echoes));
+    tokio::spawn(poll(state.clone()));
+    tokio::spawn(forward_chat(state));
 }
 
 // ---- Settings ------------------------------------------------------------------------------------
@@ -804,14 +779,13 @@ mod tests {
     }
 
     #[test]
-    fn the_whole_chat_is_forwarded_except_what_they_typed_here_and_the_briefing() {
-        assert_eq!(forwarded("assistant", " PR 46 is green. ", false).as_deref(), Some("PR 46 is green."));
-        assert_eq!(forwarded("assistant", "   ", false), None, "the stub of a turn that has not answered yet");
-        assert_eq!(forwarded("user", "merge it", true), None);
-        assert_eq!(forwarded("user", "merge it", false).as_deref(), Some("You, in the app:\nmerge it"));
-        assert_eq!(forwarded("system", "# You are the Factory Manager for project \"x\"", false), None);
-        let event = forwarded("system", &format!("Task ab12 has stopped. {}", "x".repeat(900)), false).unwrap();
-        assert!(event.starts_with("[event] Task ab12 has stopped.") && event.chars().count() < 320, "{event}");
+    fn only_what_the_manager_says_is_forwarded() {
+        assert_eq!(forwarded("assistant", " PR 46 is green. ").as_deref(), Some("PR 46 is green."));
+        assert_eq!(forwarded("assistant", "   "), None, "the stub of a turn that has not answered yet");
+        assert_eq!(forwarded("user", "merge it"), None, "the operator's own words, from here or the app");
+        assert_eq!(forwarded("user", "Scheduled check-in: review open PRs"), None, "a scheduled prompt");
+        assert_eq!(forwarded("system", "# You are the Factory Manager for project \"x\""), None);
+        assert_eq!(forwarded("system", "Task ab12 has stopped."), None, "daemon events stay in the app");
     }
 
     #[test]

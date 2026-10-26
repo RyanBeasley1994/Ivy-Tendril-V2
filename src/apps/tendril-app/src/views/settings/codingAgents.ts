@@ -36,6 +36,8 @@ export const CODING_AGENTS: { id: string; label: string; icon: string }[] = [
   { id: "opencode", label: "OpenCode", icon: "OpenCode" },
   // Also not one of `CodingAgentSetupView.Agents`: `cursor-agent` postdates V1 too.
   { id: "cursor", label: "Cursor", icon: "Cursor" },
+  // Also postdates V1. Moonshot's `kimi` CLI.
+  { id: "kimi", label: "Kimi Code", icon: "Kimi" },
   // Not one of `CodingAgentSetupView.Agents`: Apple's on-device models postdate V1, and this row is
   // the catalog's `apple` agent rather than a port of anything.
   { id: "apple", label: "Apple", icon: "Apple" },
@@ -496,6 +498,9 @@ export function tierDefaults(agent: string, baseUrl = ""): Profiles {
       );
     // `fm serve` serves one model and takes no effort argument, so every tier is the same run, and
     // the fields show `default` rather than a model this agent would ignore.
+    // `kimi` takes no effort argument and its models are aliases from the user's own
+    // `~/.kimi-code/config.toml`, so every tier leaves both blank and runs `default_model`.
+    case "kimi":
     case "apple":
       return tiers({ model: "", effort: "" }, { model: "", effort: "" }, { model: "", effort: "" });
     case "openaiproxy":

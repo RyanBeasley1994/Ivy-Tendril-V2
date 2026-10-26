@@ -31,6 +31,7 @@ import {
   SiGooglegemini,
   SiLinear,
   SiCursor,
+  SiMoonshotai,
 } from "react-icons/si";
 
 export interface IconProps {
@@ -152,6 +153,7 @@ export const Icon: FC<IconProps> = ({ name, color, size, className, style }) => 
     Gemini: SiGooglegemini,
     Linear: SiLinear,
     Cursor: SiCursor,
+    Kimi: SiMoonshotai,
   };
 
   if (name && name in reactIcons) {

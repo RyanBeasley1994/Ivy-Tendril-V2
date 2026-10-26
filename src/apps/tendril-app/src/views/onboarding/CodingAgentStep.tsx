@@ -21,6 +21,8 @@ export const ONBOARDING_AGENTS: { id: string; label: string; checkName: string }
   // No V1 counterpart either: `cursor-agent` postdates it. `checkName` is the label
   // `health::AGENT_PREREQUISITES` gives the `cursor-agent` probe.
   { id: "cursor", label: "Cursor", checkName: "Cursor" },
+  // Postdates V1 as well; `checkName` is the label `health::AGENT_PREREQUISITES` gives `kimi`.
+  { id: "kimi", label: "Kimi Code", checkName: "Kimi" },
   // No V1 counterpart: Apple's on-device models postdate it. `checkName` is the label
   // `health::AGENT_PREREQUISITES` reports, which probes `fm` rather than the OpenCode this agent is
   // launched through -- so the card reads "not installed" on a machine without `fm`, which is the

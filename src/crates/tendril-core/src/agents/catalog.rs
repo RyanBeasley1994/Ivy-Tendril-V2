@@ -206,6 +206,9 @@ const APPLE_DEFAULT: &str = "apple/system";
 /// so a job launched on the default reports a real cost rather than a dash. `composer-2.5` would be
 /// the house pick, but Tendril has no rates for it -- see `CURSOR_MODELS`.
 const CURSOR_DEFAULT: &str = "claude-opus-5-5";
+/// Kimi Code's default. `kimi -m` takes a `<provider>/<model>` alias from the user's own
+/// `~/.kimi-code/config.toml`, and this is the one a `kimi login` sets up.
+const KIMI_DEFAULT: &str = "kimi-code/kimi-for-coding";
 
 /// V1 `ClaudeModelCatalog`. Also the list the proxy serves when pointed at `api.anthropic.com`, and
 /// the first third of `IvyModelCatalog`.
@@ -400,6 +403,11 @@ static CURSOR_MODELS: &[CatalogModel] = &[
 /// a picker entry that cannot launch. No effort ladder: the on-device model has no
 /// reasoning-effort control, and `build_apple_spec` drops the argument rather than advertise a knob
 /// that does not exist.
+/// Kimi Code. One row, because the rest of what `kimi -m` accepts is whatever aliases the user has
+/// declared in their own `config.toml`, which a static list cannot know. No effort ladder: the CLI
+/// has no per-run effort flag (it is `[thinking].effort` in that same file).
+static KIMI_MODELS: &[CatalogModel] = &[model(KIMI_DEFAULT, "Kimi for Coding", &[])];
+
 static APPLE_MODELS: &[CatalogModel] = &[model("apple/system", "Apple On-Device", &[])];
 
 /// The one row V1's `GetModelsForBaseUrl` adds to OpenCode's list for Berget's endpoint.
@@ -515,6 +523,14 @@ static AGENTS: &[AgentDef] = &[
         default_model: GEMINI_DEFAULT,
         // `GeminiCli.Capabilities` is the one that omits `EffortControl`, so the Gemini agent takes
         // no effort argument at all.
+        efforts: &[],
+    },
+    AgentDef {
+        id: "kimi",
+        label: "Kimi Code",
+        icon: "Kimi",
+        catalogues: &[KIMI_MODELS],
+        default_model: KIMI_DEFAULT,
         efforts: &[],
     },
     AgentDef {
@@ -796,6 +812,7 @@ static ALL_CATALOGUES: &[&[CatalogModel]] = &[
     ANTIGRAVITY_MODELS,
     OPENCODE_MODELS,
     CURSOR_MODELS,
+    KIMI_MODELS,
     BERGET_MODELS,
 ];
 
@@ -918,6 +935,7 @@ mod tests {
                 "copilot",
                 "cursor",
                 "gemini",
+                "kimi",
                 "opencode",
                 "openaiproxy",
             ]
@@ -941,6 +959,7 @@ mod tests {
                 ("copilot".to_string(), "Copilot".to_string()),
                 ("cursor".to_string(), "Cursor".to_string()),
                 ("gemini".to_string(), "Gemini".to_string()),
+                ("kimi".to_string(), "Kimi".to_string()),
                 ("opencode".to_string(), "OpenCode".to_string()),
                 ("openaiproxy".to_string(), "OpenAI".to_string()),
             ]
@@ -964,6 +983,7 @@ mod tests {
                 ("copilot".to_string(), "Copilot".to_string()),
                 ("cursor".to_string(), "Cursor".to_string()),
                 ("gemini".to_string(), "Gemini".to_string()),
+                ("kimi".to_string(), "Kimi Code".to_string()),
                 ("opencode".to_string(), "OpenCode".to_string()),
                 ("openaiproxy".to_string(), "OpenAI Proxy".to_string()),
             ]
@@ -1191,6 +1211,12 @@ mod tests {
                     1,
                     "apple should offer exactly its one model"
                 );
+                continue;
+            }
+            // `kimi` likewise: `-m` takes an alias out of the user's own `config.toml`, and the one
+            // alias every install has is the one `kimi login` writes. Any other row would be a guess.
+            if agent.id == "kimi" {
+                assert_eq!(agent.models.len(), 1, "kimi should offer exactly its login's model");
                 continue;
             }
             assert!(

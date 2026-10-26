@@ -30,6 +30,7 @@ const AGENT_LABELS: Record<string, string> = {
   antigravity: "Antigravity",
   opencode: "OpenCode",
   cursor: "Cursor",
+  kimi: "Kimi",
   apple: "Apple",
 };
 

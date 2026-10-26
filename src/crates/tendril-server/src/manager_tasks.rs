@@ -196,7 +196,8 @@ pub async fn start(
         }
         None => {
             let dir = tendril_core::config::get_project_root_dir(&state.tendril_home, project).join("Tasks").join(&id);
-            let branch = format!("tendril/task-{id}-{}", slug(&title)).trim_end_matches('-').to_string();
+            let prefix = state.settings_snapshot().settings.git.prefix().to_string();
+            let branch = format!("{prefix}task-{id}-{}", slug(&title)).trim_end_matches('-').to_string();
             if let Some(parent) = dir.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
