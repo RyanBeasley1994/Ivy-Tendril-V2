@@ -15,13 +15,18 @@ import { Card, GhostButton, IconButton, Pill, PrimaryButton } from "../../compon
 export const HostedCard: React.FC<{ project: string }> = ({ project }) => {
   const [links, setLinks] = React.useState<ProjectLink[]>([]);
   const [editing, setEditing] = React.useState<string | null>(null);
+  // A daemon older than this card has no links route; say so rather than look like "nothing hosted".
+  const [failed, setFailed] = React.useState<string | null>(null);
 
   const load = React.useCallback(
     () =>
       bridge
         .listProjectLinks(project)
-        .then(setLinks)
-        .catch(() => undefined),
+        .then((next) => {
+          setLinks(next);
+          setFailed(null);
+        })
+        .catch((e: unknown) => setFailed(e instanceof Error ? e.message : String(e))),
     [project],
   );
 
@@ -33,7 +38,16 @@ export const HostedCard: React.FC<{ project: string }> = ({ project }) => {
     return () => window.clearInterval(timer);
   }, [load]);
 
-  if (links.length === 0) return null;
+  if (links.length === 0) {
+    if (!failed) return null;
+    return (
+      <Card title="Hosted" actions={<Globe className="size-3.5 text-muted-foreground" aria-hidden="true" />}>
+        <div className="px-4 py-3 text-[12px] text-muted-foreground">
+          Couldn't load hosted links ({failed}). The daemon may need updating.
+        </div>
+      </Card>
+    );
+  }
 
   const save = async (link: ProjectLinkInput) => {
     await bridge.saveProjectLink(project, link);

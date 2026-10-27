@@ -181,6 +181,31 @@ Setting the same URL again updates it; `tendril link remove --project "{project}
     s
 }
 
+/// The short form a manager sees at the top of every turn: what is recorded, and the one command that
+/// keeps it current. A manager hears about hosted things first (it starts the dev servers and tunnels,
+/// or a worker reports them), so it is the one that has to write them down.
+pub fn render_for_manager(tendril_home: &Path, project: &str) -> String {
+    let links = list(tendril_home, project);
+    let mut s = String::from("Hosted, as shown on the project page:\n");
+    if links.is_empty() {
+        s.push_str("- nothing recorded\n");
+    }
+    for l in &links {
+        s.push_str(&format!("- [{}] {}: {}", l.slug, l.label, l.url));
+        if !l.username.is_empty() || !l.password.is_empty() {
+            s.push_str(&format!(" (login {} / {})", l.username, l.password));
+        }
+        if !l.notes.is_empty() {
+            s.push_str(&format!(" — {}", l.notes));
+        }
+        s.push('\n');
+    }
+    s.push_str(&format!(
+        "Whenever you or a worker start, find or restart something the operator can open (dev server, tunnel, preview, staging, admin), record it with its test login in the same turn: `tendril link set --project \"{project}\" --label <what> --url <url> [--username u] [--password p] [--notes ...]` (add `--slug <id>` when its URL changed); `tendril link remove --project \"{project}\" <id>` when it is gone. Keep this list true.\n"
+    ));
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,5 +260,8 @@ mod tests {
         let s = render_for_prompt(home.path(), "P");
         assert!(s.contains("**Admin**: https://x.dev/admin (login `admin` / `pw`)"), "{s}");
         assert!(s.contains("tendril link set --project \"P\""), "{s}");
+        let m = render_for_manager(home.path(), "P");
+        assert!(m.contains("- [admin] Admin: https://x.dev/admin (login admin / pw)"), "{m}");
+        assert!(m.contains("--slug <id>"), "{m}");
     }
 }

@@ -107,8 +107,9 @@ pub fn snapshot(tendril_home: &Path, project: &str, now: DateTime<Utc>) -> Strin
     } else {
         lines.join("\n")
     };
+    let hosted = crate::project_links::render_for_manager(tendril_home, project);
     format!(
-        "# Where the project stands\nFrom the daemon, as of this turn. It is current: do not list missions, tasks or jobs again to confirm it; look further only at the thing you are about to act on.\n{body}\n---\n\n"
+        "# Where the project stands\nFrom the daemon, as of this turn. It is current: do not list missions, tasks or jobs again to confirm it; look further only at the thing you are about to act on.\n{body}\n\n{hosted}---\n\n"
     )
 }
 
@@ -122,6 +123,7 @@ mod tests {
         let text = snapshot(home.path(), "Acme", Utc::now());
         assert!(text.contains("Nothing is in flight"), "{text}");
         assert!(text.contains("do not list missions, tasks or jobs again"));
+        assert!(text.contains("Hosted, as shown on the project page:\n- nothing recorded"), "{text}");
     }
 
     #[test]
