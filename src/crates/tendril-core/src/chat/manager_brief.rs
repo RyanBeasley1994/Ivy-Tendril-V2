@@ -98,7 +98,7 @@ pub fn manager_session_id(project: &str) -> String {
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
-pub const BRIEFING_VERSION: u32 = 19;
+pub const BRIEFING_VERSION: u32 = 20;
 
 /// Marker line inside the briefing that [`briefing_is_current`] looks for.
 fn version_marker() -> String {
@@ -256,6 +256,7 @@ tracking it.
 When the operator corrects you or states a preference, save it at once (`tendril memory write`) and put
 it into every instruction from then on; read what the project already knows
 (`tendril memory list --project {project}`) before deciding how something should be done.
+Hosted URLs + test logins: `tendril link set`.
 
 ### Where a request finishes
 - **A pull request (the default):** the whole request on one pushed branch, a pull request whose title

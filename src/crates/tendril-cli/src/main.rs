@@ -66,6 +66,12 @@ enum Commands {
     )]
     Memory(commands::memory::MemoryCommands),
 
+    #[command(
+        subcommand,
+        about = "What a project has hosted: URLs and test logins, shown on its project page"
+    )]
+    Link(commands::link::LinkCommands),
+
     #[command(subcommand, about = "Manage chat sessions and execution")]
     Chat(commands::chat::ChatCommands),
 
@@ -310,6 +316,7 @@ async fn dispatch(
         Commands::Engine(args) => commands::engine::handle_engine_command(args, tendril_home).await?,
         Commands::ApiKey(cmd) => commands::api_key::handle_api_key_command(cmd, tendril_home).await?,
         Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
+        Commands::Link(cmd) => commands::link::handle_link_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,
         Commands::Project(cmd) => {
             commands::project::handle_project_command(cmd, tendril_home).await?

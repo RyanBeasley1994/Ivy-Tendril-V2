@@ -313,6 +313,57 @@ impl TendrilClient {
         .await
     }
 
+    pub async fn list_project_links(
+        &self,
+        project_name: &str,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/links", path_segment(project_name)),
+            None,
+            "PROJECT_LINKS_FAILED",
+            "list the project's hosted links",
+            None,
+        )
+        .await
+    }
+
+    pub async fn set_project_link(
+        &self,
+        project_name: &str,
+        body: serde_json::Value,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::POST,
+            &format!("/api/projects/{}/links", path_segment(project_name)),
+            Some(body),
+            "PROJECT_LINKS_FAILED",
+            "save the hosted link",
+            None,
+        )
+        .await
+    }
+
+    pub async fn delete_project_link(
+        &self,
+        project_name: &str,
+        slug: &str,
+    ) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::DELETE,
+            &format!(
+                "/api/projects/{}/links/{}",
+                path_segment(project_name),
+                path_segment(slug)
+            ),
+            None,
+            "PROJECT_LINKS_FAILED",
+            "remove the hosted link",
+            None,
+        )
+        .await
+    }
+
     /// Scanning may clone a git URL first, so it gets the clone timeout rather than the shared 10s.
     pub async fn scan_repo_assets(
         &self,

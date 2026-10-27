@@ -145,6 +145,34 @@ pub async fn cmd_delete_project_memory(
         .await
 }
 
+#[tauri::command]
+pub async fn cmd_list_project_links(project_name: String) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .list_project_links(&project_name)
+        .await
+}
+
+/// `link` is the daemon's `LinkInput` as-is: url, label, username, password, notes, optional slug.
+#[tauri::command]
+pub async fn cmd_set_project_link(
+    project_name: String,
+    link: serde_json::Value,
+) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .set_project_link(&project_name, link)
+        .await
+}
+
+#[tauri::command]
+pub async fn cmd_delete_project_link(
+    project_name: String,
+    slug: String,
+) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .delete_project_link(&project_name, &slug)
+        .await
+}
+
 /// `kind` is `skills` or `mcpServers`; the daemon rejects anything else.
 #[tauri::command]
 pub async fn cmd_scan_repo_assets(

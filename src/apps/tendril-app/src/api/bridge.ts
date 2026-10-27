@@ -103,6 +103,8 @@ export interface ApiKeyRecord {
 import type {
   DiscoveredRepoAsset,
   ProjectMemoryEntry,
+  ProjectLink,
+  ProjectLinkInput,
   ManagerTask,
   ProjectDocker,
   TelegramStatus,
@@ -1273,6 +1275,33 @@ export const tauriClient = {
       "cmd_project_docker",
       { projectName },
       `/api/projects/${encodeURIComponent(projectName)}/docker`,
+    );
+  },
+
+  /** What the project has hosted, newest first. */
+  async listProjectLinks(this: void, projectName: string): Promise<ProjectLink[]> {
+    return invokeOrFetch<ProjectLink[]>(
+      "cmd_list_project_links",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/links`,
+    );
+  },
+
+  async saveProjectLink(this: void, projectName: string, link: ProjectLinkInput): Promise<ProjectLink> {
+    return invokeOrFetch<ProjectLink>(
+      "cmd_set_project_link",
+      { projectName, link },
+      `/api/projects/${encodeURIComponent(projectName)}/links`,
+      { method: "POST", body: JSON.stringify(link) },
+    );
+  },
+
+  async deleteProjectLink(this: void, projectName: string, slug: string): Promise<void> {
+    await invokeOrFetch<unknown>(
+      "cmd_delete_project_link",
+      { projectName, slug },
+      `/api/projects/${encodeURIComponent(projectName)}/links/${encodeURIComponent(slug)}`,
+      { method: "DELETE" },
     );
   },
 

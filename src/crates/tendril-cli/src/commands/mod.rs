@@ -8,6 +8,7 @@ pub mod doctor;
 pub mod generate_certs;
 pub mod hash_password;
 pub mod job;
+pub mod link;
 pub mod mcp;
 pub mod memory;
 pub mod evidence;

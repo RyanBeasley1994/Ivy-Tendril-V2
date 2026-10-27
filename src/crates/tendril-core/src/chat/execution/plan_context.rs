@@ -261,6 +261,7 @@ pub fn plan_chat_context(tendril_home: &Path, plan_folder_name: &str) -> Option<
         let query = format!("{}\n{}", plan.title, revision);
         let paths = crate::project_memory::paths_in(&query);
         b.push_str(crate::project_memory::render_for_prompt(tendril_home, &plan.project, &query, &paths).trim_start());
+        b.push_str(&crate::project_links::render_for_prompt(tendril_home, &plan.project));
         b.push_str("\n\n");
     }
     b.push_str("---\n\n");

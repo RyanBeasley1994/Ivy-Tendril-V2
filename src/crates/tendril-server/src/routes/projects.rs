@@ -13,6 +13,7 @@ mod crud;
 mod engine;
 mod evidence;
 mod hooks;
+mod links;
 mod manager;
 mod memory;
 mod payloads;
@@ -28,6 +29,7 @@ pub use crud::{
 pub use engine::{get_global_engine, get_project_engine, set_global_engine, set_project_engine};
 pub use evidence::project_evidence;
 pub use hooks::{add_project_hook, remove_project_hook};
+pub use links::{delete_project_link, list_project_links, set_project_link};
 pub use manager::{
     clean_manager_task, get_or_create_project_manager, list_manager_tasks, managers_status,
     project_docker, project_owners, schedule_manager_wake, start_manager_task, stop_manager_task, watch_pull_request,

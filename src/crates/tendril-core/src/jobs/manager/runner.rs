@@ -587,8 +587,8 @@ fn hook_context(
 }
 
 /// The project's long-term memory for this job: its index, and the memories most relevant to the
-/// plan the job works on, ranked against the plan's text and the paths it names. Nothing for a job
-/// without a project.
+/// plan the job works on, ranked against the plan's text and the paths it names, then what the
+/// project has hosted. Nothing for a job without a project.
 fn project_memory_section(tendril_home: &std::path::Path, job: &JobItem) -> String {
     let project = job.project.trim();
     if project.is_empty() {
@@ -611,5 +611,7 @@ fn project_memory_section(tendril_home: &std::path::Path, job: &JobItem) -> Stri
         query.push_str(args);
     }
     let paths = crate::project_memory::paths_in(&query);
-    crate::project_memory::render_for_prompt(tendril_home, project, &query, &paths)
+    let mut s = crate::project_memory::render_for_prompt(tendril_home, project, &query, &paths);
+    s.push_str(&crate::project_links::render_for_prompt(tendril_home, project));
+    s
 }

@@ -18,6 +18,7 @@ import { useMissions } from "./ProjectsHomeView";
 import { MissionGraph, MissionRun } from "./MissionRun";
 import { ModelsPanel } from "./ModelsPanel";
 import { ArtifactsPanel } from "./ArtifactsPanel";
+import { HostedCard } from "./HostedCard";
 
 interface Props {
   project: ProjectSummary;
@@ -195,6 +196,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {tab === "overview" && (
               <OverviewPanel
+                project={project.name}
                 status={status}
                 onOpenMission={openRun}
                 onOpenFull={onOpenMission}
@@ -332,11 +334,12 @@ const SummaryStrip: React.FC<{ status: Status; runningTasks: number }> = ({ stat
 /* ------------------------------------------------------------------ tabs */
 
 const OverviewPanel: React.FC<{
+  project: string;
   status: Status;
   onOpenMission: (id: string) => void;
   onOpenFull: (id: string) => void;
   onAskManager: () => void;
-}> = ({ status, onOpenMission, onOpenFull, onAskManager }) => {
+}> = ({ project, status, onOpenMission, onOpenFull, onAskManager }) => {
   const passedMs = status.missions.flatMap((m) => m.milestones).filter((m) => m.state === "Passed");
   const firstTry = passedMs.length
     ? Math.round((passedMs.filter((m) => m.attempts <= 1).length / passedMs.length) * 100)
@@ -374,6 +377,8 @@ const OverviewPanel: React.FC<{
           ))}
         </Card>
       )}
+
+      <HostedCard project={project} />
 
       {status.attention.length > 0 && approvals.length === 0 && (
         <ul className="m-0 flex list-none flex-col gap-1.5 rounded-xl border border-border bg-card p-3.5 text-[12.5px] text-muted-foreground">

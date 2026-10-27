@@ -8,6 +8,25 @@
 export type { DiscoveredRepoAsset, RepoAssetKind } from "@ivy-interactive/components/dialogs";
 
 /** One row of a project's memory table: `GET /api/projects/:name/memory`. */
+/** Something the project has hosted, recorded by an agent (`tendril link set`) or by hand. */
+export interface ProjectLink {
+  slug: string;
+  label: string;
+  url: string;
+  /** A test account's login; empty when the link needs none. */
+  username: string;
+  password: string;
+  notes: string;
+  /** Who recorded it: `user`, `plan:00012`, `job:00018`, `mission:00003`, `chat:<id>`. */
+  source: string;
+  updated: string;
+}
+
+/** What the Hosted card saves. Without `slug`, a link with the same URL is replaced. */
+export type ProjectLinkInput = Pick<ProjectLink, "label" | "url" | "username" | "password" | "notes"> & {
+  slug?: string;
+};
+
 export interface ProjectMemoryEntry {
   fileName: string;
   /** The first two non-blank lines, markers trimmed, joined with " — " (V1's snippet). */

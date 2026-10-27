@@ -418,6 +418,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/projects/:name/engine",
             get(projects::get_project_engine).put(projects::set_project_engine),
         )
+        // What a project has hosted, with test logins; see `projects::links`.
+        .route(
+            "/api/projects/:name/links",
+            get(projects::list_project_links).post(projects::set_project_link),
+        )
+        .route(
+            "/api/projects/:name/links/:slug",
+            delete(projects::delete_project_link),
+        )
         // A project's memory files (`<TENDRIL_HOME>/Projects/<Project>/Memory/*.md`), V1's
         // `ProjectMemoryTableView` + `EditProjectMemorySheet`; see `projects::memory`.
         .route(
