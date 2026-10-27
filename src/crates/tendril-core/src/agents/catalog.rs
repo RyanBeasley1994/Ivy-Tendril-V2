@@ -665,7 +665,7 @@ impl AgentDef {
     }
 }
 
-fn effort_options(ids: &[&str]) -> Vec<EffortOption> {
+pub(crate) fn effort_options(ids: &[&str]) -> Vec<EffortOption> {
     if ids.is_empty() {
         return Vec::new();
     }

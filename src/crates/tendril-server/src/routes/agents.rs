@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use tendril_core::agents::catalog::{
     all_agents_for_proxy_base_url, apply_codex_local_config, OPENAI_PROXY_AGENT_ID,
 };
+use tendril_core::agents::claude_models::{apply_claude_harness_models, harness_models};
 use tendril_core::agents::kimi_config::discover_kimi_models;
 use tendril_core::agents::probe::{
     all_sign_in_hints, check_auth, check_install, validate_model, AgentAuthResult,
@@ -27,6 +28,10 @@ pub async fn get_agents_handler(State(state): State<Arc<AppState>>) -> impl Into
     let proxy_base_url = openai_proxy_base_url(&snapshot.settings);
     let mut agents = all_agents_for_proxy_base_url(proxy_base_url.as_deref());
     apply_codex_local_config(&mut agents);
+    // Claude Code's own list, so a newly shipped model shows up without a catalogue edit.
+    if let Some(models) = harness_models().await {
+        apply_claude_harness_models(&mut agents, &models);
+    }
     Json(agents)
 }
 
