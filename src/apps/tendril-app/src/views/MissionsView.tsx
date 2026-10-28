@@ -343,7 +343,7 @@ const EmptyState: React.FC<{
     data-testid="missions-empty"
   >
     <div className="flex flex-col items-start gap-3">
-      <span className="flex size-11 items-center justify-center rounded-xl bg-primary/12 text-success shadow-[0_10px_30px_-12px_rgba(0,204,146,0.6)]">
+      <span className="flex size-11 items-center justify-center rounded-xl bg-primary/12 text-success shadow-[0_10px_30px_-12px_rgba(27,146,255,0.6)]">
         <Rocket size={20} aria-hidden="true" />
       </span>
       <h1 className="m-0 text-[26px] font-semibold tracking-[-0.025em]">
@@ -1420,7 +1420,7 @@ const MilestoneIcon: React.FC<{ state: MilestoneState }> = ({ state }) => {
         <span
           className={cn(
             base,
-            "border-primary bg-background text-success shadow-[0_0_0_4px_rgba(0,204,146,0.12)]",
+            "border-primary bg-background text-success shadow-[0_0_0_4px_rgba(27,146,255,0.12)]",
           )}
         >
           <span className="size-2 animate-pulse rounded-full bg-current" />
@@ -1531,7 +1531,7 @@ const MilestoneRow: React.FC<{
       className={cn(
         "overflow-hidden rounded-xl border bg-card",
         active
-          ? "border-primary/30 shadow-[0_14px_36px_-24px_rgba(0,204,146,0.5)]"
+          ? "border-primary/30 shadow-[0_14px_36px_-24px_rgba(27,146,255,0.5)]"
           : "border-border",
         m.state === "Skipped" && "opacity-60",
       )}
@@ -1888,7 +1888,7 @@ const LiveAgentCard: React.FC<{
   return (
     <section
       data-testid="mission-live-agent"
-      className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/[0.05] p-4 shadow-[0_18px_40px_-24px_rgba(0,204,146,0.45)]"
+      className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/[0.05] p-4 shadow-[0_18px_40px_-24px_rgba(27,146,255,0.45)]"
     >
       <div className="flex items-center gap-2">
         <span

@@ -53,7 +53,7 @@ export const Panel: React.FC<{
   <section
     data-testid={testId}
     className={cn(
-      "flex min-w-0 flex-col rounded-[14px] border border-border bg-card text-card-foreground",
+      "flex min-w-0 flex-col rounded-[14px] border border-border bg-card bg-[radial-gradient(circle_at_12%_0%,rgba(27,146,255,0.09),transparent_46%)] text-card-foreground",
       className,
     )}
   >

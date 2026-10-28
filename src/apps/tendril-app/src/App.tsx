@@ -133,11 +133,11 @@ const InboxView = React.lazy(() =>
 const PullRequestsView = React.lazy(() =>
   import("./views/PullRequestsView").then((m) => ({ default: m.PullRequestsView })),
 );
+const SupportDock = React.lazy(() =>
+  import("./views/support/SupportDock").then((m) => ({ default: m.SupportDock })),
+);
 const SupportView = React.lazy(() =>
   import("./views/support/SupportView").then((m) => ({ default: m.SupportView })),
-);
-const InsightsView = React.lazy(() =>
-  import("./views/InsightsView").then((m) => ({ default: m.InsightsView })),
 );
 const RecommendationsView = React.lazy(() =>
   import("./views/RecommendationsView").then((m) => ({ default: m.RecommendationsView })),
@@ -1067,6 +1067,7 @@ export const App: React.FC = () => {
             onOpenJob={handleSelectJob}
             onOpenPlan={handleSelectPlan}
             onOpenGit={() => uiStore.setActiveNav("git", { project: project.name })}
+            onOpenRepo={(id) => uiStore.setActiveNav("git", { repo: id, from: project.name })}
             onOpenChat={(sessionId) => {
               uiStore.navigate({ appId: "chat" });
               void import("./state/chatStore").then(async (m) => {
@@ -1085,8 +1086,13 @@ export const App: React.FC = () => {
           <GitView
             repoId={uiState.pageArgs.repo}
             project={uiState.pageArgs.project}
-            onOpenRepo={(id) => uiStore.setActiveNav("git", { repo: id })}
-            onBack={() => uiStore.setActiveNav("git")}
+            onOpenRepo={(id) =>
+              uiStore.setActiveNav("git", uiState.pageArgs.from ? { repo: id, from: uiState.pageArgs.from } : { repo: id })
+            }
+            // Opened from a project, Back goes back to it rather than to every repository.
+            onBack={() =>
+              uiState.pageArgs.from ? uiStore.setActiveNav(`project-${uiState.pageArgs.from}`) : uiStore.setActiveNav("git")
+            }
             onAskManager={(project, text) => openProjectFrom(project, { draft: text })}
           />
         );
@@ -1101,7 +1107,9 @@ export const App: React.FC = () => {
           />
         );
 
+      // Dashboard and Insights are one page; the sidebar's Insights button opens it.
       case "dashboard":
+      case "insights":
         return (
           <DashboardView
             plans={reviewablePlans}
@@ -1223,10 +1231,7 @@ export const App: React.FC = () => {
         );
 
       case "support":
-        return <SupportView projects={projects} />;
-
-      case "insights":
-        return <InsightsView onSelectPlan={(planId) => void handleSelectPlan(planId)} />;
+        return <SupportView projects={projects} initialTicket={uiState.pageArgs.ticket} />;
 
       case "recommendations":
         return (
@@ -1382,10 +1387,6 @@ export const App: React.FC = () => {
         onSelectTab={(tab) => uiStore.navigate({ tabId: tab })}
         onCloseTab={(tab) => uiStore.closeTab(tab)}
         onShowPage={() => uiStore.showPage()}
-        onNewPlan={() => {
-          setNewPlanPrefill({});
-          setIsNewPlanOpen(true);
-        }}
         onReconnect={() => serviceStore.checkHealth()}
         onRestartService={() => {
           setShellError(null);
@@ -1417,6 +1418,7 @@ export const App: React.FC = () => {
         projects={projects}
         jobs={jobsState.jobs}
         onOpenProject={(name) => uiStore.setActiveNav(`project-${name}`)}
+        onAddProject={() => setIsAddProjectOpen(true)}
         sidebarList={sidebarList}
         onSelectSidebarItem={handleSelectSidebarItem}
         // V1's `showPlanSearchDialog`. It has to be a search over the plan database rather than a
@@ -1633,6 +1635,13 @@ export const App: React.FC = () => {
 
       <React.Suspense fallback={null}>
         <Toaster />
+        {/* Minimised support tickets, over every page. */}
+        <React.Suspense fallback={null}>
+          <SupportDock
+            projects={projects}
+            onOpenOnSupportPage={(ticket) => uiStore.setActiveNav("support", { ticket })}
+          />
+        </React.Suspense>
       </React.Suspense>
     </>
   );

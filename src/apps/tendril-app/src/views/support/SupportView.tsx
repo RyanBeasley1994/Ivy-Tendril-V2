@@ -1,5 +1,5 @@
 import React from "react";
-import { Bot, LifeBuoy, Lock, RefreshCw, Send, X } from "lucide-react";
+import { Bot, LifeBuoy, Lock, Maximize2, Minus, RefreshCw, Send, X } from "lucide-react";
 import { cn } from "@ivy-interactive/components/ui";
 import type { ProjectSummary } from "../../types/api";
 import {
@@ -11,7 +11,8 @@ import {
   type TicketSummary,
 } from "../../api/support";
 import { refreshSupportCount } from "../../state/supportCount";
-import { chatStore } from "../../state/chatStore";
+import { supportDock, type DockedTicket } from "../../state/supportDock";
+import { ChatStore } from "../../state/chatStore";
 import type { ChatMessage } from "../../types/chat";
 import { ChatView } from "../ChatView";
 import { formatAge } from "../../utils/commandCenter";
@@ -44,7 +45,7 @@ const ago = (iso: string) => formatAge(Math.max(0, Date.now() - new Date(iso).ge
 const errorText = (e: unknown) =>
   e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String(e.message) : String(e);
 
-export const SupportView: React.FC<{ projects: ProjectSummary[] }> = ({ projects }) => {
+export const SupportView: React.FC<{ projects: ProjectSummary[]; initialTicket?: string }> = ({ projects, initialTicket }) => {
   const [status, setStatus] = React.useState<SupportStatus | null>(null);
   React.useEffect(() => {
     supportApi.status().then(setStatus).catch(() => setStatus({ configured: false, baseUrl: "", email: "" }));
@@ -52,7 +53,7 @@ export const SupportView: React.FC<{ projects: ProjectSummary[] }> = ({ projects
 
   if (!status) return <Page><span className="text-[13px] text-muted-foreground">Loading…</span></Page>;
   if (!status.configured) return <ConnectPage initial={status} onConnected={setStatus} />;
-  return <Board status={status} projects={projects} onDisconnected={setStatus} />;
+  return <Board status={status} projects={projects} initialTicket={initialTicket} onDisconnected={setStatus} />;
 };
 
 /* ------------------------------------------------------------------ connect */
@@ -125,12 +126,16 @@ const ConnectPage: React.FC<{ initial: SupportStatus; onConnected: (s: SupportSt
 const Board: React.FC<{
   status: SupportStatus;
   projects: ProjectSummary[];
+  initialTicket?: string;
   onDisconnected: (s: SupportStatus) => void;
-}> = ({ status, projects, onDisconnected }) => {
+}> = ({ status, projects, initialTicket, onDisconnected }) => {
   const [tickets, setTickets] = React.useState<TicketSummary[] | null>(null);
   const [showDone, setShowDone] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [openId, setOpenId] = React.useState<string | null>(null);
+  const [openId, setOpenId] = React.useState<string | null>(initialTicket ?? null);
+  React.useEffect(() => {
+    if (initialTicket) setOpenId(initialTicket);
+  }, [initialTicket]);
   const [dragOver, setDragOver] = React.useState<Lane | null>(null);
   const dragging = React.useRef<string | null>(null);
 
@@ -249,6 +254,10 @@ const Board: React.FC<{
           id={openId}
           projects={projects}
           onClose={() => setOpenId(null)}
+          onMinimize={(t) => {
+            supportDock.dock(t);
+            setOpenId(null);
+          }}
           onChanged={() => void load()}
         />
       )}
@@ -310,12 +319,21 @@ const STATUS_LABEL: Record<TicketStatus, string> = {
   CLOSED: "Closed",
 };
 
-const TicketPanel: React.FC<{
+/**
+ * One ticket: its conversation, the reply box, and its manager chat. `side` is the Support page's
+ * right-hand panel; `floating` is the window a docked bubble opens (`SupportDock`).
+ */
+export const TicketPanel: React.FC<{
   id: string;
   projects: ProjectSummary[];
   onClose: () => void;
   onChanged: () => void;
-}> = ({ id, projects, onClose, onChanged }) => {
+  variant?: "side" | "floating";
+  /** Minimises the ticket to a bubble at the bottom of the window. */
+  onMinimize?: (ticket: DockedTicket) => void;
+  /** Opens the ticket on the Support page. */
+  onExpand?: () => void;
+}> = ({ id, projects, onClose, onChanged, variant = "side", onMinimize, onExpand }) => {
   const [ticket, setTicket] = React.useState<TicketDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<"reply" | "close">("reply");
@@ -365,7 +383,11 @@ const TicketPanel: React.FC<{
 
   return (
     <aside
-      className="fixed inset-0 z-30 flex flex-col border-l border-border bg-background lg:static lg:z-auto lg:w-[580px] lg:shrink-0"
+      className={
+        variant === "floating"
+          ? "flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_18px_60px_rgba(0,0,0,0.55)]"
+          : "fixed inset-0 z-30 flex flex-col border-l border-border bg-background lg:static lg:z-auto lg:w-[580px] lg:shrink-0"
+      }
       aria-label="Ticket"
     >
       <header className="flex shrink-0 items-start gap-2 border-b border-border/70 px-4 py-3">
@@ -396,6 +418,19 @@ const TicketPanel: React.FC<{
             </div>
           )}
         </div>
+        {onMinimize && ticket && (
+          <IconButton
+            label="Minimise to a bubble"
+            onClick={() => onMinimize({ id, subject: ticket.subject, partner: ticket.partner?.name })}
+          >
+            <Minus className="size-4" aria-hidden="true" />
+          </IconButton>
+        )}
+        {onExpand && (
+          <IconButton label="Open on the Support page" onClick={onExpand}>
+            <Maximize2 className="size-3.5" aria-hidden="true" />
+          </IconButton>
+        )}
         <IconButton label="Close ticket panel" onClick={onClose}>
           <X className="size-4" aria-hidden="true" />
         </IconButton>
@@ -539,14 +574,21 @@ const ManagerPane: React.FC<{
 const TicketChat: React.FC<{ sessionId: string; ticket: TicketDetail }> = ({ sessionId, ticket }) => {
   const [ready, setReady] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // Its own store, so a ticket chat open in a bubble never swaps out the project manager's chat
+  // showing on the page behind it (that one uses the app-wide store).
+  const storeRef = React.useRef<ChatStore | null>(null);
+  if (storeRef.current === null) {
+    storeRef.current = new ChatStore({ planId: `ticket-${ticket.id}`, folderName: `ticket-${ticket.id}`, sessionTitle: ticket.subject });
+  }
+  const store = storeRef.current;
+  React.useEffect(() => () => store.destroy(), [store]);
   React.useEffect(() => {
     let live = true;
     setReady(false);
     (async () => {
       try {
-        // `init` lists the sessions once; listing again on every open is the slow path.
-        await chatStore.init();
-        await chatStore.selectSession(sessionId);
+        await store.init();
+        await store.selectSession(sessionId);
         if (live) setReady(true);
       } catch (e) {
         if (live) setError(errorText(e));
@@ -555,13 +597,14 @@ const TicketChat: React.FC<{ sessionId: string; ticket: TicketDetail }> = ({ ses
     return () => {
       live = false;
     };
-  }, [sessionId]);
+  }, [sessionId, store]);
   if (error) return <div className="p-4 text-[12.5px] text-destructive">Could not open the conversation: {error}</div>;
   if (!ready) return <div className="p-4 text-[12.5px] text-muted-foreground">Opening the conversation…</div>;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ChatView
         embedded
+        store={store}
         greeting={`Manager · ${ticket.handoff?.project ?? ""}`}
         headline={ticket.subject}
         hideMessage={isTicketChatNote}

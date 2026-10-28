@@ -10,6 +10,9 @@ import { applyAppZoom } from "./state/zoom";
 import { isTauri } from "./utils/tauri";
 import { installExternalLinkHandler } from "./utils/externalLinks";
 import { registerPwa, trackVisualViewport } from "./pwa/register";
+// Bundled rather than fetched: the desktop app's CSP only loads fonts it ships (`font-src 'self'`).
+import "@fontsource-variable/onest";
+import "@fontsource-variable/geist-mono";
 import "./index.css";
 
 applyAppZoom();

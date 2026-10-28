@@ -70,7 +70,7 @@ export const CommandComposer: React.FC<{
     <form
       onSubmit={submit}
       data-testid="command-composer"
-      className="flex shrink-0 flex-col gap-3 rounded-xl border border-[#22303d] bg-card py-3.5 pl-4 pr-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_0_4px_rgba(0,204,146,0.035),0_18px_40px_-24px_rgba(0,204,146,0.35)]"
+      className="flex shrink-0 flex-col gap-3 rounded-xl border border-[#1f2a44] bg-card py-3.5 pl-4 pr-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_0_4px_rgba(27,146,255,0.035),0_18px_40px_-24px_rgba(27,146,255,0.35)]"
     >
       <div className="flex items-center gap-3">
         <Sparkles className="size-[18px] shrink-0 text-success" aria-hidden="true" />
@@ -120,7 +120,7 @@ export const CommandComposer: React.FC<{
 const SEGMENT_STYLE: Record<SegmentKind, React.CSSProperties> = {
   explore: { background: "#1b2733", boxShadow: "inset 0 0 0 1px #2a3847" },
   implement: {
-    background: "linear-gradient(180deg,#19e0a5,#00b582)",
+    background: "linear-gradient(180deg,#4fb0ff,#1b78e6)",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,.25)",
   },
   ship: { background: "#4f86e6", boxShadow: "inset 0 1px 0 rgba(255,255,255,.2)" },

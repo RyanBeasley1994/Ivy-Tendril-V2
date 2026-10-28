@@ -102,7 +102,7 @@ export const DotMatrixCard: React.FC<{
   const avgRow = max > 0 ? (avg / max) * DOT_ROWS : 0;
   const fmt = (v: number) =>
     metric === "tokens" ? (formatTokens(v) ?? "0") : metric === "cost" ? formatCurrency(v) : String(Math.round(v));
-  const color = metric === "tokens" ? "#19e0a5" : metric === "cost" ? "var(--violet)" : "var(--info)";
+  const color = metric === "tokens" ? "#3aa6ff" : metric === "cost" ? "var(--violet)" : "var(--info)";
   const dotPx = 7;
   const gapPx = 4;
   const height = DOT_ROWS * dotPx + (DOT_ROWS - 1) * gapPx;
@@ -340,7 +340,7 @@ export const CostliestPlansCard: React.FC<{
                   className="block h-full rounded"
                   style={{
                     width: `${max > 0 ? ((p.cost ?? 0) / max) * 100 : 0}%`,
-                    background: "linear-gradient(90deg,#0b8a64,#19e0a5)",
+                    background: "linear-gradient(90deg,#0f5bb5,#4fb0ff)",
                   }}
                 />
               </span>

@@ -95,7 +95,7 @@ export const Card: React.FC<{
     <Tag
       data-testid={testId}
       className={cn(
-        "flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+        "flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card bg-[radial-gradient(circle_at_12%_0%,rgba(27,146,255,0.09),transparent_46%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
         className,
       )}
     >
@@ -173,7 +173,7 @@ export const PrimaryButton: React.FC<
     type="button"
     {...props}
     className={cn(
-      "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-success disabled:opacity-50",
+      "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:brightness-110 disabled:opacity-50",
       size === "sm" ? "h-7" : size === "lg" ? "h-[38px] text-[13px]" : "h-[30px]",
       className,
     )}
@@ -337,7 +337,7 @@ export const Spark: React.FC<{
 };
 
 /** Heatmap ramp, empty to hottest. */
-export const HEAT = ["#121920", "#0f3b2f", "#0a7a58", "#12b886", "#3fe0ae"];
+export const HEAT = ["#0d1426", "#0c2a52", "#0f4f99", "#1b7fe0", "#5cb4ff"];
 
 export const heatLevel = (value: number, max: number): number => {
   if (value <= 0 || max <= 0) return 0;

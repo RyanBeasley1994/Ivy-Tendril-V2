@@ -21,7 +21,7 @@ const TOKEN_WINDOW_DAYS = 30;
 
 /** Series behind each KPI, for its mini bars: the last 12 days of whatever it counts. */
 const KPI_COLORS: Record<string, string> = {
-  featuresShipped: "#19e0a5",
+  featuresShipped: "#3aa6ff",
   costPerFeature: "var(--info)",
   forecastMonth: "var(--violet)",
   avgCostPlan: "var(--info)",
@@ -31,7 +31,11 @@ const KPI_COLORS: Record<string, string> = {
  * The analytics page: what Tendril has cost and produced, by day, by agent and by plan. The command
  * center is the live view; this is the ledger. Every KPI opens the same drill-down sheet as before.
  */
-export const InsightsView: React.FC<{ onSelectPlan?: (planId: string) => void }> = ({ onSelectPlan }) => {
+/**
+ * The Insights page's analytics: KPI strip, activity and spend, the year in tokens, costliest plans and
+ * agents. `DashboardView` hosts them under its greeting and Ask a manager.
+ */
+export const InsightsSections: React.FC<{ onSelectPlan?: (planId: string) => void }> = ({ onSelectPlan }) => {
   const { t } = useTranslation("dashboard");
   const analytics = useDashboardAnalytics();
   const { activity, agentCosts } = analytics;
@@ -66,7 +70,7 @@ export const InsightsView: React.FC<{ onSelectPlan?: (planId: string) => void }>
       label: t("insights.tokens30"),
       value: activity ? (formatTokens(tokens30) ?? NO_VALUE) : NO_VALUE,
       series: tokens12,
-      color: "#19e0a5",
+      color: "#3aa6ff",
     },
     ...kpis.map(
       (kpi): InsightKpi => ({
@@ -84,14 +88,7 @@ export const InsightsView: React.FC<{ onSelectPlan?: (planId: string) => void }>
   ];
 
   return (
-    <div data-testid="insights-view" className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-6 pb-6 pt-5">
-      <header className="flex shrink-0 items-end gap-2.5">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="m-0 text-[26px] font-semibold tracking-[-0.025em]">{t("insights.title")}</h1>
-          <p className="m-0 text-[13px] text-muted-foreground">{t("insights.subtitle")}</p>
-        </div>
-      </header>
-
+    <>
       <KpiStrip items={items} loading={analyticsPending} />
 
       <div className="grid shrink-0 grid-cols-1 gap-3.5 xl:grid-cols-12">
@@ -104,18 +101,15 @@ export const InsightsView: React.FC<{ onSelectPlan?: (planId: string) => void }>
         />
       </div>
 
+      {/* The year, full width and large enough to read a day at a glance. */}
+      <HeatmapCard className="shrink-0 overflow-x-auto" activity={activity} weeks={52} cell={16} title={t("insights.v2.year")} />
+
       <div className="grid shrink-0 grid-cols-1 gap-3.5 xl:grid-cols-12">
-        <HeatmapCard className="xl:col-span-7" activity={activity} weeks={52} cell={9} title={t("insights.v2.year")} />
-        <CostliestPlansCard
-          className="xl:col-span-5"
-          plans={analytics.planCosts}
-          onOpenPlan={(id) => onSelectPlan?.(id)}
-        />
+        <CostliestPlansCard className="xl:col-span-5" plans={analytics.planCosts} onOpenPlan={(id) => onSelectPlan?.(id)} />
+        <AgentsCard agents={agentCosts} className="xl:col-span-7" />
       </div>
 
-      <AgentsCard agents={agentCosts} className="shrink-0" />
-
       <DashboardKpiSheet kpiId={selectedKpi} analytics={analytics} onClose={() => setSelectedKpi(null)} />
-    </div>
+    </>
   );
 };

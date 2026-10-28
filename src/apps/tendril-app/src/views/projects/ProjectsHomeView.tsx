@@ -279,7 +279,7 @@ export const ProjectsHomeView: React.FC<Props> = ({ projects, jobs, onOpenProjec
                 onClick={() => onOpenProject(project.name)}
                 className={cn(
                   "flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:bg-secondary/50",
-                  i === 0 ? "border-primary/40 shadow-[0_0_0_3px_rgba(0,204,146,0.06)]" : "border-border",
+                  i === 0 ? "border-primary/40 shadow-[0_0_0_3px_rgba(27,146,255,0.06)]" : "border-border",
                 )}
               >
                 <span className={cn("shrink-0", status.busy ? "text-success" : "text-muted-foreground")}>

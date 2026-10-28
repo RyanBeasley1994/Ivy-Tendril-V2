@@ -23,7 +23,7 @@ const barStyle = (job: Job, now: number): React.CSSProperties => {
   if (EXPLORE.includes(job.type)) return { background: running ? "#2f4256" : "#1f2c39", boxShadow: "inset 0 0 0 1px #2e3d4e" };
   if (SHIP.includes(job.type)) return { background: "#4f86e6" };
   return running
-    ? { background: "linear-gradient(180deg,#19e0a5,#00b582)", boxShadow: "0 0 12px rgba(0,204,146,.35)" }
+    ? { background: "linear-gradient(180deg,#4fb0ff,#1b78e6)", boxShadow: "0 0 12px rgba(27,146,255,.35)" }
     : { background: "#0b8a64" };
 };
 

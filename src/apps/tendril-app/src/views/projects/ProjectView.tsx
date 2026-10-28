@@ -1,6 +1,12 @@
 import React from "react";
-import { ArrowLeft, Box, Brain, Network, SquareTerminal } from "lucide-react";
-import { cn } from "@ivy-interactive/components/ui";
+import { ArrowLeft, Box, Brain, GitBranch, Network, SquareTerminal } from "lucide-react";
+import {
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@ivy-interactive/components/ui";
 import type { Job, Mission, ProjectSummary } from "../../types/api";
 import type { ManagerTask, ProjectDocker, ProjectMemoryEntry } from "../../types/projectAssets";
 import { bridge } from "../../api/bridge";
@@ -29,6 +35,8 @@ interface Props {
   onOpenPlan: (planId: string) => void;
   /** Opens the Git page on this project's repositories. */
   onOpenGit?: () => void;
+  /** Opens one repository's Git workspace, coming back to this project. */
+  onOpenRepo?: (repoId: string) => void;
   /** Opens a chat session: a manager task's worker runs in one. */
   onOpenChat?: (sessionId: string) => void;
 }
@@ -71,7 +79,7 @@ const useAsync = <T,>(load: () => Promise<T>, deps: React.DependencyList, interv
  * The project page: the manager chat on the left half, always mounted so a running conversation is
  * never torn down, and the project's panels on the right half, in tabs.
  */
-export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMission, onOpenJob, onOpenPlan, onOpenGit, onOpenChat }) => {
+export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMission, onOpenJob, onOpenPlan, onOpenGit, onOpenRepo, onOpenChat }) => {
   const [tab, setTab] = React.useState<Tab>("overview");
   const [side, setSide] = React.useState<Side>("chat");
   const [runId, setRunId] = React.useState<string | null>(null);
@@ -140,9 +148,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
           {status.busy ? "Working" : "Idle"}
         </Pill>
         {onOpenGit && (
-          <GhostButton size="sm" className="ml-auto shrink-0" onClick={onOpenGit} title="Branches, commits and uncommitted work in this project's repositories">
-            Git
-          </GhostButton>
+          <ProjectGitButton project={project.name} onOpenGit={onOpenGit} onOpenRepo={onOpenRepo} />
         )}
         {/* Below `lg` there is room for one half at a time. */}
         <Seg<Side>
@@ -234,6 +240,58 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
   );
 };
 
+/**
+ * Git for this project: straight into the repository's workspace when it has one, a pick of them when
+ * it has several, and the filtered repository list while they are still loading.
+ */
+const ProjectGitButton: React.FC<{
+  project: string;
+  onOpenGit: () => void;
+  onOpenRepo?: (repoId: string) => void;
+}> = ({ project, onOpenGit, onOpenRepo }) => {
+  const repos = useAsync(
+    () => bridge.gitRepos().then((all) => all.filter((r) => r.project === project)),
+    [project],
+    120_000,
+  );
+  const title = "Branches, commits and uncommitted work in this project's repositories";
+  if (!onOpenRepo || !repos || repos.length === 0) {
+    return (
+      <GhostButton size="sm" className="ml-auto shrink-0" onClick={onOpenGit} title={title}>
+        Git
+      </GhostButton>
+    );
+  }
+  if (repos.length === 1) {
+    return (
+      <GhostButton size="sm" className="ml-auto shrink-0" onClick={() => onOpenRepo(repos[0].id)} title={`${repos[0].name}: ${title}`}>
+        <GitBranch className="size-3.5" aria-hidden="true" />
+        Git
+      </GhostButton>
+    );
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        title={title}
+        className="ml-auto inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-input bg-muted px-[11px] text-[12.5px] text-foreground transition-colors hover:bg-secondary"
+      >
+        <GitBranch className="size-3.5" aria-hidden="true" />
+        Git
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {repos.map((r) => (
+          <DropdownMenuItem key={r.id} onSelect={() => onOpenRepo(r.id)}>
+            {r.name}
+            {r.summary?.branch && <span className="ml-2 font-mono text-[11px] text-muted-foreground">{r.summary.branch}</span>}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuItem onSelect={onOpenGit}>All repositories…</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 /* ------------------------------------------------------------------ shared bits */
 
 const PanelBody: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -318,7 +376,7 @@ const SummaryStrip: React.FC<{ status: Status; runningTasks: number }> = ({ stat
     </div>
     <div className="h-1 overflow-hidden rounded-full bg-muted">
       <div
-        className="h-full rounded-full bg-gradient-to-r from-[#19e0a5] to-[#00b582] transition-[width]"
+        className="h-full rounded-full bg-gradient-to-r from-[#4fb0ff] to-[#1b78e6] transition-[width]"
         style={{ width: `${status.progress}%` }}
       />
     </div>

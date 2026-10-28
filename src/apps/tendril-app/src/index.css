@@ -5,14 +5,22 @@
 @source "./";
 @source "../../../packages/components/src";
 
+/* Type: Onest for text, Geist Mono for figures and code (the Trader Waves pairing). */
+:root {
+  --font-sans: "Onest Variable", "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
 /* The sidebar's usage card has no room on the collapsed rail; the service dot stays, centred. */
 .tsh-root[data-collapsed="true"] .tcc-usage-card {
   display: none;
 }
 
-.tsh-root[data-collapsed="true"] .tcc-sidebar-managers {
+.tsh-root[data-collapsed="true"] .tcc-sidebar-groups {
   display: none;
 }
+
+
 
 .tsh-root[data-collapsed="true"] .tcc-service-line {
   justify-content: center;

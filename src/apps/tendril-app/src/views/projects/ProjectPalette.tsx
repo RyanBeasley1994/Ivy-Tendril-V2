@@ -230,7 +230,7 @@ export const ProjectPalette: React.FC<Props> = ({ projects, jobs, currentProject
         aria-label="Jump to project"
         aria-modal="true"
         onKeyDown={onKeyDown}
-        className="flex max-h-[60vh] w-full max-w-[600px] flex-col overflow-hidden rounded-2xl border border-[#22303d] bg-card shadow-[0_0_0_4px_rgba(0,204,146,0.04),0_30px_80px_-20px_rgba(0,0,0,0.8)]"
+        className="flex max-h-[60vh] w-full max-w-[600px] flex-col overflow-hidden rounded-2xl border border-[#1f2a44] bg-card shadow-[0_0_0_4px_rgba(27,146,255,0.04),0_30px_80px_-20px_rgba(0,0,0,0.8)]"
       >
         <div className="flex items-center gap-3 border-b border-border/70 px-4">
           <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

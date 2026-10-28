@@ -165,7 +165,7 @@ export const MissionRun: React.FC<{
       <Card title="Mission" bodyClassName="gap-3 p-4">
         <p className="m-0 text-[13px] leading-relaxed text-muted-foreground">{mission.goal}</p>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-gradient-to-b from-[#19e0a5] to-[#00b582]" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-b from-[#4fb0ff] to-[#1b78e6]" style={{ width: `${pct}%` }} />
         </div>
         <div className="flex gap-4 font-mono text-[11px] text-muted-foreground">
           <span>{passed}/{mission.milestones.length} milestones</span>

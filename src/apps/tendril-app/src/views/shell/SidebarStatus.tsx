@@ -23,32 +23,30 @@ interface SidebarStatusProps {
 const sortedWindows = (snapshot: AgentUsageSnapshot): AgentUsageWindow[] =>
   [...snapshot.windows].sort((a, b) => a.windowMinutes - b.windowMinutes);
 
-/** One window's line: its length, how much is used, a bar, and when it resets. */
-const UsageWindowRow: React.FC<{ window: AgentUsageWindow; now: Date }> = ({ window: w, now }) => {
+/** One window, compact: its length, a short bar and the percentage, with the time to reset under it. */
+const UsageWindowChip: React.FC<{ window: AgentUsageWindow; now: Date }> = ({ window: w, now }) => {
   const { t } = useTranslation("common");
   const used = Math.min(100, Math.max(0, w.usedPercent));
   const countdown = w.resetsAt ? formatCountdown(w.resetsAt, now) : "";
+  const label = formatWindow(w.windowMinutes);
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2 text-[11.5px]">
-        <span className="truncate text-muted-foreground">
-          {t("sidebar.usage.window", { window: formatWindow(w.windowMinutes) })}
+    <span
+      className="flex min-w-0 flex-1 flex-col gap-0.5"
+      title={`${t("sidebar.usage.window", { window: label })}: ${formatPercent(used)}${countdown ? ` · ${t("sidebar.usage.resets", { countdown })}` : ""}`}
+    >
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{label}</span>
+        <span className="h-1 min-w-[18px] flex-1 overflow-hidden rounded-full bg-secondary">
+          <span
+            className={`block h-full rounded-full ${used >= 90 ? "bg-destructive" : used >= 75 ? "bg-warning" : "bg-primary"}`}
+            style={{ width: `${used}%` }}
+          />
         </span>
-        <span className="ml-auto font-mono text-foreground">{formatPercent(used)}</span>
-      </div>
-      <div className="h-[5px] overflow-hidden rounded-full bg-secondary">
-        <div
-          className={`h-full rounded-full ${used >= 90 ? "bg-destructive" : used >= 75 ? "bg-warning" : "bg-primary"}`}
-          style={{ width: `${used}%` }}
-        />
-      </div>
-      {countdown && (
-        <div className="text-[11px] text-muted-foreground">
-          {t("sidebar.usage.resets", { countdown })}
-        </div>
-      )}
-    </div>
-  );
+        <span className="shrink-0 font-mono text-[10px] text-foreground">{Math.round(used)}%</span>
+      </span>
+      {/* How long until it resets, under its bar: the number that says whether to wait. */}
+      {countdown && <span className="truncate font-mono text-[9.5px] leading-none text-muted-foreground">↻ {countdown}</span>}
+    </span>  );
 };
 
 /**
@@ -62,6 +60,11 @@ export const SidebarStatus: React.FC<SidebarStatusProps> = ({ serviceInfo, conne
   const [agents, setAgents] = React.useState<string[]>([]);
   const [snapshots, setSnapshots] = React.useState<Record<string, AgentUsageSnapshot | null>>({});
   const [now, setNow] = React.useState(() => new Date());
+  // The reset countdowns move every minute, though usage is only re-read every five.
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -123,19 +126,19 @@ export const SidebarStatus: React.FC<SidebarStatusProps> = ({ serviceInfo, conne
         : "bg-destructive";
 
   return (
-    <div className="tcc-sidebar-status mt-2 flex shrink-0 flex-col gap-2" data-testid="sidebar-status">
-      {cards.map(({ agent, label, snapshot }) => (
-        <div
-          key={agent}
-          className="tcc-usage-card flex flex-col gap-2.5 rounded-[11px] border border-border bg-card p-3"
-          data-testid={`sidebar-usage-${agent}`}
-        >
-          <div className="truncate text-xs font-medium text-foreground">{label}</div>
-          {sortedWindows(snapshot).map((w) => (
-            <UsageWindowRow key={w.windowMinutes} window={w} now={now} />
+    <div className="tcc-sidebar-status mt-auto flex shrink-0 flex-col gap-1.5 pt-2" data-testid="sidebar-status">
+      {cards.length > 0 && (
+        <div className="tcc-usage-card flex flex-col gap-1.5 rounded-[10px] border border-border bg-card px-2.5 py-2" data-testid="sidebar-usage">
+          {cards.map(({ agent, label, snapshot }) => (
+            <div key={agent} className="flex items-start gap-2" data-testid={`sidebar-usage-${agent}`}>
+              <span className="w-[46px] shrink-0 truncate text-[11px] font-medium text-foreground" title={label}>{label}</span>
+              {sortedWindows(snapshot).map((w) => (
+                <UsageWindowChip key={w.windowMinutes} window={w} now={now} />
+              ))}
+            </div>
           ))}
         </div>
-      ))}
+      )}
       <div className="tcc-service-line flex items-center gap-2 px-2.5 text-[11.5px] text-muted-foreground">
         <span className={`size-1.5 shrink-0 rounded-full ${tone}`} aria-hidden="true" />
         <span className="truncate">{t(`sidebar.status.${connectionStatus}`)}</span>

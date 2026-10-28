@@ -6,7 +6,7 @@ import { GhostButton, PrimaryButton } from "../../components/page/kit";
 import type { RepoSummary } from "../../types/git";
 
 /** One colour per lane, cycling. Tuned for the dark theme: all read clearly on the blue-black base. */
-export const LANE_COLORS = ["#19e0a5", "#4f86e6", "#b78bf5", "#f0b54a", "#e25c66", "#41c7e0", "#e08b41", "#8fd14f"];
+export const LANE_COLORS = ["#1b92ff", "#4ade9d", "#b78bf5", "#f0b54a", "#e25c66", "#41c7e0", "#e08b41", "#8fd14f"];
 export const laneColor = (index: number): string => LANE_COLORS[((index % LANE_COLORS.length) + LANE_COLORS.length) % LANE_COLORS.length];
 
 export const ago = (unixSeconds: number): string =>
@@ -57,7 +57,7 @@ export const Modal: React.FC<{
         aria-modal="true"
         aria-label={title}
         style={{ width }}
-        className="flex max-h-[76vh] max-w-full flex-col overflow-hidden rounded-2xl border border-[#22303d] bg-card shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
+        className="flex max-h-[76vh] max-w-full flex-col overflow-hidden rounded-2xl border border-[#1f2a44] bg-card shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-5 py-3.5">
           <h2 className="m-0 min-w-0 flex-1 truncate text-[14px] font-semibold text-foreground">{title}</h2>
@@ -165,7 +165,7 @@ export const ContextMenu: React.FC<{ x: number; y: number; items: MenuItem[]; on
     <div
       role="menu"
       style={{ left, top }}
-      className="fixed z-50 min-w-[210px] rounded-xl border border-[#22303d] bg-card p-1 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.8)]"
+      className="fixed z-50 min-w-[210px] rounded-xl border border-[#1f2a44] bg-card p-1 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.8)]"
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item) => (

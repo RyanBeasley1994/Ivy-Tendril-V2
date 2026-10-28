@@ -3,15 +3,11 @@ import { ForgeLogo } from "../components/ForgeLogo";
 import { MobileTabBar } from "./shell/MobileTabBar";
 import { useNeedsYouCount } from "../state/managerActivity";
 import { useSupportCount } from "../state/supportCount";
-import { Plus } from "lucide-react";
 import { PRODUCT_NAME } from "../branding";
 import {
   TendrilShell,
-  ShellSidebarHeader,
-  ShellNav,
   ShellSidebarSection,
   ShellTabs,
-  ShellNewPlanButton,
   ShellSettingsButton,
   type ShellNavItemDto,
   type ShellTabDto,
@@ -27,7 +23,8 @@ import {
 } from "@ivy-interactive/components/ui";
 import { Construction, GitPullRequest, Snowflake, Info } from "lucide-react";
 import type { Job, ProjectSummary, ServiceInfo } from "../types/api";
-import { SidebarManagers } from "./shell/SidebarManagers";
+import { SidebarGroups } from "./shell/SidebarGroups";
+import { SidebarQuickRow } from "./shell/SidebarQuickRow";
 import { OfflineBanner } from "../components/OfflineBanner";
 // Lazy for the same budget, behind a placeholder of its own height so the page never shifts when
 // it arrives.
@@ -157,40 +154,17 @@ export interface ShellNavBadges {
  */
 export const buildNavItems = (
   activeNav: string,
-  badges: ShellNavBadges = {},
+  _badges: ShellNavBadges = {},
   t: TFunction<"common"> = commonT,
 ): ShellNavItemDto[] => {
-  const badge = (count: number | undefined) =>
-    count !== undefined && count > 0 ? String(count) : undefined;
-
+  // Support and Insights are the sidebar's top row (`SidebarQuickRow`), projects are reached through
+  // the groups under it (`SidebarGroups`, which carry the "needs you" dots), and Git is opened from a
+  // project. Plans, Review, Missions and Jobs live inside a project. So Dashboard is the one row left;
+  // every other page is still addressable by URL and the command palette.
   const overview = t("sidebar.navGroup.overview");
-  const observe = t("sidebar.navGroup.observe");
-
-  // Plans, Review, Missions and Jobs are the manager's to sort, so they are reached from inside a
-  // project (and still addressable by URL). The Projects badge counts only what a manager needs from the
-  // person (a mission to approve, a question asked), never work that merely finished.
-  return [
-    {
-      id: "projects",
-      label: t("sidebar.nav.projects"),
-      icon: "FolderGit2",
-      badge: badge(badges.managers),
-      group: overview,
-    },
-    { id: "git", label: t("sidebar.nav.git"), icon: "GitBranch", group: overview },
-    {
-      id: "support",
-      label: t("sidebar.nav.support"),
-      icon: "LifeBuoy",
-      badge: badge(badges.support),
-      group: overview,
-    },
-    { id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "LayoutGrid", group: overview },
-    { id: "insights", label: t("sidebar.nav.insights"), icon: "ChartBar", group: observe },
-  ].map((item) => ({
-    ...item,
-    isActive: item.id === activeNav || (item.id === "projects" && activeNav.startsWith("project-")),
-  }));
+  return [{ id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "LayoutGrid", group: overview }].map(
+    (item) => ({ ...item, isActive: item.id === activeNav }),
+  );
 };
 
 /**
@@ -304,7 +278,6 @@ interface ShellLayoutProps {
   onCloseTab: (tabId: string) => void;
   /** V1 `ShowPage`: the `$page` tab was picked, so reveal the page and leave the panes mounted. */
   onShowPage?: () => void;
-  onNewPlan: () => void;
   onReconnect: () => void;
   onRestartService?: () => void;
   onRepairService?: () => void;
@@ -346,6 +319,8 @@ interface ShellLayoutProps {
   projects?: ProjectSummary[];
   jobs?: Job[];
   onOpenProject?: (name: string) => void;
+  /** Opens the Add Project dialog (the sidebar groups' New project button). */
+  onAddProject?: () => void;
   children: React.ReactNode;
 }
 
@@ -373,7 +348,6 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   onSelectTab,
   onCloseTab,
   onShowPage,
-  onNewPlan,
   onReconnect,
   onRestartService,
   onRepairService,
@@ -390,6 +364,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   projects,
   jobs,
   onOpenProject,
+  onAddProject,
   onOpenChat,
   children,
 }) => {
@@ -585,25 +560,13 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
           hasTabs={hasSessionTabs}
           activeSessionIndex={activeSessionIndex}
           slots={{
-            // Phone layout (below 768px): brand and New Plan in a slim top bar, the five main places
+            // Phone layout (below 768px): the brand in a slim top bar, the main places
             // in a floating tab bar, and this sidebar as a drawer behind the menu button.
             MobileBrand: (
               <>
                 <ForgeLogo className="size-[22px]" />
                 <span className="truncate">{PRODUCT_NAME}</span>
               </>
-            ),
-            MobileActions: (
-              <button
-                type="button"
-                onClick={onNewPlan}
-                aria-label={t("sidebar.newPlan")}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground active:opacity-80"
-                data-testid="mobile-new-plan"
-              >
-                <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-                {t("sidebar.newPlanShort")}
-              </button>
             ),
             MobileNav: (
               <MobileTabBar
@@ -613,23 +576,15 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                 badges={{ managers: managersNeedYou }}
               />
             ),
-            // The header is the brand row alone. V1 formats the version as "v <x.y.z>".
-            //
-            // `logo` is V1's `.LogoUrl("/tendril/assets/Tendril.svg")` in `TendrilAppShell`, which
-            // V2 had simply never passed - hence the missing mark beside the name. Given as a
-            // component rather than a URL so it resolves identically in dev, in the bundle and
-            // inside Tauri, where a served path is the thing most likely to differ.
+            // No brand row: Support, Insights and the fold button are the header, so the sidebar opens
+            // on what it is for. Folded, the same component is the rail's unfold button and two icons.
             SidebarHeader: (
-              <ShellSidebarHeader
-                id="shell-sidebar-header"
-                title={PRODUCT_NAME}
-                logo={<ForgeLogo />}
-                version={
-                  serviceInfo?.apiVersion
-                    ? t("sidebar.version", { version: serviceInfo.apiVersion })
-                    : undefined
-                }
-                eventHandler={noop}
+              <SidebarQuickRow
+                activeNav={activeNav}
+                supportUnread={supportUnread}
+                supportLabel={t("sidebar.nav.support")}
+                insightsLabel={t("sidebar.nav.insights")}
+                onSelectNav={onSelectNav}
               />
             ),
             SidebarBody: (
@@ -638,44 +593,35 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
                     callback on `events.includes(...)` so the server can declare which events it
                     subscribed to, and the prop defaults to `[]`. Omitting it here made the primary
                     New Plan button swallow every click. */}
-                <ShellNewPlanButton
-                  id="new-plan-btn"
-                  events={["OnClick"]}
-                  eventHandler={onNewPlan}
-                />
-                <ShellNav
-                  id="shell-nav"
-                  items={navItems}
-                  showDivider
-                  events={["OnSelect"]}
-                  eventHandler={(_evt: string, _id: string, args?: unknown[]) => {
-                    const navId = firstStringArg(args);
-                    if (navId) onSelectNav(navId);
-                  }}
-                />
-                {/* V1's `section`, last in `sidebarBody`. With a published list it is that list's
-                    header, rows and row actions; without one it is the full-width Search button,
-                    which is how V1 keeps plan search reachable from every app's sidebar. */}
-                <ShellSidebarSection
-                  id="shell-sidebar-section"
-                  title={list?.title}
-                  items={list?.items ?? []}
-                  selectedId={list?.selectedId ?? undefined}
-                  searchable={list ? list.searchable !== false : true}
-                  searchLabel="Jump to project"
-                  newLabel={list?.newLabel}
-                  collapsedMenu={list?.collapsedMenu ?? false}
-                  events={sectionEvents}
-                  eventHandler={(evt: string, _id: string, args?: unknown[]) =>
-                    handleListEvent(list, evt, args)
-                  }
-                />
                 {onOpenProject && (
-                  <SidebarManagers
+                  <SidebarGroups
                     projects={projects ?? []}
                     jobs={jobs ?? []}
                     activeProject={activeNav.startsWith("project-") ? activeNav.slice("project-".length) : null}
                     onOpenProject={onOpenProject}
+                    onSearch={onPlanSearch}
+                    onAddProject={onAddProject}
+                  />
+                )}
+                {/* V1's `section`, last in `sidebarBody`. With a published list it is that list's
+                    header, rows and row actions; without one it is the full-width Search button,
+                    which is how V1 keeps plan search reachable from every app's sidebar. */}
+                {/* A page's own list (chats, plans, review). Search is the icon beside the groups'
+                    plus now, so a page without a list shows nothing here. */}
+                {list && (
+                  <ShellSidebarSection
+                    id="shell-sidebar-section"
+                    title={list?.title}
+                    items={list?.items ?? []}
+                    selectedId={list?.selectedId ?? undefined}
+                    searchable={list ? list.searchable !== false : true}
+                    searchLabel="Jump to project"
+                    newLabel={list?.newLabel}
+                    collapsedMenu={list?.collapsedMenu ?? false}
+                    events={sectionEvents}
+                    eventHandler={(evt: string, _id: string, args?: unknown[]) =>
+                      handleListEvent(list, evt, args)
+                    }
                   />
                 )}
                 <React.Suspense fallback={null}>

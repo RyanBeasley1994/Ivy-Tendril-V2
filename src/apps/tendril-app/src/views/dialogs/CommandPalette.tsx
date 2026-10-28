@@ -312,7 +312,7 @@ export const CommandPalette: React.FC<{
         aria-modal="true"
         aria-label={t("palette.title")}
         onKeyDown={onKeyDown}
-        className="absolute left-1/2 top-[12vh] flex max-h-[72vh] w-[680px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-input bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_40px_120px_-20px_rgba(0,0,0,0.9),0_0_0_8px_rgba(0,204,146,0.04)]"
+        className="absolute left-1/2 top-[12vh] flex max-h-[72vh] w-[680px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-input bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_40px_120px_-20px_rgba(0,0,0,0.9),0_0_0_8px_rgba(27,146,255,0.04)]"
       >
         <div className="flex h-[60px] shrink-0 items-center gap-3 border-b border-border px-[18px]">
           <Search className="size-[17px] text-muted-foreground" aria-hidden="true" />
