@@ -68,7 +68,8 @@
     "plan": "Plano {{id}}",
     "job": "Tarefa {{id}}",
     "insights": "Insights",
-    "missions": "Missões"
+    "missions": "Missões",
+    "support": "Suporte"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "Recomendações",
       "jobs": "Tarefas",
       "insights": "Insights",
-      "missions": "Missões"
+      "missions": "Missões",
+      "support": "Suporte"
     },
     "navGroup": {
       "overview": "Visão geral",

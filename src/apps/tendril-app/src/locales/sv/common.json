@@ -68,7 +68,8 @@
     "plan": "Plan {{id}}",
     "job": "Jobb {{id}}",
     "insights": "Insikter",
-    "missions": "Uppdrag"
+    "missions": "Uppdrag",
+    "support": "Support"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "Rekommendationer",
       "jobs": "Jobb",
       "insights": "Insikter",
-      "missions": "Uppdrag"
+      "missions": "Uppdrag",
+      "support": "Support"
     },
     "navGroup": {
       "overview": "Översikt",

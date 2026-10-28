@@ -68,7 +68,8 @@
     "plan": "План {{id}}",
     "job": "Задание {{id}}",
     "insights": "Аналитика",
-    "missions": "Миссии"
+    "missions": "Миссии",
+    "support": "Поддержка"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "Рекомендации",
       "jobs": "Задания",
       "insights": "Аналитика",
-      "missions": "Миссии"
+      "missions": "Миссии",
+      "support": "Поддержка"
     },
     "navGroup": {
       "overview": "Обзор",

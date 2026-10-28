@@ -303,6 +303,7 @@ pub fn run() {
             cmd_put_project_memory,
             cmd_delete_project_memory,
             cmd_list_project_links,
+            cmd_support,
             cmd_set_project_link,
             cmd_delete_project_link,
             cmd_scan_repo_assets,

@@ -71,7 +71,8 @@
     "insights": "Insights",
     "missions": "Missions",
     "projects": "Projects",
-    "git": "Git"
+    "git": "Git",
+    "support": "Support"
   },
   "navigation": {
     "errors": {
@@ -93,7 +94,8 @@
       "missions": "Missions",
       "projects": "Projects",
       "git": "Git",
-      "manager": "Manager"
+      "manager": "Manager",
+      "support": "Support"
     },
     "navGroup": {
       "overview": "Overview",

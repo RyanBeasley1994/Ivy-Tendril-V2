@@ -68,7 +68,8 @@
     "plan": "Plan {{id}}",
     "job": "Job {{id}}",
     "insights": "Analyses",
-    "missions": "Missions"
+    "missions": "Missions",
+    "support": "Support"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "Recommandations",
       "jobs": "Jobs",
       "insights": "Analyses",
-      "missions": "Missions"
+      "missions": "Missions",
+      "support": "Support"
     },
     "navGroup": {
       "overview": "Vue d'ensemble",

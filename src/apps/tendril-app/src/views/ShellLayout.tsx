@@ -2,6 +2,7 @@ import React from "react";
 import { ForgeLogo } from "../components/ForgeLogo";
 import { MobileTabBar } from "./shell/MobileTabBar";
 import { useNeedsYouCount } from "../state/managerActivity";
+import { useSupportCount } from "../state/supportCount";
 import { Plus } from "lucide-react";
 import { PRODUCT_NAME } from "../branding";
 import {
@@ -94,6 +95,8 @@ const pageIcon = (navId: string): string | undefined => {
       return "FolderGit2";
     case "git":
       return "GitBranch";
+    case "support":
+      return "LifeBuoy";
     case "dashboard":
       return "ChartBar";
     case "chat":
@@ -138,6 +141,8 @@ export interface ShellNavBadges {
   jobs?: number;
   /** Things waiting on the operator across every project's manager. */
   managers?: number;
+  /** Unread Propriotec Operations tickets in "Needs Us", as Operations counts them for the operator. */
+  support?: number;
 }
 
 /**
@@ -173,6 +178,13 @@ export const buildNavItems = (
       group: overview,
     },
     { id: "git", label: t("sidebar.nav.git"), icon: "GitBranch", group: overview },
+    {
+      id: "support",
+      label: t("sidebar.nav.support"),
+      icon: "LifeBuoy",
+      badge: badge(badges.support),
+      group: overview,
+    },
     { id: "dashboard", label: t("sidebar.nav.dashboard"), icon: "LayoutGrid", group: overview },
     { id: "insights", label: t("sidebar.nav.insights"), icon: "ChartBar", group: observe },
   ].map((item) => ({
@@ -469,6 +481,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
   };
 
   const managersNeedYou = useNeedsYouCount();
+  const supportUnread = useSupportCount();
   const navItems = buildNavItems(
     activeNav,
     {
@@ -477,6 +490,7 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
       recommendations: recommendationsCount,
       jobs: jobCount,
       managers: managersNeedYou,
+      support: supportUnread,
     },
     t,
   );

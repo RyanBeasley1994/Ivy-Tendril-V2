@@ -313,6 +313,35 @@ impl TendrilClient {
         .await
     }
 
+    /// Any `/api/support/*` call, for the Support page. Restricted to that prefix so this is not a
+    /// general daemon proxy.
+    pub async fn support_request(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, BridgeError> {
+        if !path.starts_with("/api/support/") || path.contains("..") {
+            return Err(BridgeError::new("SUPPORT_PATH", format!("'{path}' is not a support route")));
+        }
+        let method = match method.to_ascii_uppercase().as_str() {
+            "GET" => reqwest::Method::GET,
+            "POST" => reqwest::Method::POST,
+            "PUT" => reqwest::Method::PUT,
+            "DELETE" => reqwest::Method::DELETE,
+            other => return Err(BridgeError::new("SUPPORT_METHOD", format!("'{other}' is not supported"))),
+        };
+        self.project_assets_request(
+            method,
+            path,
+            body,
+            "SUPPORT_FAILED",
+            "reach Support",
+            Some(std::time::Duration::from_secs(60)),
+        )
+        .await
+    }
+
     pub async fn list_project_links(
         &self,
         project_name: &str,

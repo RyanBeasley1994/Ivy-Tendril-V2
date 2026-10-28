@@ -28,6 +28,7 @@ pub mod run;
 pub mod serve;
 pub mod service;
 pub mod set_password;
+pub mod support;
 pub mod update;
 pub mod update_promptwares;
 pub mod vault;

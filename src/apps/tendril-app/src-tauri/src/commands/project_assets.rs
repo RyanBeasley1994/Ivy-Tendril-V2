@@ -145,6 +145,18 @@ pub async fn cmd_delete_project_memory(
         .await
 }
 
+/// The Support page's one command: `path` must be under `/api/support/`.
+#[tauri::command]
+pub async fn cmd_support(
+    method: String,
+    path: String,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .support_request(&method, &path, body)
+        .await
+}
+
 #[tauri::command]
 pub async fn cmd_list_project_links(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?

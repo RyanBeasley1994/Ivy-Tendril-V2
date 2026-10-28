@@ -10,6 +10,7 @@ import {
   GitPullRequest,
   Inbox,
   Info,
+  LifeBuoy,
   Lightbulb,
   type LucideIcon,
   MessageSquare,
@@ -36,6 +37,7 @@ interface ShellTabsProps extends ShellWidgetProps {
    neutral page glyph rather than the terminal one, which would misread the tab as a
    session; session tabs pass no name at all and always get the terminal glyph. */
 const tabIcons: Record<string, LucideIcon> = {
+  LifeBuoy,
   Activity,
   ChartBar,
   Feather,

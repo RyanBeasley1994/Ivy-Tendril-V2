@@ -72,6 +72,12 @@ enum Commands {
     )]
     Link(commands::link::LinkCommands),
 
+    #[command(
+        subcommand,
+        about = "Propriotec Operations support tickets: read, reply, move and close them"
+    )]
+    Support(commands::support::SupportCommands),
+
     #[command(subcommand, about = "Manage chat sessions and execution")]
     Chat(commands::chat::ChatCommands),
 
@@ -317,6 +323,7 @@ async fn dispatch(
         Commands::ApiKey(cmd) => commands::api_key::handle_api_key_command(cmd, tendril_home).await?,
         Commands::Memory(cmd) => commands::memory::handle_memory_command(cmd, tendril_home).await?,
         Commands::Link(cmd) => commands::link::handle_link_command(cmd, tendril_home).await?,
+        Commands::Support(cmd) => commands::support::handle_support_command(cmd, tendril_home).await?,
         Commands::Chat(cmd) => commands::chat::handle_chat_command(cmd, tendril_home).await?,
         Commands::Project(cmd) => {
             commands::project::handle_project_command(cmd, tendril_home).await?

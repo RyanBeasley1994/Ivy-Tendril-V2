@@ -270,7 +270,7 @@ fn project_names(state: &AppState) -> Vec<String> {
 
 /// Hands text to a project's manager the way the app does. Returns whether it was queued behind a
 /// turn already running.
-async fn tell_manager(state: &Arc<AppState>, project: &str, text: &str) -> Result<bool, String> {
+pub(crate) async fn tell_manager(state: &Arc<AppState>, project: &str, text: &str) -> Result<bool, String> {
     let opened = crate::routes::projects::get_or_create_project_manager(
         State(state.clone()),
         axum::extract::Path(project.to_string()),

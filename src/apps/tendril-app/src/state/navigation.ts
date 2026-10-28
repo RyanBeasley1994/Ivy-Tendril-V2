@@ -120,6 +120,8 @@ export const APP_DESCRIPTORS: Record<string, AppDescriptor> = {
   recommendations: app("recommendations", () => i18n.t("common:appTitles.recommendations")),
   // Full-bleed: `Page` supplies the command-center inset itself, as every rebuilt page does.
   insights: app("insights", () => i18n.t("common:appTitles.insights"), { fullBleed: true }),
+  // Full-bleed: the board owns its own scroll, column by column.
+  support: app("support", () => i18n.t("common:appTitles.support"), { fullBleed: true }),
   jobs: app("jobs", () => i18n.t("common:appTitles.jobs")),
   // Full-bleed: `Page` supplies the command-center inset itself, as every rebuilt page does.
   missions: app("missions", () => i18n.t("common:appTitles.missions"), { fullBleed: true }),

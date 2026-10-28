@@ -133,6 +133,9 @@ const InboxView = React.lazy(() =>
 const PullRequestsView = React.lazy(() =>
   import("./views/PullRequestsView").then((m) => ({ default: m.PullRequestsView })),
 );
+const SupportView = React.lazy(() =>
+  import("./views/support/SupportView").then((m) => ({ default: m.SupportView })),
+);
 const InsightsView = React.lazy(() =>
   import("./views/InsightsView").then((m) => ({ default: m.InsightsView })),
 );
@@ -1218,6 +1221,9 @@ export const App: React.FC = () => {
             }}
           />
         );
+
+      case "support":
+        return <SupportView projects={projects} />;
 
       case "insights":
         return <InsightsView onSelectPlan={(planId) => void handleSelectPlan(planId)} />;

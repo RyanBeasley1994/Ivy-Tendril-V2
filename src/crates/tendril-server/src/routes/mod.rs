@@ -25,6 +25,7 @@ pub mod push;
 pub mod promptwares;
 pub mod pull_requests;
 pub mod recommendations;
+pub mod support;
 pub mod tables;
 pub mod tunnel;
 pub mod vault;
@@ -418,6 +419,17 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/projects/:name/engine",
             get(projects::get_project_engine).put(projects::set_project_engine),
         )
+        // Propriotec Operations' support tickets, worked as the operator; see `support`.
+        .route("/api/support/status", get(support::get_status))
+        .route("/api/support/connection", put(support::connect).delete(support::disconnect))
+        .route("/api/support/count", get(support::count))
+        .route("/api/support/tickets", get(support::list_tickets))
+        .route("/api/support/tickets/:id", get(support::get_ticket))
+        .route("/api/support/tickets/:id/read", post(support::mark_read))
+        .route("/api/support/tickets/:id/reply", post(support::reply))
+        .route("/api/support/tickets/:id/status", post(support::set_status))
+        .route("/api/support/tickets/:id/close", post(support::close))
+        .route("/api/support/tickets/:id/handoff", post(support::handoff))
         // What a project has hosted, with test logins; see `projects::links`.
         .route(
             "/api/projects/:name/links",

@@ -68,7 +68,8 @@
     "plan": "計画 {{id}}",
     "job": "ジョブ {{id}}",
     "insights": "インサイト",
-    "missions": "ミッション"
+    "missions": "ミッション",
+    "support": "サポート"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "レコメンデーション",
       "jobs": "ジョブ",
       "insights": "インサイト",
-      "missions": "ミッション"
+      "missions": "ミッション",
+      "support": "サポート"
     },
     "navGroup": {
       "overview": "概要",

@@ -7,6 +7,7 @@ import {
   GitBranch,
   GitPullRequest,
   LayoutGrid,
+  LifeBuoy,
   Lightbulb,
   type LucideIcon,
   MessageSquare,
@@ -30,6 +31,7 @@ interface ShellNavProps extends ShellWidgetProps {
 /* The nav renders the app menu, so only icons used by [App] attributes are
    bundled; unknown names fall back to the label's initial. */
 const navIcons: Record<string, LucideIcon> = {
+  LifeBuoy,
   ChartBar,
   LayoutGrid,
   Feather,

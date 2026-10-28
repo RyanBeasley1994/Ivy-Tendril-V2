@@ -68,7 +68,8 @@
     "plan": "योजना {{id}}",
     "job": "जॉब {{id}}",
     "insights": "इनसाइट्स",
-    "missions": "मिशन"
+    "missions": "मिशन",
+    "support": "सहायता"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "सिफ़ारिशें",
       "jobs": "जॉब्स",
       "insights": "इनसाइट्स",
-      "missions": "मिशन"
+      "missions": "मिशन",
+      "support": "सहायता"
     },
     "navGroup": {
       "overview": "अवलोकन",

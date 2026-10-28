@@ -68,7 +68,8 @@
     "plan": "计划 {{id}}",
     "job": "任务 {{id}}",
     "insights": "洞察",
-    "missions": "使命"
+    "missions": "使命",
+    "support": "支持"
   },
   "navigation": {
     "errors": {
@@ -84,7 +85,8 @@
       "recommendations": "改进建议",
       "jobs": "任务",
       "insights": "洞察",
-      "missions": "使命"
+      "missions": "使命",
+      "support": "支持"
     },
     "navGroup": {
       "overview": "概览",
