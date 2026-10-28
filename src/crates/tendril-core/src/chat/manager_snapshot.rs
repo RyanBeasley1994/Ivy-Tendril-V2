@@ -5,7 +5,7 @@
 //! whole turn so far back through the model, and the daemon already knows every answer. So it says them
 //! once, in a few lines, and the manager only looks further at what it is about to act on.
 
-use crate::chat::manager_brief::manager_session_id;
+use crate::chat::manager_brief::{base_manager_session_id, manager_session_id};
 use crate::missions::model::MissionState;
 use crate::missions::store::{list_missions, missions_dir};
 use chrono::{DateTime, Utc};
@@ -32,10 +32,12 @@ fn parse(at: &Value) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(at.as_str()?).ok().map(|d| d.with_timezone(&Utc))
 }
 
-/// The project a manager session belongs to, by the session id every manager is given.
+/// The project a manager session belongs to, by the session id every manager is given (a ticket
+/// conversation belongs to its project's manager).
 pub fn project_of(tendril_home: &Path, session_id: &str) -> Option<String> {
     let settings = crate::config::load_config(&crate::config::get_config_path(tendril_home)).ok()?;
-    settings.projects.iter().map(|p| p.name.clone()).find(|name| manager_session_id(name) == session_id)
+    let base = base_manager_session_id(session_id);
+    settings.projects.iter().map(|p| p.name.clone()).find(|name| manager_session_id(name) == base)
 }
 
 /// The snapshot for `project`, as a prompt section.

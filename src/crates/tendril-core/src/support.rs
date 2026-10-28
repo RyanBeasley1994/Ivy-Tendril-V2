@@ -14,9 +14,9 @@
 //! written owner-only. The password never leaves the daemon: [`SupportStatus`] is what the UI sees.
 //! `<TendrilHome>/support-handoffs.json` records which tickets were handed to which project.
 //!
-//! **Hidden from the customer.** Everything the manager and its workers say about a ticket goes on it
-//! as an *internal* note until the work is done; only `tendril support close --message` speaks to the
-//! partner.
+//! **Hidden from the customer.** Handing a ticket to a project starts a fresh manager conversation
+//! about it (`manager_brief::ticket_session_id`), shown beside the ticket, where the operator guides
+//! the work. Nothing from it reaches the partner until `tendril support close --message`.
 
 use crate::error::{Result, TendrilError};
 use crate::fs_lock::{with_file_lock, write_atomic};
@@ -282,6 +282,9 @@ pub async fn close(home: &Path, id: &str, message: Option<&str>) -> Result<()> {
 pub struct Handoff {
     pub ticket_id: String,
     pub project: String,
+    /// The ticket's manager conversation.
+    #[serde(default)]
+    pub session_id: String,
     pub at: DateTime<Utc>,
     #[serde(default)]
     pub done_at: Option<DateTime<Utc>>,
@@ -305,8 +308,14 @@ fn update_handoffs(home: &Path, f: impl FnOnce(&mut Vec<Handoff>)) -> Result<()>
     })
 }
 
-pub fn record_handoff(home: &Path, ticket_id: &str, project: &str) -> Result<Handoff> {
-    let handoff = Handoff { ticket_id: ticket_id.into(), project: project.into(), at: Utc::now(), done_at: None };
+pub fn record_handoff(home: &Path, ticket_id: &str, project: &str, session_id: &str) -> Result<Handoff> {
+    let handoff = Handoff {
+        ticket_id: ticket_id.into(),
+        project: project.into(),
+        session_id: session_id.into(),
+        at: Utc::now(),
+        done_at: None,
+    };
     let saved = handoff.clone();
     update_handoffs(home, |all| {
         all.retain(|h| h.ticket_id != ticket_id);
@@ -326,8 +335,8 @@ fn mark_handoff_done(home: &Path, ticket_id: &str) -> Result<()> {
     })
 }
 
-/// What a manager is sent when the operator hands it a ticket: the ticket as the team sees it, and
-/// the rules for talking about it.
+/// The first message of a ticket's manager conversation: the ticket as the team sees it, and the
+/// rules for working it.
 pub fn handoff_prompt(ticket: &Value, project: &str, instructions: &str) -> String {
     let id = ticket["id"].as_str().unwrap_or_default();
     let mut s = format!(
@@ -360,15 +369,16 @@ pub fn handoff_prompt(ticket: &Value, project: &str, instructions: &str) -> Stri
     s.push_str(&format!(
         r#"
 ## How to work it
-This is a ticket for project **{project}**. Find the cause, then fix it the way you handle any request: delegate, verify (have a worker reproduce it and test the fix against what the partner described), and take it to its finish line.
+This conversation is only about this ticket, for project **{project}**, and the operator is here guiding it.
 
-**The partner cannot see this chat, and must not hear from you until the work is done.** Progress, findings and questions for the team go on the ticket as internal notes, which only the team sees:
-`tendril support reply {id} --internal "<what you found or did>"`
-Re-read the ticket for new partner messages with `tendril support get {id}`.
+**Investigate first, then stop and report.** Find out what is actually happening: have a worker read the code, reproduce what the partner described, check the data. Then tell the operator, briefly: what is going on, whether it is really a bug or the system working as designed, and what you recommend (fix it, reply with an explanation, or a policy decision for them). A ticket is a question from a partner, not an order to change anything.
 
-When the fix is merged (or deployed, if that was asked), tell the partner and close the ticket in one step:
-`tendril support close {id} --message "<one or two friendly sentences: what was wrong and that the fix is going out shortly>"`
-If it turns out not to be a bug, or you need something only the partner can answer, say so to the operator instead of messaging the partner yourself.
+**Change nothing until the operator says so.** No code changes, branches, pull requests, deploys or data fixes on your own initiative, even when you are sure. Wait for their go-ahead, then do exactly what they agreed, and take that to its finish line.
+
+**The partner cannot see this conversation and must not hear from you unless the operator says so.** Report here, not on the ticket. Check for new partner messages with `tendril support get {id}`.
+
+When the operator says to reply and close (for example once an agreed fix is merged), do it in one step:
+`tendril support close {id} --message "<what they agreed to tell the partner>"`
 "#
     ));
     s
@@ -400,11 +410,11 @@ mod tests {
     #[test]
     fn a_handoff_is_recorded_once_and_closed_by_resolve() {
         let home = tempfile::tempdir().unwrap();
-        record_handoff(home.path(), "t1", "A").unwrap();
-        record_handoff(home.path(), "t1", "B").unwrap();
+        record_handoff(home.path(), "t1", "A", "s1").unwrap();
+        record_handoff(home.path(), "t1", "B", "s2").unwrap();
         let all = load_handoffs(home.path());
         assert_eq!(all.len(), 1);
-        assert_eq!(all[0].project, "B");
+        assert_eq!((all[0].project.as_str(), all[0].session_id.as_str()), ("B", "s2"));
         mark_handoff_done(home.path(), "t1").unwrap();
         assert!(load_handoffs(home.path())[0].done_at.is_some());
     }
@@ -423,8 +433,9 @@ mod tests {
         assert!(p.contains("**Login broken**") && p.contains("Partner: Acme"), "{p}");
         assert!(p.contains("Ryan (internal note): Looks like SSO"), "{p}");
         assert!(p.contains("check the IdP"));
-        assert!(p.contains("tendril support reply abc --internal"));
+        assert!(p.contains("tendril support get abc"));
         assert!(p.contains("tendril support close abc --message"));
-        assert!(p.contains("must not hear from you until the work is done"));
+        assert!(p.contains("must not hear from you unless the operator says so"));
+        assert!(p.contains("Change nothing until the operator says so"));
     }
 }

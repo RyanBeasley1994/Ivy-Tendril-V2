@@ -20,6 +20,8 @@ export interface SupportStatus {
 export interface Handoff {
   ticketId: string;
   project: string;
+  /** The ticket's own manager conversation. */
+  sessionId: string;
   at: string;
   doneAt?: string | null;
 }

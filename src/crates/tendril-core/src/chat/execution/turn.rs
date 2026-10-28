@@ -284,6 +284,9 @@ impl ChatExecutionManager {
                     session_arguments.extend(["--resume".to_string(), a.id.clone()]);
                 }
                 let mut agent_session_id = resumed.as_ref().map(|a| a.id.clone()).or_else(|| opened.clone());
+                // The largest context any request of this turn carried; past the cap, the session is
+                // retired after the turn (see `agent_session::MAX_CONTEXT_TOKENS`).
+                let mut context_tokens: u64 = 0;
 
                 let launch_config = AgentLaunchConfig {
                     session_id: opened.clone(),
@@ -373,6 +376,9 @@ impl ChatExecutionManager {
                                     if lives_in_one_session && !evt.is_stderr {
                                         if let Some(id) = crate::chat::agent_session::session_id_in(&evt.raw_line) {
                                             agent_session_id = Some(id);
+                                        }
+                                        if let Some(tokens) = crate::chat::agent_session::context_tokens_in(&evt.raw_line) {
+                                            context_tokens = context_tokens.max(tokens);
                                         }
                                     }
 
@@ -521,7 +527,11 @@ impl ChatExecutionManager {
                         && outcome.ended_by_itself()
                         && said_nothing
                         && limit_message.is_none();
-                    if !lives_in_one_session || dead_resume {
+                    let outgrown = context_tokens > crate::chat::agent_session::MAX_CONTEXT_TOKENS;
+                    if outgrown {
+                        tracing::info!("manager {s_id}: context reached {context_tokens} tokens; the next turn opens a fresh session");
+                    }
+                    if !lives_in_one_session || dead_resume || outgrown {
                         crate::chat::agent_session::forget(&mgr.tendril_home, &s_id);
                     } else if let Some(id) = agent_session_id.take().filter(|_| outcome.is_success()) {
                         crate::chat::agent_session::set(
@@ -723,6 +733,8 @@ impl ChatExecutionManager {
                     }
                 }
                 s.updated_at = Utc::now();
+                // A manager's conversation never ends, so it is trimmed after every turn.
+                crate::chat::compaction::compact(&self.tendril_home, s);
                 let _ = save_session(&self.tendril_home, s);
             }
         }

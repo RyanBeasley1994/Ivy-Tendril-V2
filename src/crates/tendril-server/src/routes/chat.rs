@@ -100,13 +100,33 @@ pub fn trimmed_json(session: &tendril_core::chat::ChatSession, keep: usize) -> s
     value
 }
 
+/// A session as a list row: its latest message only, without that message's `rawStream`. The raw
+/// stream is a whole turn's agent output, often megabytes, and a list never shows it; sending it made
+/// the session list tens of megabytes on a busy daemon, fetched every time a project opened.
+pub fn summary_json(mut session: tendril_core::chat::ChatSession) -> serde_json::Value {
+    let total = session.messages.len();
+    let last = session.messages.pop();
+    session.messages = last
+        .map(|mut m| {
+            m.raw_stream = None;
+            m
+        })
+        .into_iter()
+        .collect();
+    let mut value = json!(session);
+    if total > 1 {
+        value["totalMessages"] = json!(total);
+    }
+    value
+}
+
 pub async fn list_sessions_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<ListQuery>,
 ) -> impl IntoResponse {
     match state.chat_manager.list_sessions().await {
         Ok(sessions) if query.summary => {
-            let rows: Vec<_> = sessions.iter().map(|s| trimmed_json(s, 1)).collect();
+            let rows: Vec<_> = sessions.into_iter().map(summary_json).collect();
             (StatusCode::OK, Json(json!(rows)))
         }
         Ok(sessions) => (StatusCode::OK, Json(json!(sessions))),

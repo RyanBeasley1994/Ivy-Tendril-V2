@@ -10,6 +10,9 @@ use axum::Json;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
+use tendril_core::chat::manager_brief::ticket_session_id;
+use tendril_core::chat::execution::ChatTurnOptions;
+use tendril_core::chat::models::ChatQueuedItem;
 use tendril_core::config::load_config;
 use tendril_core::error::TendrilError;
 use tendril_core::support;
@@ -130,8 +133,10 @@ pub struct HandoffRequest {
     pub instructions: String,
 }
 
-/// Hands a ticket to a project's manager: the manager gets the whole ticket and how to work it, the
-/// ticket gets an internal note and moves to In Progress. The partner sees neither.
+/// Hands a ticket to a project: a fresh manager conversation about it, briefed like the project's
+/// manager and opened with the whole ticket and the operator's first steer. The operator guides it
+/// from the ticket panel. Handing the same ticket over again reopens that conversation and, when the
+/// operator wrote something, sends it there. The partner sees none of it.
 pub async fn handoff(State(state): State<Arc<AppState>>, Path(id): Path<String>, Json(req): Json<HandoffRequest>) -> Response {
     let home = &state.tendril_home;
     let Some(project) = load_config(&state.config_path)
@@ -145,19 +150,36 @@ pub async fn handoff(State(state): State<Arc<AppState>>, Path(id): Path<String>,
         Ok(t) => t,
         Err(e) => return failed(e),
     };
-    let prompt = support::handoff_prompt(&ticket, &project, &req.instructions);
-    if let Err(e) = crate::telegram::tell_manager(&state, &project, &prompt).await {
-        return error(StatusCode::INTERNAL_SERVER_ERROR, e);
+    let session_id = ticket_session_id(&project, &id);
+    let title = format!("Ticket · {}", ticket["subject"].as_str().unwrap_or(&id));
+    let created = match crate::routes::projects::open_manager_session(&state, &project, &session_id, &title).await {
+        Ok((_, created)) => created,
+        Err(response) => return response,
+    };
+    let prompt = if created {
+        Some(support::handoff_prompt(&ticket, &project, &req.instructions))
+    } else {
+        Some(req.instructions.trim().to_string()).filter(|i| !i.is_empty())
+    };
+    if let Some(prompt) = prompt {
+        // A steer sent while it is mid-turn waits its turn, as anything sent to a manager does.
+        if state.chat_manager.is_generating(&session_id).await {
+            let item = ChatQueuedItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                prompt,
+                attachments: None,
+                created_at: chrono::Utc::now(),
+                role: None,
+            };
+            state.chat_manager.enqueue_message(&session_id, item).await;
+        } else if let Err(e) = state.chat_manager.start_session_turn(&session_id, &prompt, ChatTurnOptions::default()).await {
+            return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
+        }
     }
-    let handoff = match support::record_handoff(home, &id, &project) {
+    let handoff = match support::record_handoff(home, &id, &project, &session_id) {
         Ok(h) => h,
         Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     };
-    // The manager already has it; a failure to note it on the ticket should not undo that.
-    let note = format!("Handed to the Forge manager for project {project}. Internal notes from it follow.");
-    if let Err(e) = support::reply(home, &id, &note, true).await {
-        tracing::warn!("support handoff note on {id} failed: {e}");
-    }
     if ticket["status"].as_str().is_some_and(|s| s == "OPEN" || s == "PENDING") {
         if let Err(e) = support::set_status(home, &id, "IN_PROGRESS").await {
             tracing::warn!("support handoff status on {id} failed: {e}");

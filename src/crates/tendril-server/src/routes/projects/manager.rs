@@ -90,39 +90,60 @@ pub async fn get_or_create_project_manager(
     };
     let id = manager_session_id(&project.name);
     let title = format!("Manager · {}", project.name);
-    match state.chat_manager.get_or_create_session_with_id(&id, &title).await {
+    match open_manager_session(&state, &project.name, &id, &title).await {
         Ok((session, created)) => {
-            if created {
-                if let Some(r) = tendril_core::agents::project_engine::ProjectEngine::load_effective(&state.tendril_home, &project.name).role("manager") {
-                    let _ = state.chat_manager.set_session_agent(&id, &r.agent, r.model.as_deref(), r.effort.as_deref()).await;
-                }
-                let briefing = ChatMessage {
-                    id: Uuid::new_v4().to_string(),
-                    role: "system".to_string(),
-                    content: manager_briefing(
-                        &project.name,
-                        &project.repos,
-                        &project.context,
-                        read_policy(&state, &project.name).as_deref(),
-                    ),
-                    timestamp: Utc::now(),
-                    agent_id: None,
-                    model_id: None,
-                    raw_stream: None,
-                    effort: None,
-                };
-                if let Err(e) = state.chat_manager.add_message(&id, briefing).await {
-                    return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
-                }
-            }
             if !created {
                 refresh_briefing(&state, &project.name).await;
             }
+            // The caller wants the id; the conversation itself is fetched by its own tail.
             let session = state.chat_manager.get_session(&id).await.unwrap_or(session);
-            (StatusCode::OK, Json(json!(session))).into_response()
+            (StatusCode::OK, Json(crate::routes::chat::summary_json(session))).into_response()
         }
-        Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        Err(response) => response,
     }
+}
+
+/// Opens (or creates, briefed and on the project's manager engine) a manager session for `project`
+/// under `id`: the project's own manager, or a ticket conversation (`manager_brief::ticket_session_id`).
+/// Returns whether it was created.
+pub(crate) async fn open_manager_session(
+    state: &AppState,
+    project_name: &str,
+    id: &str,
+    title: &str,
+) -> Result<(tendril_core::chat::ChatSession, bool), Response> {
+    let project = find_project(state, project_name)?;
+    let (session, created) = state
+        .chat_manager
+        .get_or_create_session_with_id(id, title)
+        .await
+        .map_err(|e| error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    if created {
+        if let Some(r) = tendril_core::agents::project_engine::ProjectEngine::load_effective(&state.tendril_home, &project.name).role("manager") {
+            let _ = state.chat_manager.set_session_agent(id, &r.agent, r.model.as_deref(), r.effort.as_deref()).await;
+        }
+        let briefing = ChatMessage {
+            id: Uuid::new_v4().to_string(),
+            role: "system".to_string(),
+            content: manager_briefing(
+                &project.name,
+                &project.repos,
+                &project.context,
+                read_policy(state, &project.name).as_deref(),
+            ),
+            timestamp: Utc::now(),
+            agent_id: None,
+            model_id: None,
+            raw_stream: None,
+            effort: None,
+        };
+        state
+            .chat_manager
+            .add_message(id, briefing)
+            .await
+            .map_err(|e| error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    Ok((session, created))
 }
 
 /// `docker ps -a`, narrowed to what belongs to the project: a compose project whose working

@@ -97,6 +97,22 @@ pub fn manager_session_id(project: &str) -> String {
     format!("{MANAGER_SESSION_PREFIX}{slug}")
 }
 
+/// What separates a project's manager id from one of its ticket conversations.
+const TICKET_MARKER: &str = "--ticket-";
+
+/// A fresh manager conversation about one support ticket: a manager in every respect (briefing,
+/// guard, the project's snapshot each turn), but its own session, so the operator can guide the
+/// ticket's work there without it mixing into the project manager's main thread.
+pub fn ticket_session_id(project: &str, ticket_id: &str) -> String {
+    let ticket: String = ticket_id.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    format!("{}{TICKET_MARKER}{ticket}", manager_session_id(project))
+}
+
+/// The project manager's own id for any manager session, ticket conversations included.
+pub fn base_manager_session_id(session_id: &str) -> &str {
+    session_id.split(TICKET_MARKER).next().unwrap_or(session_id)
+}
+
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
 pub const BRIEFING_VERSION: u32 = 20;
 
@@ -401,6 +417,10 @@ mod tests {
         assert!(allowed.iter().any(|t| t == "Bash(tendril *)"));
         assert!(is_manager_session(&manager_session_id("Monorepo-Propfirm")));
         assert!(!is_manager_session("0d1f-some-chat"));
+        let ticket = ticket_session_id("Monorepo-Propfirm", "cm1x9z");
+        assert!(is_manager_session(&ticket));
+        assert_eq!(base_manager_session_id(&ticket), manager_session_id("Monorepo-Propfirm"));
+        assert_eq!(base_manager_session_id(&manager_session_id("P")), manager_session_id("P"));
         // Nothing that writes into a repository, builds, commits, merges or pushes.
         for forbidden in ["Write", "Edit", "Bash(git commit", "Bash(git push", "Bash(git merge ", "Bash(git merge)", "Bash(pnpm", "Bash(npm", "Bash(cargo", "Bash(rm *)", "Bash(sudo"] {
             assert!(

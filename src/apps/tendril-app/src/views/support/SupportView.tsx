@@ -11,9 +11,12 @@ import {
   type TicketSummary,
 } from "../../api/support";
 import { refreshSupportCount } from "../../state/supportCount";
+import { chatStore } from "../../state/chatStore";
+import type { ChatMessage } from "../../types/chat";
+import { ChatView } from "../ChatView";
 import { formatAge } from "../../utils/commandCenter";
 import { Page, PageHeader } from "../../components/page/Page";
-import { Card, GhostButton, IconButton, Pill, PrimaryButton, type Tone } from "../../components/page/kit";
+import { Card, GhostButton, IconButton, Pill, PrimaryButton, Seg, type Tone } from "../../components/page/kit";
 
 /**
  * Propriotec Operations' support board, worked from Tendril: the same five lanes as the Operations
@@ -315,7 +318,8 @@ const TicketPanel: React.FC<{
 }> = ({ id, projects, onClose, onChanged }) => {
   const [ticket, setTicket] = React.useState<TicketDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [mode, setMode] = React.useState<"reply" | "handoff" | "close">("reply");
+  const [mode, setMode] = React.useState<"reply" | "close">("reply");
+  const [view, setView] = React.useState<"ticket" | "manager">("ticket");
   const bottom = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
@@ -361,7 +365,7 @@ const TicketPanel: React.FC<{
 
   return (
     <aside
-      className="fixed inset-0 z-30 flex flex-col border-l border-border bg-background lg:static lg:z-auto lg:w-[520px] lg:shrink-0"
+      className="fixed inset-0 z-30 flex flex-col border-l border-border bg-background lg:static lg:z-auto lg:w-[580px] lg:shrink-0"
       aria-label="Ticket"
     >
       <header className="flex shrink-0 items-start gap-2 border-b border-border/70 px-4 py-3">
@@ -396,6 +400,27 @@ const TicketPanel: React.FC<{
           <X className="size-4" aria-hidden="true" />
         </IconButton>
       </header>
+      <div className="flex shrink-0 border-b border-border/70 px-4 py-2">
+        <Seg<"ticket" | "manager">
+          label="Show"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "ticket", label: "Ticket" },
+            { value: "manager", label: ticket?.handoff ? `Manager · ${ticket.handoff.project}` : "Manager" },
+          ]}
+        />
+      </div>
+
+      {view === "manager" && ticket && (
+        <ManagerPane
+          ticket={ticket}
+          projects={projects}
+          onHandoff={(project, instructions) => act(() => supportApi.handoff(id, project, instructions))}
+        />
+      )}
+      {view === "ticket" && (
+      <>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-3">
         {ticket?.intakeData && Object.keys(ticket.intakeData).length > 0 && (
@@ -445,7 +470,6 @@ const TicketPanel: React.FC<{
             {(
               [
                 ["reply", "Reply"],
-                ["handoff", "Hand to manager"],
                 ["close", "Close"],
               ] as const
             ).map(([value, label]) => (
@@ -464,13 +488,6 @@ const TicketPanel: React.FC<{
             ))}
           </div>
           {mode === "reply" && <Composer onSend={(text, internal) => act(() => supportApi.reply(id, text, internal))} />}
-          {mode === "handoff" && (
-            <HandoffForm
-              projects={projects}
-              current={ticket.handoff?.project}
-              onHandoff={(project, instructions) => act(() => supportApi.handoff(id, project, instructions))}
-            />
-          )}
           {mode === "close" && (
             <CloseForm
               onClose={(message) =>
@@ -482,7 +499,75 @@ const TicketPanel: React.FC<{
           )}
         </footer>
       )}
+      </>
+      )}
     </aside>
+  );
+};
+
+/** The briefing and the ticket dump that opens the conversation: instructions, shown in the Ticket view. */
+const isTicketChatNote = (m: ChatMessage): boolean =>
+  (m.role === "system" && m.content.startsWith("# You are the Factory Manager")) ||
+  m.content.startsWith("# Support ticket handed to you");
+
+const TICKET_PROMPTS = [
+  { label: "What did you find?", prompt: "What have you found so far, and what's your plan?" },
+  { label: "Reproduce it first", prompt: "Before fixing anything, have a worker reproduce exactly what the partner described and show me the evidence." },
+  { label: "Close it out", prompt: "If the fix is merged, tell the partner it's going out shortly and close the ticket." },
+];
+
+/**
+ * The ticket's own manager conversation, or the form that starts it. Once started it is an ordinary
+ * manager chat the operator guides; the partner never sees it.
+ */
+const ManagerPane: React.FC<{
+  ticket: TicketDetail;
+  projects: ProjectSummary[];
+  onHandoff: (project: string, instructions: string) => Promise<void>;
+}> = ({ ticket, projects, onHandoff }) => {
+  const sessionId = ticket.handoff?.sessionId;
+  if (!sessionId) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col justify-end gap-2 px-4 py-3">
+        <HandoffForm projects={projects} onHandoff={onHandoff} />
+      </div>
+    );
+  }
+  return <TicketChat sessionId={sessionId} ticket={ticket} />;
+};
+
+const TicketChat: React.FC<{ sessionId: string; ticket: TicketDetail }> = ({ sessionId, ticket }) => {
+  const [ready, setReady] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let live = true;
+    setReady(false);
+    (async () => {
+      try {
+        // `init` lists the sessions once; listing again on every open is the slow path.
+        await chatStore.init();
+        await chatStore.selectSession(sessionId);
+        if (live) setReady(true);
+      } catch (e) {
+        if (live) setError(errorText(e));
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [sessionId]);
+  if (error) return <div className="p-4 text-[12.5px] text-destructive">Could not open the conversation: {error}</div>;
+  if (!ready) return <div className="p-4 text-[12.5px] text-muted-foreground">Opening the conversation…</div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <ChatView
+        embedded
+        greeting={`Manager · ${ticket.handoff?.project ?? ""}`}
+        headline={ticket.subject}
+        hideMessage={isTicketChatNote}
+        samplePrompts={TICKET_PROMPTS}
+      />
+    </div>
   );
 };
 
@@ -532,18 +617,15 @@ const Composer: React.FC<{ onSend: (text: string, internal: boolean) => Promise<
 
 const HandoffForm: React.FC<{
   projects: ProjectSummary[];
-  current?: string;
   onHandoff: (project: string, instructions: string) => Promise<void>;
-}> = ({ projects, current, onHandoff }) => {
-  const [project, setProject] = React.useState(current ?? projects[0]?.name ?? "");
+}> = ({ projects, onHandoff }) => {
+  const [project, setProject] = React.useState(projects[0]?.name ?? "");
   const [instructions, setInstructions] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  const [sent, setSent] = React.useState(false);
   const submit = async () => {
     setBusy(true);
     try {
       await onHandoff(project, instructions);
-      setSent(true);
       setInstructions("");
     } catch {
       // Shown by the panel.
@@ -554,9 +636,10 @@ const HandoffForm: React.FC<{
   if (projects.length === 0) return <span className="text-[12px] text-muted-foreground">No projects to hand it to yet.</span>;
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-0 text-[11.5px] text-muted-foreground">
-        The manager gets the whole ticket and works it with agents. It posts progress as internal notes, and when the fix
-        is out it tells the partner and closes the ticket. The partner sees nothing until then.
+      <p className="m-0 text-[12px] text-muted-foreground">
+        Starts a fresh manager conversation about this ticket, on the project you pick. It gets the whole ticket, works it
+        with agents and reports back here, where you guide it. When the fix is out it tells the partner and closes the
+        ticket. The partner sees nothing until then.
       </p>
       <select
         value={project}
@@ -570,17 +653,14 @@ const HandoffForm: React.FC<{
       </select>
       <textarea
         className={textareaClass}
-        placeholder="Anything the manager should know (optional): where to look, how far to take it"
+        placeholder="Your first steer (optional): where to look, what to check, how far to take it"
         value={instructions}
         onChange={(e) => setInstructions(e.target.value)}
       />
-      <div className="flex items-center gap-2">
-        {sent && <span className="text-[12px] text-success">Handed to {project}'s manager.</span>}
-        <PrimaryButton size="sm" className="ml-auto" disabled={busy || !project} onClick={() => void submit()}>
-          <Bot className="size-3.5" aria-hidden="true" />
-          {busy ? "Handing over…" : current ? "Send to manager again" : "Hand to manager"}
-        </PrimaryButton>
-      </div>
+      <PrimaryButton size="sm" className="self-end" disabled={busy || !project} onClick={() => void submit()}>
+        <Bot className="size-3.5" aria-hidden="true" />
+        {busy ? "Starting…" : "Start manager chat"}
+      </PrimaryButton>
     </div>
   );
 };

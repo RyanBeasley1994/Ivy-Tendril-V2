@@ -1,4 +1,5 @@
 pub mod agent_session;
+pub mod compaction;
 pub mod execution;
 pub mod manager_brief;
 pub mod manager_snapshot;
