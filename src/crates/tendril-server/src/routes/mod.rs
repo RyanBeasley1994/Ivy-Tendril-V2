@@ -514,6 +514,18 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         // V1's Test Agent dialog: install, then auth, then one validation per model. A POST because
         // it launches real processes and spends real provider quota - this is not a safe GET.
         .route("/api/agents/:agent/test", post(agents::test_agent_handler))
+        // Signing the agent's CLI back in from the app: the daemon runs the CLI's own headless
+        // login, the app opens the URL it prints and, for Claude, relays the code back.
+        .route(
+            "/api/agents/:agent/login",
+            get(agents::get_agent_login_handler)
+                .post(agents::start_agent_login_handler)
+                .delete(agents::cancel_agent_login_handler),
+        )
+        .route(
+            "/api/agents/:agent/login/code",
+            post(agents::submit_agent_login_code_handler),
+        )
         // The rate-limit windows behind the settings pane's usage strip. Cached for a minute in
         // core, so the pane's own poll does not become the thing that rate-limits the account.
         .route(

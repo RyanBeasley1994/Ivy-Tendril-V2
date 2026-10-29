@@ -10,6 +10,8 @@ pub mod eventwire;
 // generically named to live in `agents::*` alongside everything else.
 pub mod instructions;
 pub mod kimi_config;
+// Deliberately not re-exported below: `login::start`, `status` and `cancel` are too generically named.
+pub mod login;
 pub mod model_cache;
 // Deliberately not re-exported below: `model_sorting::sort_models` and its `Version` are too
 // generically named to live in `agents::*` alongside everything else.

@@ -342,6 +342,36 @@ impl TendrilClient {
         .await
     }
 
+    /// The agent sign-in routes, `/api/agents/{agent}/login[/code]`. `code` picks the code route.
+    pub async fn agent_login_request(
+        &self,
+        method: &str,
+        agent: &str,
+        code: bool,
+        body: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, BridgeError> {
+        let method = match method.to_ascii_uppercase().as_str() {
+            "GET" => reqwest::Method::GET,
+            "POST" => reqwest::Method::POST,
+            "DELETE" => reqwest::Method::DELETE,
+            other => return Err(BridgeError::new("AGENT_LOGIN_METHOD", format!("'{other}' is not supported"))),
+        };
+        let path = format!(
+            "/api/agents/{}/login{}",
+            path_segment(agent),
+            if code { "/code" } else { "" }
+        );
+        self.project_assets_request(
+            method,
+            &path,
+            body,
+            "AGENT_LOGIN_FAILED",
+            "sign the agent in",
+            Some(std::time::Duration::from_secs(90)),
+        )
+        .await
+    }
+
     pub async fn list_project_links(
         &self,
         project_name: &str,

@@ -1,15 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
+    <!-- The tile: Insights-card navy with the cards' blue glow from the top-left corner. -->
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1b222b"/>
-      <stop offset="1" stop-color="#0a0e13"/>
+      <stop offset="0" stop-color="#0e1530"/>
+      <stop offset="1" stop-color="#030610"/>
     </linearGradient>
-    <linearGradient id="ember" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffb347"/>
-      <stop offset="1" stop-color="#ff6a1a"/>
+    <radialGradient id="glow" cx="0.14" cy="0.02" r="0.85">
+      <stop offset="0" stop-color="#1b92ff" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#1b92ff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#1b92ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4fb0ff" stop-opacity="0.75"/>
+      <stop offset="0.5" stop-color="#1d2331" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#1b92ff" stop-opacity="0.35"/>
     </linearGradient>
+    <!-- The anvil: electric blue, lighter at the face. -->
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6cb8ff"/>
+      <stop offset="1" stop-color="#1b78e6"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
   </defs>
   <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bg)"/>
-  <path fill="url(#ember)" d="M88 232 Q150 232 178 212 L424 212 L424 266 L358 266 Q332 278 328 316 L328 346 L376 346 L394 388 L150 388 L168 346 L216 346 L216 316 Q212 280 178 270 Q122 264 88 232 Z"/>
-  <path fill="#ffd27a" d="M300 108 L312 152 L356 164 L312 176 L300 220 L288 176 L244 164 L288 152 Z"/>
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#glow)"/>
+  <rect x="17.5" y="17.5" width="477" height="477" rx="106.5" fill="none" stroke="url(#edge)" stroke-width="3"/>
+  <path fill="#1b92ff" opacity="0.45" filter="url(#soft)" d="M88 232 Q150 232 178 212 L424 212 L424 266 L358 266 Q332 278 328 316 L328 346 L376 346 L394 388 L150 388 L168 346 L216 346 L216 316 Q212 280 178 270 Q122 264 88 232 Z"/>
+  <path fill="url(#steel)" d="M88 232 Q150 232 178 212 L424 212 L424 266 L358 266 Q332 278 328 316 L328 346 L376 346 L394 388 L150 388 L168 346 L216 346 L216 316 Q212 280 178 270 Q122 264 88 232 Z"/>
+  <path fill="#e8f4ff" d="M300 108 L312 152 L356 164 L312 176 L300 220 L288 176 L244 164 L288 152 Z"/>
 </svg>

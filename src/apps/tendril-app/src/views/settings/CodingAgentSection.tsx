@@ -1,9 +1,10 @@
 import React from "react";
+import { openAgentSignIn } from "../../state/agentSignIn";
 import { openUrl } from "../../utils/opener";
 import { BrandIcon, CodeBlock } from "@ivy-interactive/components/tendril";
 import { Button, Callout, Input, Label, Switch } from "@ivy-interactive/components/ui";
 import { Check, ExternalLink } from "lucide-react";
-import { agentsApi } from "../../api/agentsApi";
+import { agentsApi, canSignIn } from "../../api/agentsApi";
 import { providerModelsApi } from "../../api/providerModelsApi";
 import { i18n, Trans, useTranslation, type TFunction } from "../../i18n";
 import { notificationsStore } from "../../state/notificationsStore";
@@ -1049,6 +1050,16 @@ export const CodingAgentSection: React.FC<{
           >
             {t("actions.test")}
           </Button>
+          {canSignIn(finalAgent) && (
+            <Button
+              type="button"
+              variant="outline"
+              data-testid="sign-in-agent"
+              onClick={() => openAgentSignIn(finalAgent.toLowerCase())}
+            >
+              Sign in again
+            </Button>
+          )}
           <Button type="submit" disabled={!hasChanges || isSaving}>
             {isSaving ? t("actions.saving") : t("common:actions.save")}
           </Button>

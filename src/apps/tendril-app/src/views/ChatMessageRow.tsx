@@ -8,7 +8,8 @@ import {
   QuestionsSubmitContext,
 } from "@ivy-interactive/components/tendril";
 import { Spinner } from "@ivy-interactive/components/ui";
-import { CheckCheck, Paperclip, Sparkles, XCircle } from "lucide-react";
+import { CheckCheck, KeyRound, Paperclip, Sparkles, XCircle } from "lucide-react";
+import { isAuthFailure, openAgentSignIn, signInAgentFor } from "../state/agentSignIn";
 import {
   isImageAttachment,
   resetAttachmentPreviewsForTesting,
@@ -421,6 +422,17 @@ export const ChatMessageRow: React.FC<ChatMessageRowProps> = React.memo(function
                   <Spinner size="sm" />
                   <span>{t("messageRow.submittingAnswer")}</span>
                 </div>
+              )}
+              {!isLiveTurn && isAuthFailure(content) && (
+                <button
+                  type="button"
+                  data-testid="chat-sign-in-again"
+                  onClick={() => openAgentSignIn(signInAgentFor(message.agentId))}
+                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-primary/20"
+                >
+                  <KeyRound className="size-3.5" aria-hidden="true" />
+                  Sign in again
+                </button>
               )}
               {parsedTurn && <TurnMetrics metrics={parsedTurn.metrics} isLiveTurn={isLiveTurn} />}
               {!isLiveTurn && replyTime && (

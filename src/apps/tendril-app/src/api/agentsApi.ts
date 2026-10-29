@@ -126,4 +126,43 @@ export const agentsApi = {
   getUsage(agent: string): Promise<AgentUsageSnapshot | null> {
     return agentUsageTransport(agent);
   },
+
+  /**
+   * Signing the agent's CLI back in on the daemon's machine (`/api/agents/:agent/login`): start it,
+   * read where it has got to, hand Claude the code from its callback page, or abandon it.
+   */
+  login: {
+    start: (agent: string) => loginCall<AgentLoginView>("POST", agent),
+    status: (agent: string) => loginCall<AgentLoginView | null>("GET", agent),
+    submitCode: (agent: string, code: string) => loginCall<AgentLoginView>("POST", agent, code),
+    cancel: (agent: string) => loginCall<null>("DELETE", agent),
+  },
 };
+
+/** The CLIs the app can sign in itself; the rest only have the Help section's commands. */
+export const SIGN_IN_AGENTS = ["claude", "codex"] as const;
+
+export const canSignIn = (agent: string): boolean =>
+  (SIGN_IN_AGENTS as readonly string[]).includes(agent.toLowerCase());
+
+/** Rust `agents::login::LoginView`. */
+export interface AgentLoginView {
+  agent: string;
+  state: "running" | "succeeded" | "failed";
+  url?: string | null;
+  needsCode: boolean;
+  output: string;
+}
+
+async function loginCall<T>(method: string, agent: string, code?: string): Promise<T> {
+  if (isTauri()) return await invoke<T>("cmd_agent_login", { method, agent, code: code ?? null });
+
+  const path = `/api/agents/${encodeURIComponent(agent)}/login${code === undefined ? "" : "/code"}`;
+  const response = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: code === undefined ? undefined : JSON.stringify({ code }),
+  });
+  if (!response.ok) throw new Error(await readError(response, path));
+  return (await response.json()) as T;
+}

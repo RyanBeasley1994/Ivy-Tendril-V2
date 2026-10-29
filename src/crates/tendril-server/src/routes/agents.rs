@@ -553,3 +553,50 @@ mod tests {
         assert_eq!(proxy["label"], "OpenAI Proxy");
     }
 }
+
+/// `POST /api/agents/:agent/login` — starts the agent CLI's own login on the daemon's machine and
+/// returns the URL to open. The daemon is often remote, so this is the only sign-in the app can
+/// actually drive; see `agents::login`.
+pub async fn start_agent_login_handler(Path(agent): Path<String>) -> axum::response::Response {
+    match tendril_core::agents::login::start(&agent).await {
+        Ok(view) => Json(view).into_response(),
+        Err(error) => login_error(error),
+    }
+}
+
+/// `GET /api/agents/:agent/login` — where the login has got to; `null` when none is running.
+pub async fn get_agent_login_handler(
+    Path(agent): Path<String>,
+) -> Json<Option<tendril_core::agents::login::LoginView>> {
+    Json(tendril_core::agents::login::status(&agent))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AgentLoginCodeRequest {
+    code: String,
+}
+
+/// `POST /api/agents/:agent/login/code` — hands Claude the code its callback page showed.
+pub async fn submit_agent_login_code_handler(
+    Path(agent): Path<String>,
+    Json(request): Json<AgentLoginCodeRequest>,
+) -> axum::response::Response {
+    match tendril_core::agents::login::submit_code(&agent, &request.code).await {
+        Ok(view) => Json(view).into_response(),
+        Err(error) => login_error(error),
+    }
+}
+
+/// `DELETE /api/agents/:agent/login` — abandons the login.
+pub async fn cancel_agent_login_handler(Path(agent): Path<String>) -> Json<Option<()>> {
+    tendril_core::agents::login::cancel(&agent);
+    Json(None)
+}
+
+fn login_error(error: String) -> axum::response::Response {
+    (
+        axum::http::StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({ "error": error })),
+    )
+        .into_response()
+}

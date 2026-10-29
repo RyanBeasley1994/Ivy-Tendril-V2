@@ -157,6 +157,20 @@ pub async fn cmd_support(
         .await
 }
 
+/// Signing an agent's CLI back in: `GET`/`POST`/`DELETE` on its login session, or `POST` with `code`
+/// to hand Claude the code from its callback page.
+#[tauri::command]
+pub async fn cmd_agent_login(
+    method: String,
+    agent: String,
+    code: Option<String>,
+) -> Result<serde_json::Value, BridgeError> {
+    let body = code.as_ref().map(|code| json!({ "code": code }));
+    get_client_from_master()?
+        .agent_login_request(&method, &agent, code.is_some(), body)
+        .await
+}
+
 #[tauri::command]
 pub async fn cmd_list_project_links(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?

@@ -133,6 +133,9 @@ const InboxView = React.lazy(() =>
 const PullRequestsView = React.lazy(() =>
   import("./views/PullRequestsView").then((m) => ({ default: m.PullRequestsView })),
 );
+const AgentSignInDialog = React.lazy(() =>
+  import("./views/dialogs/AgentSignInDialog").then((m) => ({ default: m.AgentSignInDialog })),
+);
 const SupportDock = React.lazy(() =>
   import("./views/support/SupportDock").then((m) => ({ default: m.SupportDock })),
 );
@@ -1642,6 +1645,8 @@ export const App: React.FC = () => {
             onOpenOnSupportPage={(ticket) => uiStore.setActiveNav("support", { ticket })}
           />
         </React.Suspense>
+        {/* Signing an agent CLI back in, opened wherever an expired login shows up. */}
+        <AgentSignInDialog />
       </React.Suspense>
     </>
   );
