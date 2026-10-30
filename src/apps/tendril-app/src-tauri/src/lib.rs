@@ -305,6 +305,7 @@ pub fn run() {
             cmd_list_project_links,
             cmd_support,
             cmd_agent_login,
+            cmd_claude_accounts,
             cmd_set_project_link,
             cmd_delete_project_link,
             cmd_scan_repo_assets,

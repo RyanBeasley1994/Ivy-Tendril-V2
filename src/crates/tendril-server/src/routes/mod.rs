@@ -526,6 +526,12 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/agents/:agent/login/code",
             post(agents::submit_agent_login_code_handler),
         )
+        // Two Claude subscriptions: main, and a fallback that takes over while main is rate limited.
+        .route("/api/agents/claude/accounts", get(agents::get_claude_accounts_handler))
+        .route(
+            "/api/agents/claude/accounts/fallback",
+            axum::routing::delete(agents::remove_claude_fallback_handler),
+        )
         // The rate-limit windows behind the settings pane's usage strip. Cached for a minute in
         // core, so the pane's own poll does not become the thing that rate-limits the account.
         .route(

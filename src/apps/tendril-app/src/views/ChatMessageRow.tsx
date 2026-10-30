@@ -26,6 +26,27 @@ import type { LightboxImage } from "@ivy-interactive/components/dialogs";
 import { TurnActivity, buildTurnSegments, parseTurnStream } from "../components/chat/TurnActivity";
 import { TurnMetrics } from "../components/chat/TurnMetrics";
 
+/** A system notice's longer text — a task worker's report — folded away until asked for. */
+const SystemEventMore: React.FC<{ text: string }> = ({ text }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-0.5 cursor-pointer border-0 bg-transparent p-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      >
+        {open ? "Hide" : "Show"}
+      </button>
+      {open && (
+        <span className="mt-1 block whitespace-pre-wrap rounded-md border border-border bg-muted/50 p-2 text-xs text-muted-foreground">
+          {text}
+        </span>
+      )}
+    </>
+  );
+};
+
 export interface ChatMessageRowProps {
   message: ChatMessage;
   inProgressAnswers?: InProgressQuestionAnswers;
@@ -361,6 +382,7 @@ export const ChatMessageRow: React.FC<ChatMessageRowProps> = React.memo(function
               {systemEvent.detail}
             </span>
           )}
+          {systemEvent.more && <SystemEventMore text={systemEvent.more} />}
         </span>
       </div>
     );

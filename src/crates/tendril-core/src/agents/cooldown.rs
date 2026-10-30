@@ -26,9 +26,17 @@ fn with_map<T>(f: impl FnOnce(&mut HashMap<String, DateTime<Utc>>) -> T) -> T {
 }
 
 /// Records that `agent` is rate limited until `until` (the later of this and any earlier record).
-pub fn note_rate_limited(agent: &str, until: DateTime<Utc>) {
+///
+/// Returns `false` when nothing was recorded because the limit was one Claude account's and the other
+/// can take the next run: the agent is not limited, and the same work can go again straight away.
+pub fn note_rate_limited(agent: &str, until: DateTime<Utc>) -> bool {
     if agent.trim().is_empty() {
-        return;
+        return false;
+    }
+    // Only when the runner saw an account hit its limit just now: if it did not, this is not one it
+    // could switch away from, and the agent sits out as it always has.
+    if key(agent) == "claude" && crate::agents::claude_accounts::just_switched(Utc::now()) {
+        return false;
     }
     with_map(|m| {
         let entry = m.entry(key(agent)).or_insert(until);
@@ -36,6 +44,7 @@ pub fn note_rate_limited(agent: &str, until: DateTime<Utc>) {
             *entry = until;
         }
     });
+    true
 }
 
 /// When `agent`'s limit clears, if it is limited at `now`.

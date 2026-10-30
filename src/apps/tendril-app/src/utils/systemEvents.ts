@@ -40,6 +40,8 @@ export interface SystemEventView {
   jobId?: string;
   /** Set with `plan`: what the sentence around the plan reference is made of. */
   sentence?: SystemEventSentence;
+  /** Longer text kept behind a "Show" toggle, such as a task worker's report. */
+  more?: string;
 }
 
 const PREFIX = /^\s*\[System Event\]\s*/i;
@@ -48,6 +50,10 @@ const FINISHED =
 const APPROVED =
   /^Manual approval granted and execution started for plan '(.+?)'\s*\(Job\s+(\S+)\)/i;
 const PLAN_INFO = /^(\d+)\s*:\s*(.+)$/;
+/** `manager_tasks::finished_message`: what a manager is woken with when a task's worker stops. */
+const TASK_STOPPED = /^Task\s+(\S+)\s+"(.+?)"\s+has stopped\.(\s*It did not finish)?[\s\S]*?Its worker's report:\s*([\s\S]*?)\n\s*It left (\d+ commits?) and (\d+ uncommitted files?)/;
+/** Past this, an unrecognised notice shows its first sentence and keeps the rest behind "Show". */
+const LONG_INFO = 180;
 
 const planRef = (info: string): SystemEventPlanRef | undefined => {
   const match = PLAN_INFO.exec(info.trim());
@@ -157,6 +163,23 @@ export function formatSystemEvent(content: string, t: TFunction<"chat"> = chatT)
       text: t("systemEvent.started", { plan: approved[1] }),
       jobId: approved[2],
     };
+  }
+
+  const task = TASK_STOPPED.exec(body);
+  if (task) {
+    const [, , title, unfinished, report, commits, files] = task;
+    return {
+      kind: unfinished ? "failed" : "completed",
+      text: `Task "${title}" ${unfinished ? "was stopped" : "finished"}`,
+      detail: files.startsWith("0 ") ? commits : `${commits} · ${files}`,
+      more: report.trim(),
+    };
+  }
+
+  if (body.length > LONG_INFO) {
+    const firstSentence = /^[\s\S]{20,}?[.!?](?=\s)/.exec(body)?.[0] ?? body.slice(0, LONG_INFO);
+    const head = firstSentence.length > LONG_INFO ? `${body.slice(0, LONG_INFO).trimEnd()}…` : firstSentence;
+    return { kind: "info", text: head, more: body };
   }
 
   return { kind: "info", text: body };

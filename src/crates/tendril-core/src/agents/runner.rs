@@ -134,6 +134,11 @@ where
     for (k, v) in &spec.environment {
         cmd.env(k, v);
     }
+    // A `claude` run goes on whichever Claude account is not rate limited; see `claude_accounts`.
+    let account = crate::agents::claude_accounts::account_for_run(&spec.command, &spec.environment);
+    if let Some((_, Some(dir))) = &account {
+        cmd.env("CLAUDE_CONFIG_DIR", dir);
+    }
 
     // Give the agent its own process group so cancellation can signal the whole tree, not just the
     // process we spawned. Windows has no equivalent; `taskkill /T` walks the tree instead.
@@ -199,14 +204,25 @@ where
     let (terminal_result_tx, mut terminal_result_rx) =
         tokio::sync::mpsc::channel::<TerminalResultOutcome>(10);
 
+    let watch_limits = account.is_some();
     let drain = tokio::spawn(async move {
         let mut on_output_line = on_output_line;
+        // What a limit would be reported in: stderr and the terminal result, never the agent's prose.
+        let mut limit_texts: Vec<String> = Vec::new();
         while let Some(evt) = rx.recv().await {
-            if let Some(outcome) = parse_terminal_result_event(&evt.raw_line) {
+            let result = parse_terminal_result_event(&evt.raw_line);
+            if watch_limits && (evt.is_stderr || result.as_ref().is_some_and(|r| !r.is_success)) {
+                if limit_texts.len() >= 40 {
+                    limit_texts.remove(0);
+                }
+                limit_texts.push(evt.raw_line.chars().take(2000).collect());
+            }
+            if let Some(outcome) = result {
                 let _ = terminal_result_tx.try_send(outcome);
             }
             on_output_line(evt);
         }
+        limit_texts
     });
 
     let deadline = async {
@@ -301,7 +317,17 @@ where
 
     // Flush whatever the agent already wrote. The senders close when the pipes do, so this ends on
     // its own; the timeout is only a guard against a pipe held open by a surviving process.
-    let _ = tokio::time::timeout(POST_KILL_TIMEOUT, drain).await;
+    let limit_texts = match tokio::time::timeout(POST_KILL_TIMEOUT, drain).await {
+        Ok(Ok(texts)) => texts,
+        _ => Vec::new(),
+    };
+    if let Some((which, _)) = account {
+        if let Some(message) = crate::missions::rate_limit::detect(limit_texts.iter().map(String::as_str)) {
+            let now = chrono::Utc::now();
+            crate::agents::claude_accounts::note_limited(which, crate::missions::rate_limit::wait_for(&message, 3, now));
+            tracing::warn!("Claude {which} account hit a limit: {message}");
+        }
+    }
 
     Ok(outcome)
 }

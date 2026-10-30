@@ -1,5 +1,6 @@
 import React from "react";
 import { openAgentSignIn } from "../../state/agentSignIn";
+import { ClaudeAccountsCard } from "./ClaudeAccountsCard";
 import { openUrl } from "../../utils/opener";
 import { BrandIcon, CodeBlock } from "@ivy-interactive/components/tendril";
 import { Button, Callout, Input, Label, Switch } from "@ivy-interactive/components/ui";
@@ -1037,6 +1038,8 @@ export const CodingAgentSection: React.FC<{
 
         <SaveError message={error === null ? null : t("save.failed", { error })} />
 
+        {finalAgent === "claude" && <ClaudeAccountsCard />}
+
         {/* `Layout.Horizontal() | Test Agent | Save`, in that order. `type="button"` because this
             sits inside the settings form and a bare button in a form submits it - which would save
             the pane every time someone tested it. */}
@@ -1050,7 +1053,7 @@ export const CodingAgentSection: React.FC<{
           >
             {t("actions.test")}
           </Button>
-          {canSignIn(finalAgent) && (
+          {canSignIn(finalAgent) && finalAgent !== "claude" && (
             <Button
               type="button"
               variant="outline"

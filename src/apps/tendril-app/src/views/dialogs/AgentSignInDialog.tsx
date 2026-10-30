@@ -16,7 +16,11 @@ import { closeAgentSignIn, useAgentSignIn } from "../../state/agentSignIn";
 import { describeBridgeError } from "../../types/api";
 import { openUrl } from "../../utils/opener";
 
-const NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex" };
+const NAMES: Record<string, string> = {
+  claude: "Claude Code",
+  "claude-fallback": "Claude Code (fallback account)",
+  codex: "Codex",
+};
 
 /**
  * Signs an agent's CLI back in on the daemon's machine, which is usually not this one.

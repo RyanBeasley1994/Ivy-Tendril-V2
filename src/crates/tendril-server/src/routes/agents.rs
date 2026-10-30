@@ -600,3 +600,17 @@ fn login_error(error: String) -> axum::response::Response {
     )
         .into_response()
 }
+
+/// `GET /api/agents/claude/accounts` — the main and fallback Claude subscriptions: who is signed in to
+/// each, whether either is rate limited, and which the next run uses.
+pub async fn get_claude_accounts_handler() -> Json<Vec<tendril_core::agents::claude_accounts::AccountStatus>> {
+    Json(tendril_core::agents::claude_accounts::status())
+}
+
+/// `DELETE /api/agents/claude/accounts/fallback` — signs the fallback account out; runs stay on main.
+pub async fn remove_claude_fallback_handler() -> axum::response::Response {
+    match tendril_core::agents::claude_accounts::remove_fallback() {
+        Ok(()) => Json(tendril_core::agents::claude_accounts::status()).into_response(),
+        Err(err) => login_error(format!("Could not remove the fallback account: {err}")),
+    }
+}

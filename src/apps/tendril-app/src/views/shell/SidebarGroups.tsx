@@ -24,6 +24,7 @@ import { bridge } from "../../api/bridge";
 import { projectStatus } from "../../utils/projectStatus";
 import { useMissions } from "../projects/ProjectsHomeView";
 import { useManagerActivity } from "../../state/managerActivity";
+import { useManagerUnread } from "../../state/managerUnread";
 import { usePointerDrag } from "../../hooks/usePointerDrag";
 
 /**
@@ -96,7 +97,7 @@ const load = async (): Promise<{ groups: Group[]; otherCollapsed: boolean }> => 
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-type Activity = { busy: boolean; needsYou: number };
+type Activity = { busy: boolean; needsYou: number; unread: boolean };
 
 interface Props {
   projects: ProjectSummary[];
@@ -127,6 +128,7 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
   const [editing, setEditing] = React.useState<string | null>(null);
   const missions = useMissions(10_000);
   const activity = useManagerActivity();
+  const unread = useManagerUnread(activity, activeProject);
 
   React.useEffect(() => {
     void load().then((s) => {
@@ -146,10 +148,14 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
     for (const p of projects) {
       const a = activity[p.name];
       const s = projectStatus(p.name, missions, jobs, a?.working ?? false);
-      out[p.name] = { busy: s.busy, needsYou: (a?.needsYou ?? 0) + (s.attention.length > 0 && !a?.needsYou ? 1 : 0) };
+      out[p.name] = {
+        busy: s.busy,
+        needsYou: (a?.needsYou ?? 0) + (s.attention.length > 0 && !a?.needsYou ? 1 : 0),
+        unread: unread.has(p.name),
+      };
     }
     return out;
-  }, [projects, missions, jobs, activity]);
+  }, [projects, missions, jobs, activity, unread]);
 
   // A project dropped on a row goes just above it (reordering within a group, or moving between
   // groups at that spot); on a group it goes to the end; on "Other projects" it leaves every group.
@@ -208,7 +214,7 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
   };
 
   const row = (project: string, groupId: string, color?: string) => {
-    const s = status[project] ?? { busy: false, needsYou: 0 };
+    const s = status[project] ?? { busy: false, needsYou: 0, unread: false };
     return (
       <div
         key={project}
@@ -231,10 +237,13 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
             "flex h-8 w-full items-center gap-2 rounded-md pl-7 pr-2 text-left text-[13px] transition-colors",
             activeProject === project
               ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+              : s.unread
+                ? "bg-primary/12 font-medium text-foreground shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent)] hover:bg-primary/18"
+                : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
           )}
+          title={s.unread ? "The manager has replied" : undefined}
         >
-          <ActivityDot busy={s.busy} needsYou={s.needsYou} />
+          <ActivityDot busy={s.busy} needsYou={s.needsYou} unread={s.unread} />
           <span className="min-w-0 flex-1 truncate">{project}</span>
           {s.needsYou > 0 && (
             <span className="rounded-full bg-warning/15 px-1.5 font-mono text-[10px] text-warning">{s.needsYou}</span>
@@ -259,7 +268,7 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
     label: React.ReactNode,
     collapsed: boolean,
     toggle: () => void,
-    count: { busy: number; needs: number },
+    count: { busy: number; needs: number; unread: number },
     menu?: React.ReactNode,
     color?: string,
   ) => (
@@ -280,8 +289,8 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
         <ChevronRight className={cn("size-3.5 shrink-0 transition-transform", !collapsed && "rotate-90")} aria-hidden="true" />
         {color && <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: color }} aria-hidden="true" />}
         <span className="min-w-0 truncate" style={color ? { color } : undefined}>{label}</span>
-        {collapsed && (count.busy > 0 || count.needs > 0) && (
-          <ActivityDot busy={count.busy > 0} needsYou={count.needs} className="ml-1" />
+        {collapsed && (count.busy > 0 || count.needs > 0 || count.unread > 0) && (
+          <ActivityDot busy={count.busy > 0} needsYou={count.needs} unread={count.unread > 0} className="ml-1" />
         )}
       </button>
       {menu}
@@ -325,6 +334,7 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
   const counts = (list: string[]) => ({
     busy: list.filter((p) => status[p]?.busy).length,
     needs: list.reduce((n, p) => n + (status[p]?.needsYou ?? 0), 0),
+    unread: list.filter((p) => status[p]?.unread).length,
   });
 
   return (
@@ -459,7 +469,12 @@ export const SidebarGroups: React.FC<Props> = ({ projects, jobs, activeProject, 
 };
 
 /** Green and pulsing while something runs; amber when the manager needs the operator; nothing when idle. */
-const ActivityDot: React.FC<{ busy: boolean; needsYou: number; className?: string }> = ({ busy, needsYou, className }) => {
+const ActivityDot: React.FC<{ busy: boolean; needsYou: number; unread?: boolean; className?: string }> = ({
+  busy,
+  needsYou,
+  unread,
+  className,
+}) => {
   if (needsYou > 0) return <span className={cn("size-1.5 shrink-0 rounded-full bg-warning", className)} aria-label="Needs you" />;
   if (busy)
     return (
@@ -468,5 +483,6 @@ const ActivityDot: React.FC<{ busy: boolean; needsYou: number; className?: strin
         <span className="absolute inset-0 rounded-full bg-success" />
       </span>
     );
+  if (unread) return <span className={cn("size-1.5 shrink-0 rounded-full bg-primary", className)} aria-label="Unread reply" />;
   return <span className={cn("size-1.5 shrink-0", className)} aria-hidden="true" />;
 };

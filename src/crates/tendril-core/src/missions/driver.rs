@@ -349,11 +349,16 @@ impl MissionDriver {
         // mission is rewritten, so the moment the limit clears new steps are back on the chosen agent.
         let now = Utc::now();
         let limited_agent = job.provider.clone();
-        crate::agents::cooldown::note_rate_limited(&limited_agent, rate_limit::wait_for(&reason, 3, now));
+        let recorded = crate::agents::cooldown::note_rate_limited(&limited_agent, rate_limit::wait_for(&reason, 3, now));
         let fallbacks = crate::agents::project_engine::GlobalEngine::load(&self.paths.tendril_home).fallbacks;
         let planned = read_mission(folder)?.agents.for_step(step).cloned();
         let covering = self.resolve_engine(&fallbacks, planned.as_ref(), now);
-        let covered_by = covering.as_ref().map(|a| a.agent.clone()).filter(|a| !a.eq_ignore_ascii_case(&limited_agent));
+        let covered_by = if !recorded && crate::agents::claude_accounts::just_switched(now) {
+            // The other Claude account takes it: same agent, run again at once.
+            Some(format!("{limited_agent} (other account)"))
+        } else {
+            covering.as_ref().map(|a| a.agent.clone()).filter(|a| !a.eq_ignore_ascii_case(&limited_agent))
+        };
         if let Some(cover) = covered_by {
             update_mission(folder, |m| {
                 m.rate_limit_streak = 0;

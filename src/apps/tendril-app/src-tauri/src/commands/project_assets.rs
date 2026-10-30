@@ -171,6 +171,14 @@ pub async fn cmd_agent_login(
         .await
 }
 
+/// The main and fallback Claude subscriptions; `remove_fallback` signs the fallback out.
+#[tauri::command]
+pub async fn cmd_claude_accounts(remove_fallback: Option<bool>) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?
+        .claude_accounts(remove_fallback.unwrap_or(false))
+        .await
+}
+
 #[tauri::command]
 pub async fn cmd_list_project_links(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?

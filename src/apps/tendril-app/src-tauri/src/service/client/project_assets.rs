@@ -372,6 +372,17 @@ impl TendrilClient {
         .await
     }
 
+    /// The two Claude subscriptions, or with `remove_fallback`, signs the fallback one out.
+    pub async fn claude_accounts(&self, remove_fallback: bool) -> Result<serde_json::Value, BridgeError> {
+        let (method, path) = if remove_fallback {
+            (reqwest::Method::DELETE, "/api/agents/claude/accounts/fallback")
+        } else {
+            (reqwest::Method::GET, "/api/agents/claude/accounts")
+        };
+        self.project_assets_request(method, path, None, "CLAUDE_ACCOUNTS_FAILED", "read the Claude accounts", None)
+            .await
+    }
+
     pub async fn list_project_links(
         &self,
         project_name: &str,

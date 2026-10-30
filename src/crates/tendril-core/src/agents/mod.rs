@@ -1,4 +1,5 @@
 pub mod catalog;
+pub mod claude_accounts;
 pub mod claude_models;
 pub mod codex_config;
 pub mod cooldown;

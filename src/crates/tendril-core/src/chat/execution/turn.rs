@@ -562,9 +562,11 @@ impl ChatExecutionManager {
                 // fallback can cover for it the same request is run again straight away on that fallback.
                 if let Some(message) = limit_message {
                     let now = Utc::now();
-                    crate::agents::cooldown::note_rate_limited(&used.agent, crate::missions::rate_limit::wait_for(&message, 3, now));
+                    let recorded = crate::agents::cooldown::note_rate_limited(&used.agent, crate::missions::rate_limit::wait_for(&message, 3, now));
+                    // One Claude account ran out and the other took over: run it again on that one.
+                    let other_account = !recorded && crate::agents::claude_accounts::just_switched(now);
                     let cover = crate::agents::cooldown::resolve(&fallbacks, Some(&planned_engine), &agent_to_use_clone, now);
-                    if cover.is_some_and(|c| !c.agent.eq_ignore_ascii_case(&used.agent)) {
+                    if other_account || cover.is_some_and(|c| !c.agent.eq_ignore_ascii_case(&used.agent)) {
                         mgr.enqueue_message_first(
                             &s_id,
                             crate::chat::ChatQueuedItem {

@@ -139,6 +139,33 @@ export const agentsApi = {
   },
 };
 
+/** Rust `agents::claude_accounts::AccountStatus`: one of the two Claude subscriptions. */
+export interface ClaudeAccount {
+  id: "main" | "fallback";
+  /** Who is signed in, or absent when nobody is. */
+  email?: string | null;
+  limitedUntil?: string | null;
+  /** The account the next Claude run uses. */
+  active: boolean;
+}
+
+export const claudeAccountsApi = {
+  async list(): Promise<ClaudeAccount[]> {
+    if (isTauri()) return await invoke<ClaudeAccount[]>("cmd_claude_accounts", { removeFallback: false });
+    const path = "/api/agents/claude/accounts";
+    const response = await fetch(path, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(await readError(response, path));
+    return (await response.json()) as ClaudeAccount[];
+  },
+  async removeFallback(): Promise<ClaudeAccount[]> {
+    if (isTauri()) return await invoke<ClaudeAccount[]>("cmd_claude_accounts", { removeFallback: true });
+    const path = "/api/agents/claude/accounts/fallback";
+    const response = await fetch(path, { method: "DELETE", headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(await readError(response, path));
+    return (await response.json()) as ClaudeAccount[];
+  },
+};
+
 /** The CLIs the app can sign in itself; the rest only have the Help section's commands. */
 export const SIGN_IN_AGENTS = ["claude", "codex"] as const;
 

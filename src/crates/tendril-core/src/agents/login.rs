@@ -68,7 +68,7 @@ static SESSIONS: LazyLock<Mutex<HashMap<String, Session>>> = LazyLock::new(Defau
 /// The login command for `agent`, and whether it reads a code from stdin.
 fn login_command(agent: &str) -> Option<(&'static str, &'static [&'static str], bool)> {
     match agent {
-        "claude" => Some(("claude", &["auth", "login"], true)),
+        "claude" | crate::agents::claude_accounts::FALLBACK_LOGIN_ID => Some(("claude", &["auth", "login"], true)),
         "codex" => Some(("codex", &["login", "--device-auth"], false)),
         _ => None,
     }
@@ -122,6 +122,12 @@ pub async fn start(agent: &str) -> Result<LoginView, String> {
     cancel(&agent);
 
     let mut cmd = Command::new(binary);
+    // The fallback Claude account signs in to its own directory, leaving the main login alone.
+    if agent == crate::agents::claude_accounts::FALLBACK_LOGIN_ID {
+        let dir = crate::agents::claude_accounts::prepare_fallback_dir()
+            .map_err(|err| format!("Could not prepare the fallback account's directory: {err}"))?;
+        cmd.env("CLAUDE_CONFIG_DIR", dir);
+    }
     cmd.args(args)
         .env("TERM", "dumb")
         .env("NO_COLOR", "1")
@@ -225,6 +231,7 @@ mod tests {
     fn only_the_clis_with_a_headless_login_are_offered() {
         assert!(supports_login("claude"));
         assert!(supports_login("codex"));
+        assert!(supports_login("claude-fallback"));
         assert!(!supports_login("gemini"));
     }
 
