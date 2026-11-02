@@ -174,7 +174,11 @@ pub async fn agent_usage(agent: &str) -> Option<AgentUsageSnapshot> {
     }
 
     let snapshot = match agent.as_str() {
-        "claude" => claude_usage().await,
+        "claude" => claude_usage(claude_credentials_path()?).await,
+        // The second Claude subscription (`claude_accounts`), read with its own login.
+        "claude-fallback" => {
+            claude_usage(crate::agents::claude_accounts::fallback_dir()?.join(".credentials.json")).await
+        }
         "codex" => codex_usage().await,
         "antigravity" | "agy" => antigravity_usage().await,
         // Gemini, Copilot, OpenCode and the two proxies publish nothing to read.
@@ -223,8 +227,8 @@ const CLAUDE_USAGE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Claude's own five-hour and weekly windows, read from the OAuth usage endpoint with the token
 /// Claude Code already holds.
-async fn claude_usage() -> Option<AgentUsageSnapshot> {
-    let token = claude_access_token()?;
+async fn claude_usage(credentials: PathBuf) -> Option<AgentUsageSnapshot> {
+    let token = claude_access_token(&credentials)?;
     let http = reqwest::Client::builder()
         .timeout(CLAUDE_USAGE_TIMEOUT)
         .build()
@@ -289,8 +293,7 @@ fn parse_claude_usage(body: &serde_json::Value) -> Option<AgentUsageSnapshot> {
 /// An expired token is reported as absent and deliberately **not** refreshed: refreshing rotates the
 /// refresh token, which would sign the user's own Claude Code install out. A usage strip is not
 /// worth that.
-fn claude_access_token() -> Option<String> {
-    let path = claude_credentials_path()?;
+fn claude_access_token(path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(path).ok()?;
     let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
     let oauth = parsed.get("claudeAiOauth")?;

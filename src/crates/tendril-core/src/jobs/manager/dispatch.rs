@@ -99,6 +99,7 @@ async fn launch(ctx: DispatchContext, job: JobItem, permit: OwnedSemaphorePermit
         }
     }
 
+    super::internals::refresh_settings(&ctx.tendril_home, &ctx.settings).await;
     let settings = ctx.settings.read().await.clone();
     spawn_runner(
         ctx,

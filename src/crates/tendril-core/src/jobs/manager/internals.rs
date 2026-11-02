@@ -394,6 +394,46 @@ pub(super) fn is_terminal(status: JobStatus) -> bool {
     )
 }
 
+/// Re-reads `config.yaml` into the manager's settings when it has changed on disk.
+///
+/// The manager is handed its settings once, when the daemon starts, and every job read its timeouts
+/// from that copy: a `jobTimeout` changed in Settings was written to the file and shown back by
+/// `/api/config`, but jobs went on being killed at the old limit until the daemon restarted. Called
+/// before each launch and each maintenance pass, so a change applies to the next job. Keyed on the
+/// file's mtime, so an unchanged file is not reparsed, and a test's injected settings stand as long
+/// as there is no config file to replace them with.
+pub(super) async fn refresh_settings(tendril_home: &std::path::Path, settings: &RwLock<TendrilSettings>) {
+    static SEEN: std::sync::Mutex<Option<HashMap<PathBuf, std::time::SystemTime>>> = std::sync::Mutex::new(None);
+    let path = crate::config::get_config_path(tendril_home);
+    let Some(mtime) = std::fs::metadata(&path).ok().and_then(|m| m.modified().ok()) else {
+        return;
+    };
+    {
+        let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+        let seen = seen.get_or_insert_with(HashMap::new);
+        if seen.get(&path) == Some(&mtime) {
+            return;
+        }
+        seen.insert(path.clone(), mtime);
+    }
+    match crate::config::load_config(&path) {
+        Ok(fresh) => {
+            let mut current = settings.write().await;
+            if current.job_timeout != fresh.job_timeout || current.stale_output_timeout != fresh.stale_output_timeout {
+                tracing::info!(
+                    "Job settings reloaded: jobTimeout {} -> {} min, staleOutputTimeout {} -> {} min",
+                    current.job_timeout,
+                    fresh.job_timeout,
+                    current.stale_output_timeout,
+                    fresh.stale_output_timeout
+                );
+            }
+            *current = fresh;
+        }
+        Err(e) => tracing::warn!("Could not reload {} for the job manager: {e}", path.display()),
+    }
+}
+
 pub(super) fn job_timeout_duration(settings: &TendrilSettings) -> Option<Duration> {
     if settings.job_timeout > 0 {
         Some(Duration::from_secs(settings.job_timeout as u64 * 60))

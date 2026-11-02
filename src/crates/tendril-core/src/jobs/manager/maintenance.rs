@@ -46,6 +46,7 @@ impl JobManager {
         F: Fn(&str) -> Result<String> + Sync,
     {
         let mut report = MaintenanceReport::default();
+        super::internals::refresh_settings(&self.tendril_home, &self.settings).await;
         let plans_dir = {
             let settings = self.settings.read().await.clone();
             self.plans_dir(&settings)
