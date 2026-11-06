@@ -58,6 +58,8 @@ export interface TriageSummary {
   confidence?: number | null;
   pendingDrafts: number;
   auto: boolean;
+  /** What the manager is doing on it now ("investigating", "fixing", "researching"), or null. */
+  working?: string | null;
 }
 
 export type ReplyKind = "ack" | "answer" | "resolved";
@@ -88,6 +90,8 @@ export interface TriageCase {
     duplicateOf?: string;
   } | null;
   drafts: TriageDraft[];
+  working?: string | null;
+  handedOver?: boolean;
 }
 
 export interface DataSourceView {

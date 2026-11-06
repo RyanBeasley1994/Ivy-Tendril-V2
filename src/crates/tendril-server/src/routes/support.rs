@@ -244,7 +244,10 @@ pub async fn put_settings(State(state): State<Arc<AppState>>, Json(req): Json<su
 }
 
 pub async fn get_case(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
-    Json(support_cases::load_case(&state.tendril_home, &id)).into_response()
+    let case = support_cases::load_case(&state.tendril_home, &id);
+    let mut value = serde_json::to_value(&case).unwrap_or_default();
+    value["working"] = serde_json::json!(case.working());
+    Json(value).into_response()
 }
 
 #[derive(Debug, Default, Deserialize)]

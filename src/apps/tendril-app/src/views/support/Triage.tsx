@@ -43,7 +43,7 @@ export const TriagePills: React.FC<{ triage?: TriageSummary | null }> = ({ triag
   if (!triage) return null;
   return (
     <>
-      {triage.auto && !triage.category && <Pill tone="violet">triaging</Pill>}
+      {triage.working && <Pill tone="violet">forge {triage.working}</Pill>}
       {triage.pendingDrafts > 0 && <Pill tone="warn">reply to approve</Pill>}
     </>
   );
@@ -300,8 +300,14 @@ export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; o
               <span>{inv.confidence}% sure</span>
               {inv.duplicateOf && <span>· same as {inv.duplicateOf.slice(0, 8)}</span>}
             </>
+          ) : null}
+          {triage.working ? (
+            <span className="inline-flex items-center gap-1 text-violet">
+              <span className="size-1.5 animate-pulse rounded-full bg-violet" aria-hidden="true" />
+              Forge is {triage.working} this
+            </span>
           ) : (
-            <span>investigating…</span>
+            triage.handedOver && <span>· left to you</span>
           )}
           {triage.lookups.length > 0 && (
             <button

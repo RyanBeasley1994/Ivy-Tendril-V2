@@ -342,11 +342,35 @@ pub struct Case {
     pub alerted: bool,
     /// The last partner message passed on to the manager's conversation.
     pub last_forwarded: Option<String>,
+    /// When the manager last left an internal note, so it leaves one per change and not a stream.
+    pub last_note_at: Option<DateTime<Utc>>,
+    /// The manager left it to the operator (an internal note means it is below the bar to act on).
+    pub handed_over: bool,
 }
 
 impl Case {
     pub fn pending_drafts(&self) -> usize {
         self.drafts.iter().filter(|d| d.state == DraftState::Pending).count()
+    }
+
+    fn sent(&self, kind: ReplyKind) -> bool {
+        self.drafts.iter().any(|d| d.kind == kind && d.state == DraftState::Sent)
+    }
+
+    /// What the manager is doing on the ticket right now, for the "working on it" marker, or `None`
+    /// when it is not (done, waiting on the operator, or a request it leaves alone).
+    pub fn working(&self) -> Option<&'static str> {
+        if self.handed_over || self.pending_drafts() > 0 || self.sent(ReplyKind::Resolved) {
+            return None;
+        }
+        let Some(inv) = &self.investigation else {
+            return self.triaged_at.is_some().then_some("investigating");
+        };
+        match inv.category {
+            Category::Bug => Some("fixing"),
+            Category::Question if !self.sent(ReplyKind::Answer) => Some("researching"),
+            _ => None,
+        }
     }
 }
 
@@ -564,6 +588,53 @@ pub fn check_reply(case: &Case, request: &ReplyRequest, allowed_emails: &[String
     if !problems.is_empty() {
         return refuse(format!(
             "That reply can't go to a partner: {}. Say it in plain words, without internal details.",
+            problems.join("; ")
+        ));
+    }
+    let problems = style_problems(&request.content, REPLY_MAX_CHARS);
+    if !problems.is_empty() {
+        return refuse(format!("That doesn't read like a person wrote it: {}.", problems.join("; ")));
+    }
+    Ok(())
+}
+
+/// A reply to a partner is a couple of sentences, the way a person on the support team writes.
+pub const REPLY_MAX_CHARS: usize = 500;
+/// An internal note says what the operator needs to know, not everything that was looked at.
+pub const NOTE_MAX_CHARS: usize = 450;
+
+/// Why `content` reads like a report rather than a person: Markdown, a list, or too long.
+pub fn style_problems(content: &str, max_chars: usize) -> Vec<String> {
+    let text = content.trim();
+    let mut problems = Vec::new();
+    if text.contains("**") || text.contains('`') || text.lines().any(|l| l.trim_start().starts_with('#')) {
+        problems.push("no Markdown (bold, headings, backticks); write plain sentences".to_string());
+    }
+    if text.lines().filter(|l| matches!(l.trim_start().get(..2), Some("- " | "* " | "• "))).count() > 3 {
+        problems.push("not a list; say it in a few sentences".to_string());
+    }
+    let chars = text.chars().count();
+    if chars > max_chars {
+        problems.push(format!("it is {chars} characters, keep it under {max_chars}: the outcome and what happens next"));
+    }
+    problems
+}
+
+/// Whether the manager may leave an internal note now. One note per change on the ticket: when its
+/// last note is still the newest thing on it, a second only clutters the thread.
+pub fn check_note(case: &Case, content: &str, newest_other_message: Option<DateTime<Utc>>) -> Result<()> {
+    let refuse = |why: String| Err(TendrilError::Validation(why));
+    if let Some(last) = case.last_note_at {
+        if newest_other_message.is_none_or(|at| at <= last) {
+            return refuse(
+                "You already left a note and nothing has happened on the ticket since. Keep what you find in `tendril support investigate --findings` (it shows at the top of the ticket) and note again only when something changes for the operator.".into(),
+            );
+        }
+    }
+    let problems = style_problems(content, NOTE_MAX_CHARS);
+    if !problems.is_empty() {
+        return refuse(format!(
+            "Write the note the way you'd message a colleague: {}. File paths and line numbers go in --evidence, not the note.",
             problems.join("; ")
         ));
     }
@@ -817,6 +888,34 @@ mod tests {
             }),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn a_reply_or_note_has_to_read_like_a_person() {
+        assert!(style_problems("Thanks Yemi, that's fixed now. Give it another go and let me know.", REPLY_MAX_CHARS).is_empty());
+        assert!(!style_problems("**Root cause:** the `lastUpdated` field", REPLY_MAX_CHARS).is_empty());
+        assert!(!style_problems("- a\n- b\n- c\n- d", NOTE_MAX_CHARS).is_empty());
+        assert!(!style_problems(&"word ".repeat(120), REPLY_MAX_CHARS).is_empty());
+    }
+
+    #[test]
+    fn one_note_per_change_on_the_ticket() {
+        let mut c = case(Category::Bug, 80, 1);
+        assert!(check_note(&c, "Bigger than a micro fix, so it's yours. A worker has the cause.", None).is_ok());
+        c.last_note_at = Some(Utc::now() - chrono::Duration::minutes(5));
+        assert!(check_note(&c, "Still looking.", None).is_err(), "nothing happened since the last note");
+        assert!(check_note(&c, "They replied with a screenshot; it's the same bug.", Some(Utc::now())).is_ok());
+    }
+
+    #[test]
+    fn the_ticket_shows_as_worked_on_until_it_is_settled_or_handed_over() {
+        let mut c = case(Category::Bug, 80, 1);
+        assert_eq!(c.working(), Some("fixing"));
+        c.handed_over = true;
+        assert_eq!(c.working(), None);
+        assert_eq!(case(Category::Request, 90, 1).working(), None);
+        let fresh = Case { triaged_at: Some(Utc::now()), ..Default::default() };
+        assert_eq!(fresh.working(), Some("investigating"));
     }
 
     fn reply(kind: ReplyKind, content: &str) -> ReplyRequest {

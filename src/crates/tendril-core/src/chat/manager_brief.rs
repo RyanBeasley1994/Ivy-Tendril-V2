@@ -89,6 +89,15 @@ pub fn manager_allowed_tools() -> Vec<String> {
 }
 
 /// The deterministic session id for a project's manager.
+/// What a manager replies to a daemon wake that is not worth the operator's attention. The app and
+/// Telegram hide it, so the patrol, wake-ups and worker reports stay silent until there is news.
+pub const QUIET_REPLY: &str = "[quiet]";
+
+/// Whether a manager's reply is the quiet one (the agent may wrap it in backticks or add a full stop).
+pub fn is_quiet(content: &str) -> bool {
+    content.trim().trim_matches(|c: char| c == '`' || c == '.').eq_ignore_ascii_case(QUIET_REPLY)
+}
+
 pub fn manager_session_id(project: &str) -> String {
     let slug: String = project
         .chars()
@@ -314,17 +323,19 @@ edit it too. Open goes first and stays short:
     - <one line each; keep only the last few>
 
 ## What wakes you
-The operator, or the daemon. A daemon wake is an event, not the operator talking, and they may not be
-watching: **act first, then reply with one short line saying what you did.** No recap, no list of
-unrelated open items.
+The operator, or the daemon. A daemon wake is an event, not the operator talking: **act on it, then
+reply with exactly `[quiet]` and nothing else** (hidden from the app and Telegram), unless:
+- the operator's whole request is finished (shipped, merged or closed, not one part of it): say so in
+  one or two lines; or
+- you are blocked on something only the operator can decide: ask one plain question.
+Progress is not news: a green check, a part sent back, a task started. They ask when they want an update.
 - **A mission changed state.** Waiting for approval: read its milestones against the request, then
   approve it or message what is missing. Paused: unstick it (below). In review: check it against "done
   when", then ship it, or send it back. Completed: take the request's next step.
 - **A task stopped.** You get its report and what it left. Right: push it, open or add to the request's
   pull request, and `tendril manager task-clean --project {project} <task-id>`. Wrong: `--continue`.
 - **A plan job you started finished.** Check it against "done when"; if it fell short, a sharper attempt.
-- **A pull request's checks finished.** Green and current: tell the operator it is ready, or carry on to
-  merged or deployed. Red: a task on the PR branch to fix it, then watch again. Behind main:
+- **A pull request's checks finished.** Green and current: carry on to merged or deployed. Red: a task on the PR branch to fix it, then watch again. Behind main:
   `gh pr update-branch <number>` and watch again. In conflict: a task on that branch to merge the
   latest main in.
 - **A wake-up you scheduled** comes back with your note. Do what it says.
@@ -332,8 +343,8 @@ unrelated open items.
   listing all of it. Handle every item in that one turn. An unchanged list is raised a few times, then
   dropped, so if an item really is the operator's, say which and why, plainly.
 - **Goals.** Idle for an hour with nothing running: you are shown the Goals memory. Check where each
-  open request really stands, take the next step on each that is not moving, update "Now", and say in
-  one line what you started. If everything is done, say that once and stop.
+  open request really stands, take the next step on each that is not moving, update "Now", and stay quiet.
+  If everything is done, say that once and stop.
 - **Engine trouble.** Several jobs went silent on one agent (below).
 - **Briefing time.** Once a day if the operator set it up: two to four sentences on what finished, what
   is stuck or waiting on them, what is next, and roughly what it cost.
@@ -410,6 +421,12 @@ answer does not block:
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_quiet_reply_is_recognised_however_it_is_wrapped() {
+        assert!(is_quiet("[quiet]") && is_quiet(" `[quiet]`\n") && is_quiet("[Quiet]."));
+        assert!(!is_quiet("Done, PR 46 is merged. [quiet]"));
+    }
 
     #[test]
     fn briefing_is_versioned_and_carries_the_operators_policy() {

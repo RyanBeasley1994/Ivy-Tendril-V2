@@ -565,6 +565,7 @@ async fn send_notice(state: &AppState, settings: &Settings, project: &str, title
 /// and daemon events stay in the app.
 pub fn forwarded(role: &str, content: &str) -> Option<String> {
     match role {
+        "assistant" if tendril_core::chat::manager_brief::is_quiet(content) => None,
         "assistant" => Some(plain_text(content.trim())).filter(|t| !t.is_empty()),
         _ => None,
     }

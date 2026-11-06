@@ -248,7 +248,7 @@ pub async fn handle_support_command(cmd: SupportCommands, home: &Path) -> anyhow
         }
         SupportCommands::Reply { id, message, kind, fix_pr, test, close, internal } => {
             if internal {
-                support::reply(home, &id, &message, true).await?;
+                support::agent_note(home, &id, &message).await?;
                 println!("Internal note posted on {id}.");
                 return Ok(());
             }
@@ -257,7 +257,7 @@ pub async fn handle_support_command(cmd: SupportCommands, home: &Path) -> anyhow
             print_outcome(&id, support::agent_reply(home, &id, req).await?);
         }
         SupportCommands::Note { id, message } => {
-            support::reply(home, &id, &message, true).await?;
+            support::agent_note(home, &id, &message).await?;
             println!("Internal note posted on {id}.");
         }
         SupportCommands::Status { id, status } => {

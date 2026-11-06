@@ -233,6 +233,7 @@ fn triage_summary(case: &support_cases::Case) -> Value {
         "confidence": case.investigation.as_ref().map(|i| i.confidence),
         "pendingDrafts": case.pending_drafts(),
         "auto": case.triaged_at.is_some(),
+        "working": case.working(),
     })
 }
 
@@ -384,6 +385,29 @@ pub async fn agent_reply(home: &Path, id: &str, req: support_cases::ReplyRequest
     }
     send_draft(home, id, &draft.id, None).await?;
     Ok(ReplyOutcome::Sent)
+}
+
+/// An internal note from the manager, through the note rules: one per change, written like a person.
+/// A note hands the ticket to the operator, so it stops showing as being worked on.
+pub async fn agent_note(home: &Path, id: &str, content: &str) -> Result<()> {
+    let ticket = get_ticket(home, id).await?;
+    let case = support_cases::load_case(home, id);
+    let newest = ticket["messages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|m| m["createdAt"].as_str())
+        .filter_map(|at| DateTime::parse_from_rfc3339(at).ok().map(|d| d.with_timezone(&Utc)))
+        // Our own last note is on the ticket too; anything after it is what counts.
+        .filter(|at| case.last_note_at.is_none_or(|last| *at > last + chrono::Duration::seconds(5)))
+        .max();
+    support_cases::check_note(&case, content, newest)?;
+    reply(home, id, content.trim(), true).await?;
+    support_cases::update_case(home, id, |c| {
+        c.last_note_at = Some(Utc::now());
+        c.handed_over = true;
+    })?;
+    Ok(())
 }
 
 /// Sends a held draft (the operator's approval, with their edit if they made one). A "resolved" reply
@@ -604,10 +628,10 @@ This ticket came in by itself and is yours, for project **{project}**. The partn
    - **Bug:** tell the partner you are on it: `tendril support reply {id} --kind ack "<short, human: we've found the problem and are fixing it>"`. Hand the fix to a worker, with a test that reproduces the bug. When the fix is a micro change (a few lines), its PR is merged or green, and you are 100% sure it fixes what the partner reported (not a guess): record `--confidence 100` and reply `tendril support reply {id} --kind resolved --fix-pr <url> --test "<the test that reproduces it and now passes>" --close "<it's fixed and goes out in the next update>"`. Anything bigger or less certain: an internal note for the operator, because they will step in.
    - **Question about the system:** research it. At 90% sure or more, answer short and simple, like a person: `tendril support reply {id} --kind answer "<answer>"`. Below 90%, an internal note with what you found.
    - **Request (a feature, a change, a favour):** do nothing on it and send no reply. Record it as a request, and the operator decides.
-4. **Below the bar, or unsure: an internal note for the operator only**: `tendril support note {id} "<findings>"`.
+4. **Below the bar, or unsure: an internal note for the operator only**: `tendril support note {id} "<what they need to know>"`. That hands the ticket to them. One note, not a running commentary: your findings already show at the top of the ticket, so the note says only what the operator has to decide or do, in two or three plain sentences.
 5. **When it is settled**, write how in one or two sentences so the next ticket like it starts from it: `tendril support learn {id} "<how it was fixed or settled>"`.
 
-Replies read like a person on the support team: short, warm, plain. Never ids, file names, code, error dumps or anything about another account. The reply command refuses one that breaks these rules and says why. Past tickets: `tendril support history "<words>"`.
+Replies read like a person on the support team: short, warm, plain, a sentence or two. Never ids, file names, code, error dumps or anything about another account. Notes read like a message to a colleague, not a report: no Markdown, no lists, no file paths (those go in --evidence). While you work it the ticket shows as in progress, so don't post notes to say you've started. The reply command refuses one that breaks these rules and says why. Past tickets: `tendril support history "<words>"`.
 "#
     ));
     s

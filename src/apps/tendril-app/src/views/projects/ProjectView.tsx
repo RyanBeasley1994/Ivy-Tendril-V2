@@ -715,10 +715,13 @@ const MANAGER_PROMPTS = [
 
 const MANAGER_COMMANDS = [{ name: "/clear", description: "Start the conversation over" }];
 
-/** The briefing and engine notes are instructions the manager reads, not part of the conversation. */
+/**
+ * Only the operator and the manager talk here. Everything the daemon sends (the briefing, patrols,
+ * wake-ups, worker reports) is for the manager, and its `[quiet]` answers to those are not news.
+ */
 const isManagerNote = (m: ChatMessage): boolean =>
-  m.role === "system" &&
-  (m.content.startsWith("# You are the Factory Manager") || m.content.startsWith("Engine switched by the operator"));
+  m.role === "system" ||
+  (m.role === "assistant" && /^`?\[quiet\]`?\.?$/i.test(m.content.trim()));
 
 const ManagerChat: React.FC<{
   project: ProjectSummary;

@@ -364,6 +364,10 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool, had_work: 
         return;
     };
     let reply = &session.messages[idx];
+    // The manager said there is nothing worth telling: the turn was a background check.
+    if tendril_core::chat::manager_brief::is_quiet(&reply.content) {
+        return;
+    }
     let started_by_user = idx > 0 && session.messages[idx - 1].role == "user";
     let seconds = (chrono::Utc::now() - reply.timestamp).num_seconds();
 
