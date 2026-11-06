@@ -30,7 +30,7 @@ fn sensitive(key: &str) -> bool {
         .any(|s| k.contains(s))
 }
 
-fn redact(value: &mut Value) {
+pub(crate) fn redact(value: &mut Value) {
     match value {
         Value::Object(map) => {
             for (k, v) in map.iter_mut() {
@@ -46,7 +46,7 @@ fn redact(value: &mut Value) {
     }
 }
 
-fn cap(mut s: String) -> String {
+pub(crate) fn cap(mut s: String) -> String {
     if s.len() > MAX_OUTPUT {
         let mut end = MAX_OUTPUT;
         while !s.is_char_boundary(end) {
@@ -91,7 +91,7 @@ pub enum MongoRead {
 }
 
 impl MongoRead {
-    fn describe(&self) -> String {
+    pub(crate) fn describe(&self) -> String {
         match self {
             MongoRead::Collections => "collections".into(),
             MongoRead::Find { collection, filter, projection, sort, limit } => {
@@ -103,7 +103,7 @@ impl MongoRead {
     }
 }
 
-async fn mongo(source: &DataSource, database: Option<&str>, read: &MongoRead) -> Result<(String, String)> {
+pub(crate) async fn mongo(source: &DataSource, database: Option<&str>, read: &MongoRead) -> Result<(String, String)> {
     use futures_util::TryStreamExt;
     use mongodb::options::{ClientOptions, ReadPreference, SelectionCriteria};
 

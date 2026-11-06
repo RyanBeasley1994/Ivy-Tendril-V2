@@ -79,6 +79,11 @@ pub struct SupportSettings {
     pub triage_since: Option<DateTime<Utc>>,
     pub reply_mode: ReplyMode,
     pub sources: Vec<DataSource>,
+    /// The manager may read the cluster through the daemon machine's own kubeconfig
+    /// (`support_kube`): resources, logs, and databases and services reached by port-forward.
+    pub kubernetes: bool,
+    /// The kubeconfig context to use; the current one when empty.
+    pub kube_context: Option<String>,
 }
 
 /// A source as the UI sees it: the URL with any password masked, the header's value hidden.
@@ -99,6 +104,8 @@ pub struct SettingsView {
     pub auto_triage: bool,
     pub reply_mode: ReplyMode,
     pub sources: Vec<SourceView>,
+    pub kubernetes: bool,
+    pub kube_context: Option<String>,
 }
 
 static URL_PASSWORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(://[^:/@\s]+):[^@/\s]+@").expect("url password regex"));
@@ -134,6 +141,8 @@ pub fn view(settings: &SupportSettings) -> SettingsView {
                 notes: s.notes.clone(),
             })
             .collect(),
+        kubernetes: settings.kubernetes,
+        kube_context: settings.kube_context.clone(),
     }
 }
 
@@ -157,6 +166,10 @@ pub struct SettingsInput {
     pub auto_triage: bool,
     pub reply_mode: ReplyMode,
     pub sources: Vec<SourceInput>,
+    #[serde(default)]
+    pub kubernetes: bool,
+    #[serde(default)]
+    pub kube_context: Option<String>,
 }
 
 pub fn save_settings(home: &Path, input: SettingsInput) -> Result<SettingsView> {
@@ -198,6 +211,8 @@ pub fn save_settings(home: &Path, input: SettingsInput) -> Result<SettingsView> 
         triage_since,
         reply_mode: input.reply_mode,
         sources,
+        kubernetes: input.kubernetes,
+        kube_context: input.kube_context.map(|c| c.trim().to_string()).filter(|c| !c.is_empty()),
     };
     let path = settings_path(home);
     std::fs::create_dir_all(home)?;
@@ -869,6 +884,8 @@ mod tests {
                 header: header.map(str::to_string),
                 notes: String::new(),
             }],
+            kubernetes: false,
+            kube_context: None,
         };
         let shown = save_settings(home.path(), input("mongodb://reader:hunter2@db:27017/prop", Some("X-Key: abc"))).unwrap();
         assert_eq!(shown.sources[0].url, "mongodb://reader:••••@db:27017/prop");

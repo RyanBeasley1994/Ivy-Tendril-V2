@@ -563,9 +563,21 @@ pub fn triage_prompt(home: &Path, ticket: &Value, project: &str) -> String {
             s.push_str(&format!("- `{t}` {subj}: {found}\n"));
         }
     }
-    let sources = support_cases::load_settings(home).sources;
+    let settings = support_cases::load_settings(home);
+    let sources = settings.sources;
     s.push_str("\n## Data you can read\n");
-    if sources.is_empty() {
+    if settings.kubernetes {
+        s.push_str(&format!(
+            r#"- **The cluster**, with the server's kubeconfig. Find the service, its config and the Secrets it uses, then read through them; a Secret's values are used for you and never shown:
+  - `tendril support kube --ticket {id} get deploy,svc,pods -n <ns>`, `describe deploy/<name> -n <ns>` (env and the Secrets it references), `logs deploy/<name> -n <ns> --since=2h`, `get events -n <ns>`
+  - `tendril support kube-secret <ns>/<secret> --ticket {id}`: the keys a Secret holds
+  - `tendril support kube-db <ns>/<secret>:<key> --ticket {id} find <collection> --filter '<json>' ...` (also count, aggregate, collections): the database whose connection string is in that key, port-forwarded for you
+  - `tendril support kube-api <ns>/<service>:<port> <path> --ticket {id} [--bearer <secret>:<key>]`: a GET to an in-cluster API
+  Reads only: changing anything in the cluster is refused, and so is exec.
+"#
+        ));
+    }
+    if sources.is_empty() && !settings.kubernetes {
         s.push_str("No data sources are configured; read the code and say in your findings that the data could not be checked.\n");
     }
     for src in &sources {

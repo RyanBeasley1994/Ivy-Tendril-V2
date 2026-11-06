@@ -22,6 +22,7 @@ pub mod project_links;
 pub mod support;
 pub mod support_cases;
 pub mod support_data;
+pub mod support_kube;
 pub mod project_memory;
 pub mod promptware;
 pub mod pull_request;

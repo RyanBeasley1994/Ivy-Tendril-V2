@@ -65,6 +65,8 @@ export const TriageSettingsDialog: React.FC<{
   const [auto, setAuto] = React.useState(false);
   const [mode, setMode] = React.useState<"approve" | "auto">("approve");
   const [sources, setSources] = React.useState<SourceRow[]>([]);
+  const [kube, setKube] = React.useState(false);
+  const [kubeContext, setKubeContext] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -79,6 +81,8 @@ export const TriageSettingsDialog: React.FC<{
         setAuto(s.autoTriage);
         setMode(s.replyMode);
         setSources(s.sources.map((x) => ({ ...x, header: "" })));
+        setKube(s.kubernetes);
+        setKubeContext(s.kubeContext ?? "");
       })
       .catch((e: unknown) => setError(errorText(e)));
   }, [open]);
@@ -95,6 +99,8 @@ export const TriageSettingsDialog: React.FC<{
         autoTriage: auto && !!project,
         replyMode: mode,
         sources: sources.map(({ name, kind, url, header, notes }) => ({ name, kind, url, header, notes })),
+        kubernetes: kube,
+        kubeContext: kubeContext.trim() || null,
       });
       onClose();
     } catch (e) {
@@ -148,6 +154,26 @@ export const TriageSettingsDialog: React.FC<{
                 Either way: nothing before an investigation with evidence, answers only at 90%+, "resolved" only for a
                 verified micro fix, and no reply to requests.
               </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-foreground">
+                <input type="checkbox" checked={kube} onChange={(e) => setKube(e.target.checked)} />
+                Read the cluster with the server's kubeconfig
+              </label>
+              <span className="text-[11.5px] text-muted-foreground">
+                Get, describe, logs and events; databases and APIs found through Secrets and reached by port-forward.
+                Secret values are used, never shown to it, and nothing that changes the cluster runs.
+              </span>
+              {kube && (
+                <input
+                  className={cn(inputClass, "font-mono text-[11.5px]")}
+                  placeholder="kubeconfig context (blank for the current one)"
+                  value={kubeContext}
+                  onChange={(e) => setKubeContext(e.target.value)}
+                  aria-label="Kubeconfig context"
+                />
+              )}
             </div>
 
             <div className="flex flex-col gap-2">

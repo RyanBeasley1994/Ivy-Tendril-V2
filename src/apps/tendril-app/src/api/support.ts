@@ -103,6 +103,8 @@ export interface TriageSettings {
   autoTriage: boolean;
   replyMode: "approve" | "auto";
   sources: DataSourceView[];
+  kubernetes: boolean;
+  kubeContext?: string | null;
 }
 
 export interface DataSourceInput {
@@ -164,7 +166,14 @@ export const supportApi = {
   handoff: (id: string, project: string, instructions: string) =>
     call<Handoff>("POST", ticket(id, "/handoff"), { project, instructions }),
   settings: () => call<TriageSettings>("GET", "/api/support/settings"),
-  saveSettings: (s: { managerProject: string | null; autoTriage: boolean; replyMode: "approve" | "auto"; sources: DataSourceInput[] }) =>
+  saveSettings: (s: {
+    managerProject: string | null;
+    autoTriage: boolean;
+    replyMode: "approve" | "auto";
+    sources: DataSourceInput[];
+    kubernetes: boolean;
+    kubeContext: string | null;
+  }) =>
     call<TriageSettings>("PUT", "/api/support/settings", s),
   triageCase: (id: string) => call<TriageCase>("GET", ticket(id, "/case")),
   approveDraft: (id: string, draft: string, content?: string) =>

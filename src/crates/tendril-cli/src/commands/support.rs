@@ -9,6 +9,7 @@ use std::path::Path;
 use tendril_core::support::{self, ReplyOutcome};
 use tendril_core::support_cases::{self, Category, Investigation, ReplyKind, ReplyRequest, Severity};
 use tendril_core::support_data::{self, MongoRead};
+use tendril_core::support_kube;
 
 #[derive(Subcommand)]
 pub enum SupportCommands {
@@ -130,6 +131,58 @@ pub enum SupportCommands {
         ticket: String,
         /// A path under the source's base URL, like /api/accounts/123.
         path: String,
+    },
+
+    #[command(about = "Read the cluster with the server's kubeconfig: get, describe, logs, top, events (no changes, no secret values)")]
+    Kube {
+        #[arg(long)]
+        ticket: String,
+        /// The kubectl arguments, e.g. `get pods -n prod` or `logs deploy/server -n prod --since=1h`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
+        args: Vec<String>,
+    },
+
+    #[command(about = "A Kubernetes Secret's key names and sizes (never its values)")]
+    KubeSecret {
+        /// `namespace/name`.
+        secret: String,
+        #[arg(long)]
+        ticket: String,
+    },
+
+    #[command(about = "A read-only MongoDB lookup on the database whose connection string is in a Secret (port-forwarded when in-cluster)")]
+    KubeDb {
+        /// `namespace/secret:key` holding the connection string.
+        secret: String,
+        #[arg(long)]
+        ticket: String,
+        #[arg(long)]
+        db: Option<String>,
+        #[arg(value_parser = ["find", "count", "aggregate", "collections"])]
+        op: String,
+        collection: Option<String>,
+        #[arg(long, default_value = "")]
+        filter: String,
+        #[arg(long, default_value = "")]
+        projection: String,
+        #[arg(long, default_value = "")]
+        sort: String,
+        #[arg(long, default_value_t = 20)]
+        limit: i64,
+        #[arg(long, default_value = "")]
+        pipeline: String,
+    },
+
+    #[command(about = "A GET to an in-cluster service through a port-forward")]
+    KubeApi {
+        /// `namespace/svc-name:port`, or `namespace/pod/name:port`.
+        target: String,
+        path: String,
+        #[arg(long)]
+        ticket: String,
+        /// `secret-name:key` in the same namespace, sent as a bearer token.
+        #[arg(long)]
+        bearer: Option<String>,
     },
 
     #[command(about = "Search how past tickets were settled")]
@@ -303,6 +356,35 @@ pub async fn handle_support_command(cmd: SupportCommands, home: &Path) -> anyhow
         }
         SupportCommands::Api { source, ticket, path } => {
             println!("{}", support_data::api_get(home, &ticket, &source, &path).await?);
+        }
+        SupportCommands::Kube { ticket, args } => {
+            println!("{}", support_kube::read(home, &ticket, args).await?);
+        }
+        SupportCommands::KubeSecret { secret, ticket } => {
+            let (ns, name) = secret.split_once('/').ok_or_else(|| anyhow::anyhow!("Name it as namespace/name"))?;
+            println!("{}", support_kube::secret_keys(home, &ticket, ns, name).await?);
+        }
+        SupportCommands::KubeDb { secret, ticket, db, op, collection, filter, projection, sort, limit, pipeline } => {
+            let (ns, rest) = secret.split_once('/').ok_or_else(|| anyhow::anyhow!("Name it as namespace/secret:key"))?;
+            let (name, key) = rest.split_once(':').ok_or_else(|| anyhow::anyhow!("Name the key too: namespace/secret:key"))?;
+            let need = |c: Option<String>| c.ok_or_else(|| anyhow::anyhow!("Name the collection"));
+            let read = match op.as_str() {
+                "collections" => MongoRead::Collections,
+                "count" => MongoRead::Count { collection: need(collection)?, filter },
+                "aggregate" => MongoRead::Aggregate { collection: need(collection)?, pipeline },
+                _ => MongoRead::Find { collection: need(collection)?, filter, projection, sort, limit },
+            };
+            println!("{}", support_kube::database(home, &ticket, (ns, name, key), db.as_deref(), read).await?);
+        }
+        SupportCommands::KubeApi { target, path, ticket, bearer } => {
+            let (ns, rest) = target.split_once('/').ok_or_else(|| anyhow::anyhow!("Name it as namespace/service:port"))?;
+            let (svc, port) = rest.rsplit_once(':').ok_or_else(|| anyhow::anyhow!("Name the port: namespace/service:port"))?;
+            let port: u16 = port.parse().map_err(|_| anyhow::anyhow!("'{port}' is not a port"))?;
+            let bearer = match bearer.as_deref() {
+                Some(b) => Some(b.split_once(':').ok_or_else(|| anyhow::anyhow!("--bearer is secret-name:key"))?),
+                None => None,
+            };
+            println!("{}", support_kube::api(home, &ticket, ns, svc, port, &path, bearer).await?);
         }
         SupportCommands::History { query, limit } => {
             let entries = match query.as_deref().map(str::trim).filter(|q| !q.is_empty()) {
