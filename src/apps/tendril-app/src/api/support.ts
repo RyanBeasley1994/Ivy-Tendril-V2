@@ -9,6 +9,7 @@ import { isTauri } from "../utils/tauri";
 
 export type TicketStatus = "PENDING" | "OPEN" | "IN_PROGRESS" | "AWAITING_REPLY" | "RESOLVED" | "CLOSED";
 export type TicketPriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export type TicketType = "CRITICAL" | "ISSUE" | "REQUEST" | "QUESTION";
 
 export interface SupportStatus {
   configured: boolean;
@@ -31,8 +32,13 @@ export interface TicketSummary {
   subject: string;
   platform: string;
   priority: TicketPriority;
+  /** Operations' classification; the By type board's columns. */
+  type?: TicketType;
   status: TicketStatus;
   createdAt: string;
+  /** The partner spoke last, or no one on the team has replied yet. */
+  needsReply?: boolean;
+  waitingSince?: string;
   updatedAt: string;
   partner?: { id: string; name: string } | null;
   assignedTo?: { id: string; name: string } | null;
@@ -40,6 +46,72 @@ export interface TicketSummary {
   lastMessage?: { content: string; authorName: string; authorType: string } | null;
   hasUnread?: boolean;
   handoff?: Handoff;
+  triage?: TriageSummary | null;
+}
+
+export type TriageCategory = "bug" | "question" | "request";
+export type TriageSeverity = "critical" | "high" | "normal" | "low";
+
+export interface TriageSummary {
+  category?: TriageCategory | null;
+  severity?: TriageSeverity | null;
+  confidence?: number | null;
+  pendingDrafts: number;
+  auto: boolean;
+}
+
+export type ReplyKind = "ack" | "answer" | "resolved";
+
+export interface TriageDraft {
+  id: string;
+  kind: ReplyKind;
+  content: string;
+  close: boolean;
+  fixPr?: string;
+  test?: string;
+  createdAt: string;
+  state: "pending" | "sent" | "discarded";
+  decidedAt?: string;
+}
+
+export interface TriageCase {
+  ticketId: string;
+  triagedAt?: string | null;
+  lookups: { at: string; source: string; request: string; result: string }[];
+  investigation?: {
+    at: string;
+    category: TriageCategory;
+    severity: TriageSeverity;
+    confidence: number;
+    findings: string;
+    evidence: string[];
+    duplicateOf?: string;
+  } | null;
+  drafts: TriageDraft[];
+}
+
+export interface DataSourceView {
+  name: string;
+  kind: "mongo" | "http";
+  url: string;
+  hasHeader: boolean;
+  notes: string;
+}
+
+export interface TriageSettings {
+  managerProject?: string | null;
+  autoTriage: boolean;
+  replyMode: "approve" | "auto";
+  sources: DataSourceView[];
+}
+
+export interface DataSourceInput {
+  name: string;
+  kind: "mongo" | "http";
+  url: string;
+  /** Blank keeps the saved header; "-" removes it. */
+  header?: string;
+  notes: string;
 }
 
 export interface TicketMessage {
@@ -86,7 +158,16 @@ export const supportApi = {
   reply: (id: string, content: string, internal: boolean) =>
     call<unknown>("POST", ticket(id, "/reply"), { content, internal }),
   setStatus: (id: string, status: TicketStatus) => call<unknown>("POST", ticket(id, "/status"), { status }),
+  setType: (id: string, type: TicketType) =>
+    call<{ type: TicketType; priority: TicketPriority }>("POST", ticket(id, "/type"), { type }),
   close: (id: string, message?: string) => call<unknown>("POST", ticket(id, "/close"), { message }),
   handoff: (id: string, project: string, instructions: string) =>
     call<Handoff>("POST", ticket(id, "/handoff"), { project, instructions }),
+  settings: () => call<TriageSettings>("GET", "/api/support/settings"),
+  saveSettings: (s: { managerProject: string | null; autoTriage: boolean; replyMode: "approve" | "auto"; sources: DataSourceInput[] }) =>
+    call<TriageSettings>("PUT", "/api/support/settings", s),
+  triageCase: (id: string) => call<TriageCase>("GET", ticket(id, "/case")),
+  approveDraft: (id: string, draft: string, content?: string) =>
+    call<TriageDraft>("POST", ticket(id, `/drafts/${encodeURIComponent(draft)}`), { content }),
+  discardDraft: (id: string, draft: string) => call<TriageDraft>("DELETE", ticket(id, `/drafts/${encodeURIComponent(draft)}`)),
 };

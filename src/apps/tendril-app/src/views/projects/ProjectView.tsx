@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Box, Brain, GitBranch, Network, SquareTerminal } from "lucide-react";
+import { ArrowLeft, Box, Brain, GitBranch, GitPullRequest, Network, SquareTerminal } from "lucide-react";
 import {
   cn,
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
 import type { Job, Mission, ProjectSummary } from "../../types/api";
 import type { ManagerTask, ProjectDocker, ProjectMemoryEntry } from "../../types/projectAssets";
 import { bridge } from "../../api/bridge";
+import { openUrl } from "../../utils/opener";
 import { usePortForwards } from "../../api/portForwards";
 import { chatStore } from "../../state/chatStore";
 import { recordRecentProject } from "../../state/recentProjects";
@@ -150,6 +151,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
         {onOpenGit && (
           <ProjectGitButton project={project.name} onOpenGit={onOpenGit} onOpenRepo={onOpenRepo} />
         )}
+        <MyPrsButton project={project.name} />
         {/* Below `lg` there is room for one half at a time. */}
         <Seg<Side>
           className="order-last w-full lg:hidden [&>*]:flex-1"
@@ -784,5 +786,30 @@ const ManagerChat: React.FC<{
       samplePrompts={MANAGER_PROMPTS}
       draftPrompt={draft}
     />
+  );
+};
+
+/** The operator's open pull requests in this project (theirs, or waiting on their review), opened on GitHub. */
+const MyPrsButton: React.FC<{ project: string }> = ({ project }) => {
+  const prs = useAsync(() => bridge.getMyPullRequests(project).catch(() => null), [project], 60_000);
+  if (!prs?.url) return null;
+  const waiting = prs.pullRequests.filter((p) => p.why === "review").length;
+  return (
+    <GhostButton
+      size="sm"
+      onClick={() => void openUrl(prs.url!)}
+      title={
+        prs.count === 0
+          ? "No open pull requests of yours or waiting on your review"
+          : prs.pullRequests.map((p) => `#${p.number} ${p.title}${p.why === "review" ? " (review requested)" : ""}`).join("\n")
+      }
+      data-testid="project-my-prs"
+    >
+      <GitPullRequest className="size-3.5" aria-hidden="true" />
+      <span className="hidden sm:inline">PRs</span>
+      <span className={cn("rounded-full px-1.5 font-mono text-[10.5px]", waiting > 0 ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground")}>
+        {prs.count}
+      </span>
+    </GhostButton>
   );
 };

@@ -20,6 +20,7 @@
 
 use crate::error::{Result, TendrilError};
 use crate::fs_lock::{with_file_lock, write_atomic};
+use crate::support_cases;
 use chrono::{DateTime, Utc};
 use reqwest::{Method, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -207,6 +208,9 @@ pub async fn list_tickets(home: &Path, include_done: bool) -> Result<Value> {
             if let Some(h) = t["id"].as_str().and_then(|id| handoffs.iter().find(|h| h.ticket_id == id)) {
                 t["handoff"] = json!(h);
             }
+            if let Some(id) = t["id"].as_str().map(str::to_string) {
+                t["triage"] = triage_summary(&support_cases::load_case(home, &id));
+            }
         }
     }
     Ok(value)
@@ -216,6 +220,20 @@ pub async fn list_tickets(home: &Path, include_done: bool) -> Result<Value> {
 pub async fn unread_count(home: &Path) -> Result<u64> {
     let v = request(home, Method::GET, "/api/team/tickets/count", None).await?;
     Ok(v["count"].as_u64().unwrap_or(0))
+}
+
+/// What the board shows of a ticket's case, or null when it has none.
+fn triage_summary(case: &support_cases::Case) -> Value {
+    if case.triaged_at.is_none() && case.investigation.is_none() && case.drafts.is_empty() {
+        return Value::Null;
+    }
+    json!({
+        "category": case.investigation.as_ref().map(|i| i.category),
+        "severity": case.investigation.as_ref().map(|i| i.severity),
+        "confidence": case.investigation.as_ref().map(|i| i.confidence),
+        "pendingDrafts": case.pending_drafts(),
+        "auto": case.triaged_at.is_some(),
+    })
 }
 
 pub async fn get_ticket(home: &Path, id: &str) -> Result<Value> {
@@ -259,11 +277,148 @@ pub async fn set_status(home: &Path, id: &str, status: &str) -> Result<Value> {
     request(home, Method::POST, &format!("/api/team/tickets/{}/status", enc(id)), Some(json!({ "status": status }))).await
 }
 
-/// Operations' silent resolve: no message to the partner, notifications cleared.
+/// Operations' ticket types, the columns of its By type board.
+pub const TYPES: &[&str] = &["CRITICAL", "ISSUE", "REQUEST", "QUESTION"];
+
+/// Sets a ticket's type. Operations applies its own rule on top: only CRITICAL carries CRITICAL
+/// priority, so the answer has the type and priority it settled on.
+pub async fn set_type(home: &Path, id: &str, ticket_type: &str) -> Result<Value> {
+    let t = ticket_type.trim().to_ascii_uppercase();
+    if !TYPES.contains(&t.as_str()) {
+        return Err(TendrilError::Validation(format!("'{t}' is not a ticket type ({})", TYPES.join(", "))));
+    }
+    request(home, Method::POST, &format!("/api/team/tickets/{}/type", enc(id)), Some(json!({ "type": t }))).await
+}
+
+/// The Operations type an investigation puts a ticket in: Critical only for what Operations calls
+/// critical (a platform-wide outage or a breach), else by category.
+pub fn type_for(investigation: &support_cases::Investigation) -> &'static str {
+    use support_cases::{Category, Severity};
+    match (investigation.severity, investigation.category) {
+        (Severity::Critical, _) => "CRITICAL",
+        (_, Category::Bug) => "ISSUE",
+        (_, Category::Question) => "QUESTION",
+        (_, Category::Request) => "REQUEST",
+    }
+}
+
+/// Operations' silent resolve: no message to the partner, notifications cleared. A ticket with a
+/// triage case is written to the support history, so the next one like it starts from what was learnt.
 pub async fn resolve(home: &Path, id: &str) -> Result<Value> {
     let v = request(home, Method::POST, &format!("/api/team/tickets/{}/resolve", enc(id)), None).await?;
     mark_handoff_done(home, id)?;
+    let case = support_cases::load_case(home, id);
+    if case.investigation.is_some() || !case.drafts.is_empty() {
+        let entry = support_cases::entry_from_case(home, &case, None, None);
+        if let Err(e) = support_cases::remember(home, &entry) {
+            tracing::warn!("Could not add ticket {id} to the support history: {e}");
+        }
+    }
     Ok(v)
+}
+
+/* ------------------------------------------------------------------ the manager's replies */
+
+/// What became of a reply the manager asked to send.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase", tag = "outcome")]
+pub enum ReplyOutcome {
+    /// Held for the operator's approval.
+    Queued { draft: support_cases::Draft },
+    Sent,
+}
+
+/// The ticket's own people: their addresses may be said back to them.
+fn ticket_emails(ticket: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut take = |v: &Value| {
+        if let Some(e) = v.as_str().filter(|e| e.contains('@')) {
+            out.push(e.to_ascii_lowercase());
+        }
+    };
+    take(&ticket["partner"]["email"]);
+    take(&ticket["contactEmail"]);
+    for v in ticket["intakeData"].as_object().into_iter().flat_map(|o| o.values()) {
+        take(v);
+    }
+    for m in ticket["messages"].as_array().into_iter().flatten() {
+        if m["authorType"].as_str() == Some("PARTNER") {
+            take(&m["authorEmail"]);
+        }
+    }
+    out
+}
+
+/// A fix PR as GitHub has it, through `gh`.
+pub fn fix_pr_from_github(url: &str) -> Result<support_cases::FixPr> {
+    let out = std::process::Command::new("gh")
+        .args(["pr", "view", url, "--json", "state,additions,deletions,statusCheckRollup"])
+        .output()
+        .map_err(|e| TendrilError::Other(format!("Could not run gh: {e}")))?;
+    if !out.status.success() {
+        return Err(TendrilError::Other(format!("gh could not read {url}: {}", String::from_utf8_lossy(&out.stderr).trim())));
+    }
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    let checks = v["statusCheckRollup"].as_array().cloned().unwrap_or_default();
+    let checks_green = checks.iter().all(|c| {
+        let verdict = c["conclusion"].as_str().or(c["state"].as_str()).unwrap_or_default().to_ascii_uppercase();
+        matches!(verdict.as_str(), "SUCCESS" | "NEUTRAL" | "SKIPPED")
+    });
+    Ok(support_cases::FixPr {
+        state: v["state"].as_str().unwrap_or("UNKNOWN").to_string(),
+        changed_lines: v["additions"].as_u64().unwrap_or(0) + v["deletions"].as_u64().unwrap_or(0),
+        checks_green,
+    })
+}
+
+/// A reply from the support manager: checked against the triage rules, then sent or held for the
+/// operator as [`support_cases::SupportSettings::reply_mode`] says.
+pub async fn agent_reply(home: &Path, id: &str, req: support_cases::ReplyRequest) -> Result<ReplyOutcome> {
+    let ticket = get_ticket(home, id).await?;
+    let case = support_cases::load_case(home, id);
+    let fix_pr = |url: &str| fix_pr_from_github(url);
+    support_cases::check_reply(&case, &req, &ticket_emails(&ticket), &fix_pr)?;
+    let draft = support_cases::add_draft(home, id, &req)?;
+    if support_cases::load_settings(home).reply_mode == support_cases::ReplyMode::Approve {
+        return Ok(ReplyOutcome::Queued { draft });
+    }
+    send_draft(home, id, &draft.id, None).await?;
+    Ok(ReplyOutcome::Sent)
+}
+
+/// Sends a held draft (the operator's approval, with their edit if they made one). A "resolved" reply
+/// is also queued on every ticket following this one as a duplicate, each for its own approval.
+pub async fn send_draft(home: &Path, id: &str, draft_id: &str, edited: Option<&str>) -> Result<support_cases::Draft> {
+    let pending = support_cases::load_case(home, id)
+        .drafts
+        .into_iter()
+        .find(|d| d.id == draft_id && d.state == support_cases::DraftState::Pending)
+        .ok_or_else(|| TendrilError::Validation("That draft is not waiting any more".into()))?;
+    let content = edited.map(str::trim).filter(|t| !t.is_empty()).unwrap_or(&pending.content).to_string();
+    reply(home, id, &content, false).await?;
+    let draft = support_cases::decide_draft(home, id, draft_id, support_cases::DraftState::Sent, Some(&content))?;
+    if draft.kind == support_cases::ReplyKind::Resolved {
+        for dup in support_cases::duplicates_of(home, id) {
+            let req = support_cases::ReplyRequest {
+                kind: support_cases::ReplyKind::Resolved,
+                content: content.clone(),
+                close: draft.close,
+                fix_pr: draft.fix_pr.clone(),
+                test: draft.test.clone(),
+            };
+            if let Err(e) = support_cases::add_draft(home, &dup.ticket_id, &req) {
+                tracing::warn!("Could not queue the fix for duplicate ticket {}: {e}", dup.ticket_id);
+            }
+        }
+    }
+    if draft.close {
+        resolve(home, id).await?;
+    }
+    Ok(draft)
+}
+
+pub fn discard_draft(home: &Path, id: &str, draft_id: &str) -> Result<support_cases::Draft> {
+    support_cases::decide_draft(home, id, draft_id, support_cases::DraftState::Discarded, None)
 }
 
 /// Tells the partner `message` (when there is one), then resolves.
@@ -377,8 +532,70 @@ This conversation is only about this ticket, for project **{project}**, and the 
 
 **The partner cannot see this conversation and must not hear from you unless the operator says so.** Report here, not on the ticket. Check for new partner messages with `tendril support get {id}`.
 
-When the operator says to reply and close (for example once an agreed fix is merged), do it in one step:
-`tendril support close {id} --message "<what they agreed to tell the partner>"`
+Every reply to the partner goes through the triage rules and, while approval is on, waits for the operator to approve it. First record your investigation (`tendril support investigate {id} ...`, see `tendril support investigate --help`), then reply with a kind: `tendril support reply {id} --kind ack|answer|resolved "<message>"`. When the operator says to reply and close (for example once an agreed fix is merged), do it in one step:
+`tendril support close {id} --kind resolved --fix-pr <url> --test "<the test>" --message "<what they agreed to tell the partner>"`
+Once it is settled, `tendril support learn {id} "<how it was fixed or settled>"` so the next ticket like it starts from that.
+"#
+    ));
+    s
+}
+
+/// The first message of an automatically triaged ticket's conversation: the ticket, what similar
+/// tickets taught, the open bugs it might duplicate, and the triage rules.
+pub fn triage_prompt(home: &Path, ticket: &Value, project: &str) -> String {
+    let id = ticket["id"].as_str().unwrap_or_default();
+    let mut s = handoff_prompt(ticket, project, "");
+    // The hand-off's working rules are for a ticket the operator brought; triage has its own.
+    if let Some(cut) = s.find("\n## How to work it") {
+        s.truncate(cut);
+    }
+    let subject = ticket["subject"].as_str().unwrap_or_default();
+    let first = ticket["messages"][0]["content"].as_str().unwrap_or_default();
+    let similar = support_cases::similar(home, &format!("{subject} {first}"), Some(id), 4);
+    if !similar.is_empty() {
+        s.push_str("\n## Similar tickets before\nHow these went: reuse what was found and how it was settled, and match the tone of what was said.\n");
+        s.push_str(&support_cases::render_history(&similar));
+    }
+    let bugs = support_cases::open_bugs(home, id);
+    if !bugs.is_empty() {
+        s.push_str("\n## Bugs already being worked\nIf this ticket is the same problem, record it with `--duplicate-of <ticket>` and do not start a second fix.\n");
+        for (t, subj, found) in bugs.iter().take(10) {
+            s.push_str(&format!("- `{t}` {subj}: {found}\n"));
+        }
+    }
+    let sources = support_cases::load_settings(home).sources;
+    s.push_str("\n## Data you can read\n");
+    if sources.is_empty() {
+        s.push_str("No data sources are configured; read the code and say in your findings that the data could not be checked.\n");
+    }
+    for src in &sources {
+        let how = match src.kind {
+            support_cases::SourceKind::Mongo => format!(
+                "`tendril support db {name} --ticket {id} find <collection> --filter '<json>' [--projection '<json>'] [--sort '<json>'] [--limit N]`, also `count`, `aggregate --pipeline '<json array>'`, `collections`",
+                name = src.name
+            ),
+            support_cases::SourceKind::Http => format!("`tendril support api {} --ticket {id} <path>` (GET only)", src.name),
+        };
+        let notes = if src.notes.is_empty() { String::new() } else { format!(" ({})", src.notes) };
+        s.push_str(&format!("- **{}**{notes}: {how}\n", src.name));
+    }
+    s.push_str(&format!(
+        r#"
+## How to triage it
+This ticket came in by itself and is yours, for project **{project}**. The partner sees nothing from here except the replies the rules below let through, and while approval is on, the operator approves each one first.
+
+1. **Investigate, read-only.** Find out what is really happening: look up the account or the records being reported with the lookups above, and read the code involved. Small checks (a few lookups, a file or two) you do yourself; a larger investigation goes to a worker (`tendril manager task --project {project} ...`, deliverable a findings file). Change nothing: no code, no data, no deploys.
+2. **Record what you found**, before any reply:
+   `tendril support investigate {id} --category bug|question|request --severity critical|high|normal|low --confidence <0-100> --findings "<what is going on, in plain words>" --evidence "<file:line, collection and record, endpoint>" [--duplicate-of <ticket>]`
+   Critical is only what Operations calls critical: a platform-wide outage (everyone's dashboards down, drawdown monitoring stopped for all accounts) or a breach. One account's problem, however urgent, is high at most. A critical ticket alerts the operator at once. Recording the investigation also sets the ticket's type on the Operations board.
+3. **Then, by what it is:**
+   - **Bug:** tell the partner you are on it: `tendril support reply {id} --kind ack "<short, human: we've found the problem and are fixing it>"`. Hand the fix to a worker, with a test that reproduces the bug. When the fix is a micro change (a few lines), its PR is merged or green, and you are 100% sure it fixes what the partner reported (not a guess): record `--confidence 100` and reply `tendril support reply {id} --kind resolved --fix-pr <url> --test "<the test that reproduces it and now passes>" --close "<it's fixed and goes out in the next update>"`. Anything bigger or less certain: an internal note for the operator, because they will step in.
+   - **Question about the system:** research it. At 90% sure or more, answer short and simple, like a person: `tendril support reply {id} --kind answer "<answer>"`. Below 90%, an internal note with what you found.
+   - **Request (a feature, a change, a favour):** do nothing on it and send no reply. Record it as a request, and the operator decides.
+4. **Below the bar, or unsure: an internal note for the operator only**: `tendril support note {id} "<findings>"`.
+5. **When it is settled**, write how in one or two sentences so the next ticket like it starts from it: `tendril support learn {id} "<how it was fixed or settled>"`.
+
+Replies read like a person on the support team: short, warm, plain. Never ids, file names, code, error dumps or anything about another account. The reply command refuses one that breaks these rules and says why. Past tickets: `tendril support history "<words>"`.
 "#
     ));
     s
@@ -434,7 +651,7 @@ mod tests {
         assert!(p.contains("Ryan (internal note): Looks like SSO"), "{p}");
         assert!(p.contains("check the IdP"));
         assert!(p.contains("tendril support get abc"));
-        assert!(p.contains("tendril support close abc --message"));
+        assert!(p.contains("tendril support close abc --kind resolved"));
         assert!(p.contains("must not hear from you unless the operator says so"));
         assert!(p.contains("Change nothing until the operator says so"));
     }

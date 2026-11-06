@@ -418,3 +418,75 @@ pub async fn clean_manager_task(
         Err(e) => error(StatusCode::BAD_REQUEST, e),
     }
 }
+
+/// `owner/name` from a GitHub remote URL (`git@github.com:o/r.git`, `https://github.com/o/r`).
+fn github_slug(remote: &str) -> Option<String> {
+    let rest = remote.trim().split("github.com").nth(1)?.trim_start_matches([':', '/']);
+    let slug = rest.trim_end_matches('/').trim_end_matches(".git");
+    (slug.split('/').count() == 2 && !slug.is_empty()).then(|| slug.to_string())
+}
+
+static MY_PRS: std::sync::LazyLock<tokio::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, Value)>>> =
+    std::sync::LazyLock::new(Default::default);
+
+/// `GET /api/projects/:name/my-prs` — the open pull requests in the project's repos that the signed-in
+/// `gh` user opened, or is asked to review or has reviewed, and the GitHub search that lists them.
+/// Cached for a minute: the header asks often and `gh` is three calls per repo.
+pub async fn my_pull_requests(State(state): State<Arc<AppState>>, Path(name): Path<String>) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    if let Some((at, value)) = MY_PRS.lock().await.get(&project.name) {
+        if at.elapsed() < std::time::Duration::from_secs(60) {
+            return Json(value.clone()).into_response();
+        }
+    }
+    let mut slugs = Vec::new();
+    for repo in &project.repos {
+        let out = tokio::process::Command::new("git").args(["-C", repo, "remote", "get-url", "origin"]).output().await;
+        if let Some(slug) = out.ok().and_then(|o| github_slug(&String::from_utf8_lossy(&o.stdout))) {
+            if !slugs.contains(&slug) {
+                slugs.push(slug);
+            }
+        }
+    }
+    let mut prs: Vec<Value> = Vec::new();
+    for slug in &slugs {
+        for (search, why) in [("author:@me", "yours"), ("review-requested:@me", "review"), ("reviewed-by:@me", "reviewed")] {
+            let out = tokio::process::Command::new("gh")
+                .args(["pr", "list", "--repo", slug, "--state", "open", "--search", search, "--json", "number,title,url,isDraft", "--limit", "50"])
+                .output()
+                .await;
+            let Ok(out) = out else { continue };
+            let list: Vec<Value> = serde_json::from_slice(&out.stdout).unwrap_or_default();
+            for mut pr in list {
+                if prs.iter().any(|p| p["url"] == pr["url"]) {
+                    continue;
+                }
+                pr["repo"] = json!(slug);
+                pr["why"] = json!(why);
+                prs.push(pr);
+            }
+        }
+    }
+    let query = format!(
+        "is:open is:pr archived:false (author:@me OR review-requested:@me OR reviewed-by:@me) {}",
+        slugs.iter().map(|s| format!("repo:{s}")).collect::<Vec<_>>().join(" ")
+    );
+    let encoded: String = query
+        .bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),
+            b' ' => "+".to_string(),
+            _ => format!("%{b:02X}"),
+        })
+        .collect();
+    let value = json!({
+        "count": prs.len(),
+        "url": if slugs.is_empty() { Value::Null } else { json!(format!("https://github.com/pulls?q={encoded}")) },
+        "pullRequests": prs,
+    });
+    MY_PRS.lock().await.insert(project.name.clone(), (std::time::Instant::now(), value.clone()));
+    Json(value).into_response()
+}

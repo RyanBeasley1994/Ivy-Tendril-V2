@@ -29,6 +29,8 @@ argon2 = { workspace = true }
 base64 = { workspace = true }
 # Reads Codex's own `config.toml` (`agents::codex_config`).
 toml = { workspace = true }
+# The support manager's read-only database lookups (`support_data`).
+mongodb = "3"
 
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }

@@ -315,6 +315,8 @@ struct RepoPush {
     slug: String,
     branch: String,
     base: String,
+    /// The base is the previous part's branch, not the repo's base branch.
+    stacked: bool,
 }
 
 /// The PR body: the issue it fixes, the executor's summary (else the revision's Problem and
@@ -516,8 +518,11 @@ fn run(
                 reason: format!("the worktree at {} has uncommitted changes", worktree.display()),
             });
         }
+        // A stacked part's PR targets the part before it until that one merges.
+        let stacked = crate::plans::stack::stack_base_for(&plan, &repo_root).map(|b| b.branch);
         let base = match args.base_branch.as_deref().map(str::trim).filter(|b| !b.is_empty()) {
             Some(b) => b.to_string(),
+            None if stacked.is_some() => stacked.clone().unwrap_or_default(),
             None => project
                 .and_then(|p| {
                     p.repos.iter().find(|r| {
@@ -533,11 +538,19 @@ fn run(
             slug,
             branch,
             base,
+            stacked: stacked.is_some(),
         });
     }
 
     let mut opened: Vec<(RepoPush, PrRef)> = Vec::new();
     for push in pushes {
+        // The part before has not been pushed yet (its PR is not open): GitHub needs the base branch.
+        if push.stacked && !gh.branch_visible(&push.slug, &push.base) {
+            progress.step(&format!("Pushing {}, the part this builds on...", push.base));
+            let skip_hooks = settings.git.skip_push_hooks == Some(true);
+            with_retry(|| git_push(&push.worktree, &push.base, false, skip_hooks))
+                .map_err(|e| TendrilError::Git(format!("pushing the part this builds on failed: {e}")))?;
+        }
         let _ = with_retry(|| git_out(&push.worktree, &["fetch", "origin", &push.base]));
         let base_ref = format!("origin/{}", push.base);
         let range = format!("{base_ref}..HEAD");
@@ -594,7 +607,13 @@ fn run(
             None => {
                 progress.step(&format!("Creating a pull request on {}...", push.slug));
                 let commits = git_out(&push.worktree, &["log", "--reverse", "--format=- %h %s", &range]).unwrap_or_default();
-                let body = build_body(plan_folder, plan.source_url.as_deref(), &commits);
+                let mut body = build_body(plan_folder, plan.source_url.as_deref(), &commits);
+                if let Some(section) = plan_folder
+                    .parent()
+                    .and_then(|dir| crate::plans::stack::series_section(dir, plan_folder))
+                {
+                    body = format!("{section}\n\n{body}");
+                }
                 let title = format!("[{plan_id}] {}", plan.title);
                 let reviewers = args.reviewers.clone().unwrap_or_default();
                 gh.create_pr(&NewPr {
@@ -610,6 +629,9 @@ fn run(
         };
         if let Some(comment) = args.comment.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
             gh.comment(&push.slug, pr.number, comment)?;
+        }
+        if push.stacked {
+            link_from_previous_part(plan_folder, &push, &pr, gh);
         }
         opened.push((push, pr));
     }
@@ -670,6 +692,12 @@ fn run(
                 progress.step(&format!("Could not remove the worktree {}: {e}", push.worktree.display()));
             }
         }
+        // Merged here rather than seen by the sync pass, so the next part is moved here too.
+        if let Some(dir) = plan_folder.parent() {
+            for outcome in crate::plans::stack::restack_children(dir, plan_folder) {
+                progress.step(&format!("Next part {}: {}", outcome.plan, outcome.message));
+            }
+        }
     }
 
     let (plan, _) = read_plan_yaml(plan_folder)?;
@@ -689,6 +717,27 @@ fn run(
                 failed.join(", ")
             ),
         })
+    }
+}
+
+/// Tells the previous part's PR which PR comes next, so a reviewer can follow the chain either way.
+fn link_from_previous_part(plan_folder: &Path, push: &RepoPush, pr: &PrRef, gh: &dyn GitHub) {
+    let previous = read_plan_yaml(plan_folder)
+        .ok()
+        .and_then(|(plan, _)| crate::plans::stack::stacked_on(&plan))
+        .and_then(|name| plan_folder.parent().map(|dir| dir.join(name)))
+        .and_then(|folder| read_plan_yaml(&folder).ok())
+        .and_then(|(plan, _)| {
+            plan.prs
+                .into_iter()
+                .find(|u| u.contains(&format!("github.com/{}/pull/", push.slug)))
+        });
+    let number = previous
+        .as_deref()
+        .and_then(|u| u.rsplit('/').next())
+        .and_then(|n| n.parse::<u64>().ok());
+    if let Some(number) = number {
+        let _ = gh.comment(&push.slug, number, &format!("Next part: {} (built on this PR's branch).", pr.url));
     }
 }
 

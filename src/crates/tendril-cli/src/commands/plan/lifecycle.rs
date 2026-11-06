@@ -210,6 +210,21 @@ pub(super) fn create(
         None => anyhow::bail!("Project '{}' not found.", args.project),
     };
 
+    // Resolved before anything is created, so a bad reference makes no plan at all.
+    let stacked_on = match args.stacked_on.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(reference) => Some(
+            tendril_core::plans::resolve_plan_folder_name(reference, &p_dir)
+                .map_err(|_| anyhow::anyhow!("Referenced plan '{}' not found", reference))?,
+        ),
+        None => None,
+    };
+    let mut related_plans = args.related_plan;
+    if let Some(parent) = &stacked_on {
+        if !related_plans.contains(parent) {
+            related_plans.push(parent.clone());
+        }
+    }
+
     let opts = CreatePlanOptions {
         title: args.title,
         project: args.project,
@@ -221,7 +236,7 @@ pub(super) fn create(
         repos,
         verifications,
         depends_on: args.depends_on,
-        related_plans: args.related_plan,
+        related_plans,
         chat_session_id: args.chat_session,
     };
 
@@ -235,8 +250,14 @@ pub(super) fn create(
         .filter(|v| !v.is_empty());
 
     let plan_file = create_plan_for_job(&p_dir, opts, created_by_job.as_deref())?;
+    if let Some(parent) = &stacked_on {
+        tendril_core::plans::stack::set_stacked_on(std::path::Path::new(&plan_file.folder_path), parent)?;
+    }
     println!("PlanId: {:05}", plan_file.metadata.id);
     println!("Directory: {}", plan_file.folder_path);
+    if let Some(parent) = &stacked_on {
+        println!("StackedOn: {parent}");
+    }
     println!("Verifications:");
     for v in &plan_file.metadata.verifications {
         println!("{}:{}", v.name, v.status);

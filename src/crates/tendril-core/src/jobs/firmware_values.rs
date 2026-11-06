@@ -255,6 +255,20 @@ fn add_plan_scoped_values(
         }
     }
 
+    // The next part of a stacked feature builds on the part before it; the agent compares against
+    // that branch, and `add-worktree` cuts from it on its own.
+    if mission.is_none()
+        && matches!(args, JobArgs::ExecutePlan(_) | JobArgs::RetryPlan(_))
+        && crate::plans::stack::stacked_on(&plan).is_some()
+    {
+        let branch = plan.repos.iter().find_map(|repo| {
+            crate::plans::stack::cut_from(&plan_folder, Path::new(repo), &crate::plans::dependencies::get_gh_pr_state)
+        });
+        if let Some(branch) = branch {
+            values.insert("StackedOnBranch".to_string(), branch);
+        }
+    }
+
     if matches!(
         args,
         JobArgs::ExecutePlan(_)

@@ -163,6 +163,11 @@ pub struct PlanCreateArgs {
     pub depends_on: Vec<String>,
     #[arg(long)]
     pub related_plan: Vec<String>,
+    #[arg(
+        long,
+        help = "Make this the next part of a stacked feature: it is cut from that plan's branch as soon as that plan has committed, and its PR targets that branch"
+    )]
+    pub stacked_on: Option<String>,
     #[arg(long)]
     pub chat_session: Option<String>,
     #[arg(long)]

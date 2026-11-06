@@ -53,6 +53,9 @@ pub struct PrSyncReport {
     /// Folder names a guard refused to complete, with the reason.
     pub refused_completions: Vec<String>,
     pub unblocked_plans: Vec<String>,
+    /// Stacked parts moved onto their base branch because the part before them merged, as
+    /// `<plan> (<repo>): <what happened>`. A conflict is listed here too, for a person to resolve.
+    pub restacked: Vec<String>,
     /// Per-repository failures. Never fatal: GitHub being unreachable is not "the pass failed".
     pub errors: Vec<String>,
 }
@@ -64,6 +67,7 @@ impl PrSyncReport {
         !self.transitions.is_empty()
             || !self.completed_plans.is_empty()
             || !self.unblocked_plans.is_empty()
+            || !self.restacked.is_empty()
     }
 }
 
@@ -252,6 +256,15 @@ pub fn sync_pr_statuses_with(
             None => report
                 .refused_completions
                 .push(format!("{}: plan.yaml could not be re-read", name)),
+        }
+    }
+
+    // 6b. The parts stacked on a plan that just merged move onto the base branch.
+    for name in &report.completed_plans {
+        for outcome in crate::plans::stack::restack_children(plans_dir, &plans_dir.join(name)) {
+            report
+                .restacked
+                .push(format!("{} ({}): {}", outcome.plan, outcome.repo, outcome.message));
         }
     }
 

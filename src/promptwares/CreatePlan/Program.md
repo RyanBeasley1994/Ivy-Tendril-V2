@@ -436,6 +436,23 @@ Ask: "Will Plan B fail to compile/run if Plan A's changes aren't merged first?"
 
 When in doubt, **don't use `dependsOn`** — git will surface real conflicts during PR creation, which is the appropriate time to resolve them.
 
+### 4.4.1. Small PRs: split big work into a stacked series
+
+**Every plan becomes one pull request, and a pull request must stay small enough to review in one sitting: about 400 changed lines, one concern.** Tests, snapshots, lockfiles and generated files do not count towards the 400. Before writing the revision, estimate the plan's size from your research (files touched, roughly how much changes in each).
+
+If the work fits, make one plan as usual.
+
+If it does not fit — more than ~400 lines, or more than one concern (say a data model, an API and a UI) — do **not** make one big plan. Make a **stacked series** of plans, each one a small PR that builds on the one before:
+
+1. Cut the work into 2–6 parts in build order: foundations first (types, schema, API), then the feature, then UI and polish. Each part must build and pass its tests on its own, on top of the parts before it, and should be ~400 lines or less.
+2. Create part 1 exactly as in 4.1 and 4.2. Title the parts `<Feature>: <what this part does>` (e.g. `Saved Filters: Add the Filter Store`), so the series reads as one feature.
+3. Create each later part with `--stacked-on="<the previous part's folder name>"` (the `Directory` basename from the previous `tendril plan create`). Write its revision too: every part is a complete, self-contained plan, and its **Problem** says which part of the feature it is and what the earlier parts already provide.
+4. Report **part 1** as this job's plan (`tendril job status ... --plan-id=<part 1's PlanId>`), and list all parts with their ids in your final message.
+
+`--stacked-on` is not `dependsOn`: a stacked part does not wait for the part before it to merge. It starts as soon as that part has committed, is cut from that part's branch, and its PR targets that branch, so each PR shows only its own diff and the operator can review the whole series at once, in order. When a part merges, Tendril moves the next part onto the base branch by itself. Do not also add `--depends-on` between parts of the same series.
+
+Splitting is never a reason to leave a part half-done: no part may leave dead code, a stub, or a broken build behind for a later part to fix.
+
 ### 4.5. Recommend Execution Profile
 
 Analyze the task complexity and choose an `executionProfile`. This is passed via `--execution-profile` on `tendril plan create` (see Step 4.2).

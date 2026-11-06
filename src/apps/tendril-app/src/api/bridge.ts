@@ -1269,6 +1269,15 @@ export const tauriClient = {
     return body.tasks ?? [];
   },
 
+  /** Open PRs in the project's repos that the operator opened, or is asked to review or has reviewed. */
+  async getMyPullRequests(this: void, projectName: string): Promise<MyPullRequests> {
+    return invokeOrFetch<MyPullRequests>(
+      "cmd_project_my_prs",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/my-prs`,
+    );
+  },
+
   /** The Docker containers belonging to the project; `available` is false without Docker. */
   async getProjectDocker(this: void, projectName: string): Promise<ProjectDocker> {
     return invokeOrFetch<ProjectDocker>(
@@ -1734,3 +1743,10 @@ export const bridge: TendrilClient = new Proxy({} as TendrilClient, {
     return Reflect.getOwnPropertyDescriptor(current as object, property);
   },
 });
+
+export interface MyPullRequests {
+  count: number;
+  /** The GitHub search listing them, or null when the project has no GitHub repo. */
+  url: string | null;
+  pullRequests: { number: number; title: string; url: string; repo: string; isDraft?: boolean; why: "yours" | "review" | "reviewed" }[];
+}

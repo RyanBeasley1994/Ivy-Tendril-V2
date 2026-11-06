@@ -1,5 +1,5 @@
 import React from "react";
-import { Bot, LifeBuoy, Lock, Maximize2, Minus, RefreshCw, Send, X } from "lucide-react";
+import { Bot, LifeBuoy, Lock, Maximize2, Minus, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
 import { cn } from "@ivy-interactive/components/ui";
 import type { ProjectSummary } from "../../types/api";
 import {
@@ -9,12 +9,14 @@ import {
   type TicketPriority,
   type TicketStatus,
   type TicketSummary,
+  type TicketType,
 } from "../../api/support";
 import { refreshSupportCount } from "../../state/supportCount";
 import { supportDock, type DockedTicket } from "../../state/supportDock";
 import { ChatStore } from "../../state/chatStore";
 import type { ChatMessage } from "../../types/chat";
 import { ChatView } from "../ChatView";
+import { TriageCaseBlock, TriagePills, TriageSettingsDialog } from "./Triage";
 import { formatAge } from "../../utils/commandCenter";
 import { Page, PageHeader } from "../../components/page/Page";
 import { Card, GhostButton, IconButton, Pill, PrimaryButton, Seg, type Tone } from "../../components/page/kit";
@@ -37,6 +39,38 @@ const LANES: { key: Lane; label: string; statuses: TicketStatus[] }[] = [
 ];
 
 const laneOf = (status: TicketStatus): Lane => LANES.find((l) => l.statuses.includes(status))?.key ?? "OPEN";
+
+/** Operations' `TYPE_COLUMNS`: its default By type board, open tickets only. */
+const TYPE_COLUMNS: { key: TicketType; label: string }[] = [
+  { key: "CRITICAL", label: "Critical" },
+  { key: "ISSUE", label: "Issues" },
+  { key: "REQUEST", label: "Requests" },
+  { key: "QUESTION", label: "Questions" },
+];
+
+type BoardView = "type" | "status";
+const BOARD_VIEW_KEY = "tendril.support.boardView";
+
+const readBoardView = (): BoardView => {
+  try {
+    return window.localStorage.getItem(BOARD_VIEW_KEY) === "status" ? "status" : "type";
+  } catch {
+    return "type";
+  }
+};
+
+const isDone = (t: TicketSummary) => t.status === "RESOLVED" || t.status === "CLOSED";
+
+/** Operations' `compareByPriorityThenWaiting`: priority, then whoever has waited longest. */
+const byPriorityThenWaiting = (a: TicketSummary, b: TicketSummary) =>
+  PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
+  new Date(a.waitingSince ?? a.createdAt).getTime() - new Date(b.waitingSince ?? b.createdAt).getTime();
+
+/** Operations' `splitByReplyState`. A ticket without the field (an older Operations) needs a reply. */
+const splitByReply = (tickets: TicketSummary[]) => ({
+  needsReply: tickets.filter((t) => t.needsReply !== false).sort(byPriorityThenWaiting),
+  awaiting: tickets.filter((t) => t.needsReply === false).sort(byPriorityThenWaiting),
+});
 
 const PRIORITY_TONE: Record<TicketPriority, Tone> = { CRITICAL: "bad", HIGH: "warn", MEDIUM: "info", LOW: "mute" };
 const PRIORITY_ORDER: Record<TicketPriority, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
@@ -136,18 +170,28 @@ const Board: React.FC<{
   React.useEffect(() => {
     if (initialTicket) setOpenId(initialTicket);
   }, [initialTicket]);
-  const [dragOver, setDragOver] = React.useState<Lane | null>(null);
+  const [dragOver, setDragOver] = React.useState<string | null>(null);
+  const [triageOpen, setTriageOpen] = React.useState(false);
+  const [boardView, setBoardViewState] = React.useState<BoardView>(readBoardView);
+  const setBoardView = (v: BoardView) => {
+    setBoardViewState(v);
+    try {
+      window.localStorage.setItem(BOARD_VIEW_KEY, v);
+    } catch {
+      // Remembering the view is a convenience.
+    }
+  };
   const dragging = React.useRef<string | null>(null);
 
   const load = React.useCallback(async () => {
     try {
-      const res = await supportApi.list(showDone);
+      const res = await supportApi.list(showDone && boardView === "status");
       setTickets(res.tickets);
       setError(null);
     } catch (e) {
       setError(errorText(e));
     }
-  }, [showDone]);
+  }, [showDone, boardView]);
 
   React.useEffect(() => {
     void load();
@@ -170,7 +214,44 @@ const Board: React.FC<{
     }
   };
 
+  const retype = async (id: string, type: TicketType) => {
+    const current = tickets?.find((t) => t.id === id);
+    if (!current || current.type === type) return;
+    setTickets((all) => all?.map((t) => (t.id === id ? { ...t, type } : t)) ?? null);
+    try {
+      const next = await supportApi.setType(id, type);
+      setTickets((all) => all?.map((t) => (t.id === id ? { ...t, type: next.type, priority: next.priority } : t)) ?? null);
+      void refreshSupportCount();
+    } catch (e) {
+      setError(errorText(e));
+      void load();
+    }
+  };
+
   const lanes = showDone ? LANES : LANES.filter((l) => l.key !== "RESOLVED");
+  const dropProps = (key: string, onDrop: (id: string) => void) => ({
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(key);
+    },
+    onDragLeave: () => setDragOver((d) => (d === key ? null : d)),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(null);
+      if (dragging.current) onDrop(dragging.current);
+      dragging.current = null;
+    },
+  });
+  const card = (t: TicketSummary) => (
+    <TicketCard
+      key={t.id}
+      ticket={t}
+      view={boardView}
+      active={openId === t.id}
+      onOpen={() => setOpenId(t.id)}
+      onDragStart={() => (dragging.current = t.id)}
+    />
+  );
   const disconnect = async () => onDisconnected(await supportApi.disconnect());
 
   return (
@@ -181,8 +262,22 @@ const Board: React.FC<{
           subtitle={`Propriotec Operations · signed in as ${status.userName ?? status.email}`}
           actions={
             <>
-              <GhostButton size="sm" aria-pressed={showDone} onClick={() => setShowDone((v) => !v)}>
-                {showDone ? "Hide done" : "Show done"}
+              <Seg<BoardView>
+                label="Board"
+                value={boardView}
+                onChange={setBoardView}
+                options={[
+                  { value: "type", label: "By type" },
+                  { value: "status", label: "By status" },
+                ]}
+              />
+              {boardView === "status" && (
+                <GhostButton size="sm" aria-pressed={showDone} onClick={() => setShowDone((v) => !v)}>
+                  {showDone ? "Hide done" : "Show done"}
+                </GhostButton>
+              )}
+              <GhostButton size="sm" onClick={() => setTriageOpen(true)} title="Who works new tickets, and by what rules">
+                <ShieldCheck className="size-3.5" aria-hidden="true" /> Triage
               </GhostButton>
               <IconButton label="Refresh" onClick={() => void load()}>
                 <RefreshCw className="size-3.5" aria-hidden="true" />
@@ -195,7 +290,43 @@ const Board: React.FC<{
         />
         {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12.5px] text-destructive">{error}</div>}
         {tickets === null && !error && <span className="text-[13px] text-muted-foreground">Loading tickets…</span>}
-        {tickets && (
+        {tickets && boardView === "type" && (
+          <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-1">
+            {TYPE_COLUMNS.map((col) => {
+              const { needsReply, awaiting } = splitByReply(
+                tickets.filter((t) => (t.type ?? "ISSUE") === col.key && !isDone(t)),
+              );
+              const key = `type:${col.key}`;
+              return (
+                <section
+                  key={col.key}
+                  aria-label={col.label}
+                  {...dropProps(key, (id) => void retype(id, col.key))}
+                  className={cn(
+                    "flex w-[272px] shrink-0 flex-col rounded-xl border bg-card/40 transition-colors",
+                    dragOver === key ? "border-primary/50 bg-primary/5" : "border-border",
+                  )}
+                >
+                  <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border/70 px-3">
+                    <span className="text-[12.5px] font-semibold text-foreground">{col.label}</span>
+                    <span className="rounded-full bg-secondary px-1.5 font-mono text-[10.5px] text-muted-foreground">
+                      {needsReply.length + awaiting.length}
+                    </span>
+                  </header>
+                  <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
+                    <SectionHeading label="Needs reply" count={needsReply.length} />
+                    {needsReply.map(card)}
+                    <div className="mt-1 border-t border-border/70 pt-2">
+                      <SectionHeading label="Awaiting customer" count={awaiting.length} />
+                    </div>
+                    {awaiting.map(card)}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
+        {tickets && boardView === "status" && (
           <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-1">
             {lanes.map((lane) => {
               const inLane = tickets
@@ -210,17 +341,7 @@ const Board: React.FC<{
                 <section
                   key={lane.key}
                   aria-label={lane.label}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(lane.key);
-                  }}
-                  onDragLeave={() => setDragOver((d) => (d === lane.key ? null : d))}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOver(null);
-                    if (dragging.current) void move(dragging.current, lane.key);
-                    dragging.current = null;
-                  }}
+                  {...dropProps(lane.key, (id) => void move(id, lane.key))}
                   className={cn(
                     "flex w-[272px] shrink-0 flex-col rounded-xl border bg-card/40 transition-colors",
                     dragOver === lane.key ? "border-primary/50 bg-primary/5" : "border-border",
@@ -232,15 +353,7 @@ const Board: React.FC<{
                   </header>
                   <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
                     {inLane.length === 0 && <span className="px-1 py-3 text-center text-[11.5px] text-muted-foreground">Nothing here</span>}
-                    {inLane.map((t) => (
-                      <TicketCard
-                        key={t.id}
-                        ticket={t}
-                        active={openId === t.id}
-                        onOpen={() => setOpenId(t.id)}
-                        onDragStart={() => (dragging.current = t.id)}
-                      />
-                    ))}
+                    {inLane.map(card)}
                   </div>
                 </section>
               );
@@ -248,6 +361,7 @@ const Board: React.FC<{
           </div>
         )}
       </Page>
+      <TriageSettingsDialog open={triageOpen} projects={projects} onClose={() => setTriageOpen(false)} />
       {openId && (
         <TicketPanel
           key={openId}
@@ -265,8 +379,24 @@ const Board: React.FC<{
   );
 };
 
-const TicketCard: React.FC<{ ticket: TicketSummary; active: boolean; onOpen: () => void; onDragStart: () => void }> = ({
+const SectionHeading: React.FC<{ label: string; count: number }> = ({ label, count }) => (
+  <div className="flex items-center justify-between px-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <span>{label}</span>
+    <span className="rounded-full bg-secondary px-1.5">{count}</span>
+  </div>
+);
+
+const TYPE_LABEL: Record<TicketType, string> = { CRITICAL: "critical", ISSUE: "issue", REQUEST: "request", QUESTION: "question" };
+
+const TicketCard: React.FC<{
+  ticket: TicketSummary;
+  view: BoardView;
+  active: boolean;
+  onOpen: () => void;
+  onDragStart: () => void;
+}> = ({
   ticket: t,
+  view,
   active,
   onOpen,
   onDragStart,
@@ -284,6 +414,12 @@ const TicketCard: React.FC<{ ticket: TicketSummary; active: boolean; onOpen: () 
   >
     <div className="flex items-center gap-1.5">
       <Pill tone={PRIORITY_TONE[t.priority]}>{t.priority.toLowerCase()}</Pill>
+      {view === "type" ? (
+        <Pill tone="mute">{STATUS_LABEL[t.status].toLowerCase()}</Pill>
+      ) : (
+        t.type && <Pill tone="mute">{TYPE_LABEL[t.type]}</Pill>
+      )}
+      <TriagePills triage={t.triage} />
       {t.handoff && !t.handoff.doneAt && (
         <Pill tone="violet">
           <Bot className="size-3" aria-hidden="true" />
@@ -338,11 +474,13 @@ export const TicketPanel: React.FC<{
   const [error, setError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<"reply" | "close">("reply");
   const [view, setView] = React.useState<"ticket" | "manager">("ticket");
+  const [loads, setLoads] = React.useState(0);
   const bottom = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
     try {
       setTicket(await supportApi.get(id));
+      setLoads((n) => n + 1);
     } catch (e) {
       setError(errorText(e));
     }
@@ -458,6 +596,14 @@ export const TicketPanel: React.FC<{
       <>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-3">
+        <TriageCaseBlock
+          ticketId={id}
+          refreshKey={loads}
+          onChanged={() => {
+            void load();
+            onChanged();
+          }}
+        />
         {ticket?.intakeData && Object.keys(ticket.intakeData).length > 0 && (
           <div className="rounded-lg border border-border bg-card px-3 py-2 text-[11.5px] text-muted-foreground">
             {Object.entries(ticket.intakeData)

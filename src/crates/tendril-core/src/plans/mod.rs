@@ -17,6 +17,7 @@ pub mod reader;
 pub mod recommendations;
 pub mod review;
 pub mod revisions;
+pub mod stack;
 pub mod verification_gate;
 pub mod verifications;
 pub mod writer;

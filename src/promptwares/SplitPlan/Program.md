@@ -51,7 +51,8 @@ The command outputs `PlanId`, `Directory`, and a `Verifications` section. Parse 
 
 Include optional flags as needed (always use the `--option=value` form):
 - `--source-url="<url>"` — if the original plan had a sourceUrl
-- `--depends-on="<sibling-plan-folder>"` — only when a sibling plan has a true blocking dependency (see Section 3)
+- `--stacked-on="<previous-part-folder>"` — when the split plans are parts of one feature that build on each other (see Section 3)
+- `--depends-on="<sibling-plan-folder>"` — only when a sibling plan has a true blocking dependency on an unrelated plan (see Section 3)
 - `--priority=<number>` — if non-default priority
 
 Populate `--verification` flags from the project's verifications in the **Projects** section, all set to `Pending`.
@@ -101,7 +102,9 @@ Each new plan may belong to a different project than the original. For each spli
 
 Report status: `tendril job status TendrilJobId --message="Setting up dependencies..."`
 
-Add `--depends-on` between sibling plans **only** when one plan would fail to compile or run without the other's changes being merged first. This is rare — most split plans are independent.
+**Parts of one feature are stacked.** When the split plans are consecutive parts of the same feature and a later part builds on an earlier one, create them in build order and give each later part `--stacked-on="<previous part's folder>"`. A stacked part starts as soon as the part before it has committed, is cut from that part's branch, and its PR targets that branch, so each part is a small PR and the whole series can be reviewed at once. Tendril moves the next part onto the base branch when a part merges. Aim for each part to be about 400 changed lines or less (tests and generated files aside), and never use `--depends-on` between parts of one series.
+
+Add `--depends-on` between sibling plans **only** when one plan would fail to compile or run without the other's changes being merged first and they are *not* parts of one series. This is rare — most split plans are independent.
 
 **Use `dependsOn` when:**
 - Plan A renames a function/type that Plan B needs to call

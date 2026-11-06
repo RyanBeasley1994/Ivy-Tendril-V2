@@ -221,6 +221,19 @@ impl TendrilClient {
         .await
     }
 
+    /// The project's open pull requests that are the operator's or wait on their review.
+    pub async fn project_my_prs(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/my-prs", path_segment(project_name)),
+            None,
+            "MY_PRS_FAILED",
+            "list your pull requests",
+            None,
+        )
+        .await
+    }
+
     /// The Docker containers that belong to the project.
     pub async fn project_docker(
         &self,

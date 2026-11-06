@@ -393,6 +393,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/git/repos/:id/pr", post(git::create_pr))
         .route("/api/projects/owners", get(projects::project_owners))
         .route("/api/projects/managers", get(projects::managers_status))
+        .route("/api/projects/:name/my-prs", get(projects::my_pull_requests))
         .route("/api/projects/:name/evidence", get(projects::project_evidence))
         .route(
             "/api/projects/:name/manager/wake",
@@ -428,8 +429,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/support/tickets/:id/read", post(support::mark_read))
         .route("/api/support/tickets/:id/reply", post(support::reply))
         .route("/api/support/tickets/:id/status", post(support::set_status))
+        .route("/api/support/tickets/:id/type", post(support::set_type))
         .route("/api/support/tickets/:id/close", post(support::close))
         .route("/api/support/tickets/:id/handoff", post(support::handoff))
+        .route("/api/support/settings", get(support::get_settings).put(support::put_settings))
+        .route("/api/support/tickets/:id/case", get(support::get_case))
+        .route(
+            "/api/support/tickets/:id/drafts/:draft",
+            post(support::approve_draft).delete(support::discard_draft),
+        )
         // What a project has hosted, with test logins; see `projects::links`.
         .route(
             "/api/projects/:name/links",

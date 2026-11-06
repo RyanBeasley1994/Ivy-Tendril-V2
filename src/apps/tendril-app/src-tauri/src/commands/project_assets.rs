@@ -91,6 +91,11 @@ pub async fn cmd_list_manager_tasks(project_name: String) -> Result<serde_json::
 }
 
 #[tauri::command]
+pub async fn cmd_project_my_prs(project_name: String) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.project_my_prs(&project_name).await
+}
+
+#[tauri::command]
 pub async fn cmd_project_docker(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?
         .project_docker(&project_name)

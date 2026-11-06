@@ -19,6 +19,8 @@ The launcher sets the working directory to the project's primary repo.
 
 **Mission milestones:** When the firmware header has a **MissionBranch**, this plan is one milestone of a mission. Its base branch (`RepoConfigs`) is that local mission branch, which already holds every earlier milestone — there is no `origin/<MissionBranch>`, so compare against the local branch (`git diff <MissionBranch>...HEAD`, `git log <MissionBranch>..HEAD`). Build on the earlier milestones' work rather than redoing it. Never push and never open a pull request: the mission's orchestrator judges this milestone, lands it on the mission branch, and the whole mission ships as one pull request at the end.
 
+**Stacked parts:** When the firmware header has a **StackedOnBranch**, this plan is one part of a feature delivered as a series of small PRs, built on the part before it. `tendril plan add-worktree` cuts the worktree from that branch by itself (it prints `Stacked on: <branch>`), whatever `--base` you pass. That part's work is already in your worktree: build on it, do not redo or rewrite it, and compare against it rather than the base branch (`git diff <StackedOnBranch>...HEAD`, `git log <StackedOnBranch>..HEAD`). The PR step targets that branch on its own.
+
 **Note:** Plans are often executed multiple times. For example, a reviewer may not be satisfied with the first execution and sends the plan back to Draft with comments (via UpdatePlan). When re-executing, the worktree branch from the previous run may already exist — handle this gracefully (delete old worktree first, or create with a new branch suffix). Check for existing artifacts and verification reports from prior runs.
 
 **Resume-vs-redo on re-execution:** Before deleting anything, run an integrity check on the prior run. If `plan.yaml` has commits populated and all verifications `Pass`, every `Pass` verification has a report, `Artifacts/summary.md` exists, the worktree is clean with HEAD matching the last recorded commit, and the expected code changes are present in the files — then **resume** (log it and exit successfully) rather than redoing work. Redoing creates new commit hashes and breaks downstream CreatePr references. Only fall back to the full re-execution flow if any of those checks fail.
@@ -391,6 +393,8 @@ Work exclusively in the worktree directories. Follow the plan's latest revision:
 3. **Tests** - Write and run all tests specified in the plan
    - **Loopback only for servers:** When writing tests, demo apps, or mock servers that listen on a port, always bind to loopback (127.0.0.1 or ::1) instead of 0.0.0.0. Binding to all interfaces (0.0.0.0) is blocked and triggers "listen EPERM" errors on some systems.
 
+**Keep the PR small.** This plan ships as one pull request, which a person has to review: stay inside the plan's scope and aim for about 400 changed lines or less, not counting tests, snapshots, lockfiles and generated files. Do not refactor, rename or tidy code the plan does not ask you to touch. If the plan turns out to need much more than that, deliver a coherent, working slice that builds and passes its tests, and list the rest under **Remaining work** in the summary, so it can be planned as the next part, instead of growing this PR.
+
 **Status cadence:** During implementation, if any sub-task takes longer than 90 seconds, issue an intermediate status update describing the current activity (e.g., `"Implementing: writing tests..."`, `"Implementing: fixing lint errors..."`, `"Implementing: reading reference code..."`). The user should never see the same status message for more than ~90 seconds.
 
 ### 5. Commit
@@ -550,6 +554,10 @@ The summary should follow this structure:
 - What to observe (e.g., "The plan should show 'Blocked' status instead of executing")
 
 If the change has no observable user-facing behavior (e.g., internal refactor, dependency update, code cleanup), write "N/A — internal change with no user-facing behavior.">
+
+## Remaining work
+
+<Only when you stopped at a working slice to keep the PR small (Step 4): what is left, concretely enough to plan as the next part. Omit this section otherwise.>
 ~~~
 
 Focus on **what changed** (past tense), not what the plan said to do. Emphasize API surface changes — new classes, renamed methods, added properties, changed signatures — since these affect consumers.

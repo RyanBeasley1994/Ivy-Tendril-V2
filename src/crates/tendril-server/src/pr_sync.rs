@@ -113,6 +113,9 @@ pub fn log_report(report: &PrSyncReport) {
             report.errors.join("; ")
         );
     }
+    if !report.restacked.is_empty() {
+        tracing::info!("PR status sync: stacked parts moved: {}", report.restacked.join("; "));
+    }
     if !report.refused_completions.is_empty() {
         tracing::warn!(
             "PR status sync: completion refused for {}",

@@ -16,6 +16,7 @@ use tendril_core::chat::models::ChatQueuedItem;
 use tendril_core::config::load_config;
 use tendril_core::error::TendrilError;
 use tendril_core::support;
+use tendril_core::support_cases;
 
 fn error(status: StatusCode, message: impl Into<String>) -> Response {
     (status, Json(json!({ "error": message.into() }))).into_response()
@@ -115,6 +116,16 @@ pub async fn set_status(State(state): State<Arc<AppState>>, Path(id): Path<Strin
     answer(support::set_status(&state.tendril_home, &id, &req.status).await)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct TypeRequest {
+    #[serde(rename = "type")]
+    pub ticket_type: String,
+}
+
+pub async fn set_type(State(state): State<Arc<AppState>>, Path(id): Path<String>, Json(req): Json<TypeRequest>) -> Response {
+    answer(support::set_type(&state.tendril_home, &id, &req.ticket_type).await)
+}
+
 #[derive(Debug, Default, Deserialize)]
 pub struct CloseRequest {
     #[serde(default)]
@@ -139,51 +150,122 @@ pub struct HandoffRequest {
 /// operator wrote something, sends it there. The partner sees none of it.
 pub async fn handoff(State(state): State<Arc<AppState>>, Path(id): Path<String>, Json(req): Json<HandoffRequest>) -> Response {
     let home = &state.tendril_home;
-    let Some(project) = load_config(&state.config_path)
-        .ok()
-        .and_then(|s| s.projects.into_iter().find(|p| p.name.eq_ignore_ascii_case(req.project.trim())))
-        .map(|p| p.name)
-    else {
+    let Some(project) = find_project(&state, &req.project) else {
         return error(StatusCode::NOT_FOUND, format!("Project '{}' not found", req.project));
     };
     let ticket = match support::get_ticket(home, &id).await {
         Ok(t) => t,
         Err(e) => return failed(e),
     };
-    let session_id = ticket_session_id(&project, &id);
-    let title = format!("Ticket · {}", ticket["subject"].as_str().unwrap_or(&id));
-    let created = match crate::routes::projects::open_manager_session(&state, &project, &session_id, &title).await {
-        Ok((_, created)) => created,
-        Err(response) => return response,
-    };
-    let prompt = if created {
-        Some(support::handoff_prompt(&ticket, &project, &req.instructions))
-    } else {
-        Some(req.instructions.trim().to_string()).filter(|i| !i.is_empty())
-    };
-    if let Some(prompt) = prompt {
-        // A steer sent while it is mid-turn waits its turn, as anything sent to a manager does.
-        if state.chat_manager.is_generating(&session_id).await {
-            let item = ChatQueuedItem {
-                id: uuid::Uuid::new_v4().to_string(),
-                prompt,
-                attachments: None,
-                created_at: chrono::Utc::now(),
-                role: None,
-            };
-            state.chat_manager.enqueue_message(&session_id, item).await;
-        } else if let Err(e) = state.chat_manager.start_session_turn(&session_id, &prompt, ChatTurnOptions::default()).await {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
-        }
+    let first = support::handoff_prompt(&ticket, &project, &req.instructions);
+    let steer = Some(req.instructions.trim().to_string()).filter(|i| !i.is_empty());
+    match start_ticket_conversation(&state, &project, &id, &ticket, first, steer).await {
+        Ok(handoff) => Json(handoff).into_response(),
+        Err(response) => response,
     }
-    let handoff = match support::record_handoff(home, &id, &project, &session_id) {
-        Ok(h) => h,
-        Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-    };
+}
+
+pub(crate) fn find_project(state: &AppState, name: &str) -> Option<String> {
+    load_config(&state.config_path)
+        .ok()
+        .and_then(|s| s.projects.into_iter().find(|p| p.name.eq_ignore_ascii_case(name.trim())))
+        .map(|p| p.name)
+}
+
+/// Opens (or reopens) the ticket's manager conversation on `project`: `first` starts a new one,
+/// `steer` is sent to one that already exists. Records the hand-off and moves a waiting ticket to
+/// In Progress.
+pub(crate) async fn start_ticket_conversation(
+    state: &Arc<AppState>,
+    project: &str,
+    id: &str,
+    ticket: &serde_json::Value,
+    first: String,
+    steer: Option<String>,
+) -> Result<support::Handoff, Response> {
+    let home = &state.tendril_home;
+    let session_id = ticket_session_id(project, id);
+    let title = format!("Ticket · {}", ticket["subject"].as_str().unwrap_or(id));
+    let (_, created) = crate::routes::projects::open_manager_session(state, project, &session_id, &title).await?;
+    let prompt = if created { Some(first) } else { steer };
+    if let Some(prompt) = prompt {
+        send_to_session(state, &session_id, prompt)
+            .await
+            .map_err(|e| error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    }
+    let handoff = support::record_handoff(home, id, project, &session_id)
+        .map_err(|e| error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     if ticket["status"].as_str().is_some_and(|s| s == "OPEN" || s == "PENDING") {
-        if let Err(e) = support::set_status(home, &id, "IN_PROGRESS").await {
+        if let Err(e) = support::set_status(home, id, "IN_PROGRESS").await {
             tracing::warn!("support handoff status on {id} failed: {e}");
         }
     }
-    Json(handoff).into_response()
+    Ok(handoff)
+}
+
+/// Sends `prompt` to a manager conversation, queued behind a turn already running.
+pub(crate) async fn send_to_session(state: &Arc<AppState>, session_id: &str, prompt: String) -> Result<(), String> {
+    if state.chat_manager.is_generating(session_id).await {
+        let item = ChatQueuedItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            prompt,
+            attachments: None,
+            created_at: chrono::Utc::now(),
+            role: None,
+        };
+        state.chat_manager.enqueue_message(session_id, item).await;
+        Ok(())
+    } else {
+        state
+            .chat_manager
+            .start_session_turn(session_id, &prompt, ChatTurnOptions::default())
+            .await
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+}
+
+/* ------------------------------------------------------------------ triage */
+
+pub async fn get_settings(State(state): State<Arc<AppState>>) -> Response {
+    Json(support_cases::view(&support_cases::load_settings(&state.tendril_home))).into_response()
+}
+
+pub async fn put_settings(State(state): State<Arc<AppState>>, Json(req): Json<support_cases::SettingsInput>) -> Response {
+    if let Some(p) = req.manager_project.as_deref().filter(|p| !p.trim().is_empty()) {
+        if find_project(&state, p).is_none() {
+            return error(StatusCode::NOT_FOUND, format!("Project '{p}' not found"));
+        }
+    }
+    match support_cases::save_settings(&state.tendril_home, req) {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => failed(e),
+    }
+}
+
+pub async fn get_case(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+    Json(support_cases::load_case(&state.tendril_home, &id)).into_response()
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct ApproveRequest {
+    #[serde(default)]
+    pub content: Option<String>,
+}
+
+/// The operator approves a held reply, with their edit if they made one, and it goes to the partner.
+pub async fn approve_draft(
+    State(state): State<Arc<AppState>>,
+    Path((id, draft)): Path<(String, String)>,
+    Json(req): Json<ApproveRequest>,
+) -> Response {
+    answer(
+        support::send_draft(&state.tendril_home, &id, &draft, req.content.as_deref())
+            .await
+            .map(|d| json!(d)),
+    )
+}
+
+pub async fn discard_draft(State(state): State<Arc<AppState>>, Path((id, draft)): Path<(String, String)>) -> Response {
+    answer(support::discard_draft(&state.tendril_home, &id, &draft).map(|d| json!(d)))
 }

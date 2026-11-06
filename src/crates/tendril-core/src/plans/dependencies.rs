@@ -41,6 +41,13 @@ pub fn check_dependencies_with(
         return Ok(blocked(reason));
     }
 
+    // The next part of a stacked feature waits only for the part before it to commit, not to merge.
+    if let crate::plans::stack::Parent::Waiting(reason) =
+        crate::plans::stack::parent_status(plans_dir, &plan, resolve_pr_state)
+    {
+        return Ok(blocked(reason));
+    }
+
     if plan.depends_on.is_empty() {
         return Ok(ok_result());
     }

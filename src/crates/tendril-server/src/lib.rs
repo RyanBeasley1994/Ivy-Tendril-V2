@@ -19,6 +19,7 @@ pub mod pty;
 pub mod routes;
 pub mod share_exposure;
 pub mod state;
+pub mod support_triage;
 pub mod tasks;
 pub mod watch;
 mod webviewer;
@@ -221,6 +222,7 @@ pub async fn run_server(
     spawn_mission_driver(state.clone());
     manager_scheduler::spawn_manager_scheduler(state.clone());
     telegram::spawn(state.clone());
+    support_triage::spawn(state.clone());
     spawn_worktree_reaper(tendril_home.clone());
     spawn_cost_backfill(tendril_home.clone());
     // No background release check: it polled upstream Ivy Tendril's GitHub releases, which this fork

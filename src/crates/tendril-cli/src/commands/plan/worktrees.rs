@@ -64,13 +64,26 @@ pub(super) fn add(
         .unwrap_or_default();
     tendril_core::git::branch_naming::assign_branch_name(&folder, &git_settings)?;
     let repo_path = PathBuf::from(&args.repo);
+    // The next part of a stacked feature is cut from the part before it, whatever base was passed.
+    let stacked = tendril_core::plans::stack::cut_from(
+        &folder,
+        &repo_path,
+        &tendril_core::plans::dependencies::get_gh_pr_state,
+    );
     let creation = add_worktree(
         &repo_path,
         &folder,
-        args.base.as_deref(),
+        stacked.as_deref().or(args.base.as_deref()),
         WorktreeMode::ReuseIfValid,
         None,
     )?;
+    if let Some(branch) = stacked.as_deref().filter(|_| !creation.reused) {
+        let onto = args.base.clone().unwrap_or_else(|| default_branch(&repo_path));
+        if let Err(e) = tendril_core::plans::stack::record_cut(&folder, &repo_path, &creation.path, branch, &onto) {
+            eprintln!("Warning: could not record where this part was cut from: {}", e);
+        }
+        println!("Stacked on: {branch}");
+    }
 
     // add_worktree can return before git has finished laying the worktree down, and a
     // worktree without a `.git` file is unusable for everything downstream.
@@ -175,4 +188,14 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&root);
     }
+}
+
+/// The repo's default branch from `origin/HEAD`, else `main`, as `add_worktree` resolves it.
+fn default_branch(repo: &std::path::Path) -> String {
+    tendril_core::git::service::run_git(&["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], repo)
+        .ok()
+        .filter(|(code, _, _)| *code == 0)
+        .map(|(_, out, _)| out.trim().trim_start_matches("origin/").to_string())
+        .filter(|b| !b.is_empty())
+        .unwrap_or_else(|| "main".to_string())
 }
