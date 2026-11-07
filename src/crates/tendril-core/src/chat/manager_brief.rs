@@ -93,9 +93,18 @@ pub fn manager_allowed_tools() -> Vec<String> {
 /// Telegram hide it, so the patrol, wake-ups and worker reports stay silent until there is news.
 pub const QUIET_REPLY: &str = "[quiet]";
 
-/// Whether a manager's reply is the quiet one (the agent may wrap it in backticks or add a full stop).
+/// Whether a manager's reply is the quiet one (the agent may wrap the marker in backticks).
 pub fn is_quiet(content: &str) -> bool {
-    content.trim().trim_matches(|c: char| c == '`' || c == '.').eq_ignore_ascii_case(QUIET_REPLY)
+    quiet_summary(content).is_some()
+}
+
+/// The line after the quiet marker: what the manager did, for the activity log only. Empty when it
+/// gave none.
+pub fn quiet_summary(content: &str) -> Option<String> {
+    let text = content.trim().trim_start_matches('`');
+    let head = text.get(..QUIET_REPLY.len())?;
+    head.eq_ignore_ascii_case(QUIET_REPLY)
+        .then(|| text[QUIET_REPLY.len()..].trim_start_matches('`').trim().trim_start_matches(['-', ':']).trim().to_string())
 }
 
 pub fn manager_session_id(project: &str) -> String {
@@ -307,7 +316,8 @@ each building and passing its tests on top of the ones before.
   main` and have a worker `git rebase --onto origin/main <merged part's last commit>` and force-push.
 - **Plan jobs:** CreatePlan makes the stacked series itself; execute each part once the one before has
   committed. Tendril bases, targets and moves the parts on its own.
-- **A mission ships as one pull request:** only when the operator asks for one.
+- **Missions:** each milestone is opened as its own part when it passes, and Tendril moves the rest as
+  parts merge. One pull request (`--single-pr`) only when the operator asks for one.
 
 ### The Goals memory
 `tendril memory get --project {project} goals`; write it whole with
@@ -324,7 +334,8 @@ edit it too. Open goes first and stays short:
 
 ## What wakes you
 The operator, or the daemon. A daemon wake is an event, not the operator talking: **act on it, then
-reply with exactly `[quiet]` and nothing else** (hidden from the app and Telegram), unless:
+reply `[quiet]` then one short line of what you did** (it goes to the activity log, not the chat or
+Telegram), unless:
 - the operator's whole request is finished (shipped, merged or closed, not one part of it): say so in
   one or two lines; or
 - you are blocked on something only the operator can decide: ask one plain question.
@@ -397,7 +408,7 @@ pick one and carry on. Never wait to be told what to do next when the Goals or t
 - **Ship finished work, then watch it, without being asked.** When a mission, plan or task is done and
   checked: `git -C <dir> push -u origin <branch>`, `gh pr create --head <branch>` with a title and body
   that say what it does and how it was checked, then `tendril manager watch-pr`. A mission waiting in
-  Review is closed with `tendril mission complete <id>` once its pull request is open. After two
+  Review is closed with `tendril mission complete <id>` once its pull requests are open. After two
   attempts at the same CI failure, change the approach. A finished mission with no pull request is a
   loose end, not a finished job.
 - **Tidy up when it is finished with.** Once a branch is pushed its worktree can go
@@ -426,6 +437,8 @@ mod tests {
     fn a_quiet_reply_is_recognised_however_it_is_wrapped() {
         assert!(is_quiet("[quiet]") && is_quiet(" `[quiet]`\n") && is_quiet("[Quiet]."));
         assert!(!is_quiet("Done, PR 46 is merged. [quiet]"));
+        assert_eq!(quiet_summary("[quiet] Sent part 4 back to fix the reconnect gap.").as_deref(), Some("Sent part 4 back to fix the reconnect gap."));
+        assert_eq!(quiet_summary("`[quiet]`").as_deref(), Some(""));
     }
 
     #[test]

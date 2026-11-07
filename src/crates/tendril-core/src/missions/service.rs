@@ -50,6 +50,9 @@ pub struct NewMission {
     /// The harness for each role; unset roles use the configured default agent.
     #[serde(default)]
     pub agents: MissionAgents,
+    /// One pull request for the whole mission at the end, instead of one stacked part per milestone.
+    #[serde(rename = "singlePr", default)]
+    pub single_pr: bool,
 }
 
 /// Creates the mission and its integration plan. The integration plan is an `Epic` seeded from the
@@ -82,6 +85,7 @@ pub fn create(paths: &MissionPaths, settings: &TendrilSettings, req: NewMission)
         mission.budget.max_replans = n;
     }
     mission.budget.max_cost = req.max_cost.filter(|c| *c > 0.0);
+    mission.stacked = !req.single_pr;
     // Roles the request leaves unset follow the project's own engine settings.
     let engine = crate::agents::project_engine::ProjectEngine::load_effective(&paths.tendril_home, &project.name);
     mission.agents = clean_agents(crate::agents::project_engine::fill_unset_mission_roles(req.agents, &engine));

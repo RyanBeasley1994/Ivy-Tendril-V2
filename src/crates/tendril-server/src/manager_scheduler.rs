@@ -461,6 +461,7 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
         let mut patrol_state = crate::patrol::PatrolState::default();
         let mut patrol_checked = std::time::Instant::now() - Duration::from_secs(3600);
         let mut engines_checked = std::time::Instant::now() - Duration::from_secs(3600);
+        let mut conflicts_checked = std::time::Instant::now() - Duration::from_secs(3600);
         let mut briefing_pending: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut ticker = tokio::time::interval(TICK);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -546,6 +547,24 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                 }
             }
 
+            // 2b'. A stacked part that could not be moved onto its new base: the manager gets it resolved.
+            if conflicts_checked.elapsed() >= Duration::from_secs(60) {
+                conflicts_checked = std::time::Instant::now();
+                let settings = tendril_core::config::load_config(&state.config_path).unwrap_or_default();
+                let plans_dir = tendril_core::config::get_plans_dir_with_settings(&state.tendril_home, Some(&settings));
+                for c in tendril_core::plans::stack::take_conflicts(&plans_dir) {
+                    let Some(manager) = manager_exists(&state, &c.project).await else { continue };
+                    let prs = if c.prs.is_empty() { String::new() } else { format!(" ({})", c.prs.join(", ")) };
+                    let message = format!(
+                        "A stacked part could not be moved after the part below it merged: plan {}{prs}, branch {} in {}, conflicts rebasing onto {}. It was left as it was. Hand it to a worker on that branch to rebase onto {} and resolve the conflicts, push with --force-with-lease, and point the PR at the new base; then watch its checks. Only if the conflict needs a product decision is it the operator's.",
+                        c.plan, c.branch, c.repo, c.onto, c.onto
+                    );
+                    if let Err(e) = state.chat_manager.notify_event(&manager, &message).await {
+                        tracing::debug!("Could not wake manager {manager}: {e}");
+                    }
+                }
+            }
+
             // 2c. Patrol: a manager that is only ever woken by events or by the operator sits idle while
             //     things stall. Look at each project now and then, wake its manager with whatever is stuck
             //     or loose, and, when nothing is running and it has standing goals, point it at them.
@@ -593,6 +612,11 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                 if before == Some(true) && !working {
                     let briefing = briefing_pending.remove(&project);
                     correct_refusals(&state, &project, &mut corrections).await;
+                    if let Some(session) = latest_reply(&state, &id).await {
+                        if let Some(activity) = crate::manager_activity::from_turn(&session) {
+                            crate::manager_activity::record(&state.tendril_home, &project, &activity);
+                        }
+                    }
                     on_turn_end(&state, &project, briefing, &mut had_work).await;
                 }
             }

@@ -152,6 +152,14 @@ async fn login(conn: &mut SupportConnection) -> Result<()> {
 /// One call against Operations as the signed-in operator, signing in again once if the session
 /// lapsed.
 pub async fn request(home: &Path, method: Method, path: &str, body: Option<Value>) -> Result<Value> {
+    // A dry run on a ticket reads it but changes nothing there: no replies, notes, statuses or types.
+    if method != Method::GET && !path.ends_with("/read") {
+        if let Some(ticket) = path.strip_prefix("/api/team/tickets/").and_then(|rest| rest.split('/').next()) {
+            if support_cases::is_dry(home, ticket) {
+                return Ok(json!({ "dryRun": true }));
+            }
+        }
+    }
     let mut conn = load_connection(home)
         .ok_or_else(|| TendrilError::Validation("Support is not connected. Sign in to Operations on the Support page first.".into()))?;
     if conn.token.is_none() {
@@ -306,6 +314,9 @@ pub fn type_for(investigation: &support_cases::Investigation) -> &'static str {
 /// Operations' silent resolve: no message to the partner, notifications cleared. A ticket with a
 /// triage case is written to the support history, so the next one like it starts from what was learnt.
 pub async fn resolve(home: &Path, id: &str) -> Result<Value> {
+    if support_cases::is_dry(home, id) {
+        return Ok(json!({ "dryRun": true }));
+    }
     let v = request(home, Method::POST, &format!("/api/team/tickets/{}/resolve", enc(id)), None).await?;
     mark_handoff_done(home, id)?;
     let case = support_cases::load_case(home, id);
@@ -380,7 +391,9 @@ pub async fn agent_reply(home: &Path, id: &str, req: support_cases::ReplyRequest
     let fix_pr = |url: &str| fix_pr_from_github(url);
     support_cases::check_reply(&case, &req, &ticket_emails(&ticket), &fix_pr)?;
     let draft = support_cases::add_draft(home, id, &req)?;
-    if support_cases::load_settings(home).reply_mode == support_cases::ReplyMode::Approve {
+    let settings = support_cases::load_settings(home);
+    let held = settings.reply_mode == support_cases::ReplyMode::Approve && !settings.auto_kinds.contains(&req.kind);
+    if support_cases::is_dry(home, id) || held {
         return Ok(ReplyOutcome::Queued { draft });
     }
     send_draft(home, id, &draft.id, None).await?;
@@ -402,6 +415,14 @@ pub async fn agent_note(home: &Path, id: &str, content: &str) -> Result<()> {
         .filter(|at| case.last_note_at.is_none_or(|last| *at > last + chrono::Duration::seconds(5)))
         .max();
     support_cases::check_note(&case, content, newest)?;
+    if support_cases::is_dry(home, id) {
+        support_cases::update_case(home, id, |c| {
+            c.dry_notes.push(content.trim().to_string());
+            c.last_note_at = Some(Utc::now());
+            c.handed_over = true;
+        })?;
+        return Ok(());
+    }
     reply(home, id, content.trim(), true).await?;
     support_cases::update_case(home, id, |c| {
         c.last_note_at = Some(Utc::now());
@@ -413,6 +434,9 @@ pub async fn agent_note(home: &Path, id: &str, content: &str) -> Result<()> {
 /// Sends a held draft (the operator's approval, with their edit if they made one). A "resolved" reply
 /// is also queued on every ticket following this one as a duplicate, each for its own approval.
 pub async fn send_draft(home: &Path, id: &str, draft_id: &str, edited: Option<&str>) -> Result<support_cases::Draft> {
+    if support_cases::is_dry(home, id) {
+        return Err(TendrilError::Validation("This is a dry run: its replies are only shown, never sent".into()));
+    }
     let pending = support_cases::load_case(home, id)
         .drafts
         .into_iter()
@@ -421,6 +445,9 @@ pub async fn send_draft(home: &Path, id: &str, draft_id: &str, edited: Option<&s
     let content = edited.map(str::trim).filter(|t| !t.is_empty()).unwrap_or(&pending.content).to_string();
     reply(home, id, &content, false).await?;
     let draft = support_cases::decide_draft(home, id, draft_id, support_cases::DraftState::Sent, Some(&content))?;
+    if draft.kind == support_cases::ReplyKind::Resolved {
+        support_cases::update_case(home, id, |c| c.reopened = false)?;
+    }
     if draft.kind == support_cases::ReplyKind::Resolved {
         for dup in support_cases::duplicates_of(home, id) {
             let req = support_cases::ReplyRequest {
@@ -566,6 +593,42 @@ Once it is settled, `tendril support learn {id} "<how it was fixed or settled>"`
 
 /// The first message of an automatically triaged ticket's conversation: the ticket, what similar
 /// tickets taught, the open bugs it might duplicate, and the triage rules.
+/// How far back "recently shipped" reaches.
+const RECENT_HOURS: i64 = 48;
+
+/// The pull requests merged into the project's repos in the last two days, one line each, newest first:
+/// a regression report most often comes from one of them.
+fn recent_changes(home: &Path, project: &str) -> String {
+    let Ok(settings) = crate::config::load_config(&crate::config::get_config_path(home)) else {
+        return String::new();
+    };
+    let Some(p) = settings.projects.iter().find(|p| p.name.eq_ignore_ascii_case(project)) else {
+        return String::new();
+    };
+    let since = (Utc::now() - chrono::Duration::hours(RECENT_HOURS)).format("%Y-%m-%dT%H:%M:%SZ");
+    let home_str = home.to_string_lossy();
+    let mut merged: Vec<(String, String)> = Vec::new();
+    for repo in &p.repos {
+        let dir = crate::config::expand_variables(&repo.path, &home_str);
+        let out = std::process::Command::new("gh")
+            .args(["pr", "list", "--state", "merged", "--limit", "20", "--json", "number,title,mergedAt"])
+            .args(["--search", &format!("merged:>={since}")])
+            .current_dir(&dir)
+            .output();
+        let Some(out) = out.ok().filter(|o| o.status.success()) else { continue };
+        let list: Vec<Value> = serde_json::from_slice(&out.stdout).unwrap_or_default();
+        for pr in list {
+            let at = pr["mergedAt"].as_str().unwrap_or_default().to_string();
+            let when = at.get(..16).unwrap_or_default().replace('T', " ");
+            let name = std::path::Path::new(&dir).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let repo_note = if p.repos.len() > 1 { format!(" [{name}]") } else { String::new() };
+            merged.push((at, format!("- #{} {}{repo_note} (merged {when} UTC)\n", pr["number"], pr["title"].as_str().unwrap_or_default())));
+        }
+    }
+    merged.sort_by(|a, b| b.0.cmp(&a.0));
+    merged.into_iter().map(|(_, line)| line).collect()
+}
+
 pub fn triage_prompt(home: &Path, ticket: &Value, project: &str) -> String {
     let id = ticket["id"].as_str().unwrap_or_default();
     let mut s = handoff_prompt(ticket, project, "");
@@ -579,6 +642,16 @@ pub fn triage_prompt(home: &Path, ticket: &Value, project: &str) -> String {
     if !similar.is_empty() {
         s.push_str("\n## Similar tickets before\nHow these went: reuse what was found and how it was settled, and match the tone of what was said.\n");
         s.push_str(&support_cases::render_history(&similar));
+    }
+    let rewrites = support_cases::render_rewrites(home, 5);
+    if !rewrites.is_empty() {
+        s.push_str("\n## How the operator rewrites your replies\nThey edited these before sending. Write the way they do.\n");
+        s.push_str(&rewrites);
+    }
+    let shipped = recent_changes(home, project);
+    if !shipped.is_empty() {
+        s.push_str("\n## Shipped in the last two days\nA problem that started recently is most often one of these. Check whether one touches what the partner reports (`gh pr view <number> --json files,body`), and if it does, cite it in --evidence.\n");
+        s.push_str(&shipped);
     }
     let bugs = support_cases::open_bugs(home, id);
     if !bugs.is_empty() {

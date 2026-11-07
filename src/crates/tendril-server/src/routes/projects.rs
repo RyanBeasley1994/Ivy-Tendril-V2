@@ -31,7 +31,7 @@ pub use evidence::project_evidence;
 pub use hooks::{add_project_hook, remove_project_hook};
 pub use links::{delete_project_link, list_project_links, set_project_link};
 pub use manager::{
-    clean_manager_task, get_or_create_project_manager, list_manager_tasks, managers_status, my_pull_requests,
+    clean_manager_task, get_or_create_project_manager, list_manager_tasks, managers_status, manager_activity, my_pull_requests,
     project_docker, project_owners, schedule_manager_wake, start_manager_task, stop_manager_task, watch_pull_request,
 };
 pub(crate) use manager::{open_manager_session, refresh_briefing};

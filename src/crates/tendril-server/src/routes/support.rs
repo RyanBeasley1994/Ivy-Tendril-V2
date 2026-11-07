@@ -228,7 +228,9 @@ pub(crate) async fn send_to_session(state: &Arc<AppState>, session_id: &str, pro
 /* ------------------------------------------------------------------ triage */
 
 pub async fn get_settings(State(state): State<Arc<AppState>>) -> Response {
-    Json(support_cases::view(&support_cases::load_settings(&state.tendril_home))).into_response()
+    let mut view = support_cases::view(&support_cases::load_settings(&state.tendril_home));
+    view.approvals = support_cases::approval_stats(&state.tendril_home);
+    Json(view).into_response()
 }
 
 pub async fn put_settings(State(state): State<Arc<AppState>>, Json(req): Json<support_cases::SettingsInput>) -> Response {
@@ -238,7 +240,10 @@ pub async fn put_settings(State(state): State<Arc<AppState>>, Json(req): Json<su
         }
     }
     match support_cases::save_settings(&state.tendril_home, req) {
-        Ok(v) => Json(v).into_response(),
+        Ok(mut v) => {
+            v.approvals = support_cases::approval_stats(&state.tendril_home);
+            Json(v).into_response()
+        }
         Err(e) => failed(e),
     }
 }
@@ -267,6 +272,46 @@ pub async fn approve_draft(
             .await
             .map(|d| json!(d)),
     )
+}
+
+/// `POST /api/support/tickets/:id/dry-run` — works a ticket the way triage would, in its own
+/// conversation, with nothing reaching the ticket: replies are held and can't be sent, notes are kept on
+/// the run, and the ticket's status and type are left alone. For trying triage on a past ticket.
+pub async fn start_dry_run(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+    let home = &state.tendril_home;
+    let settings = support_cases::load_settings(home);
+    let Some(project) = settings.manager_project.as_deref().and_then(|p| find_project(&state, p)) else {
+        return error(StatusCode::BAD_REQUEST, "Choose the support manager's project in Triage settings first");
+    };
+    let ticket = match support::get_ticket(home, &id).await {
+        Ok(t) => t,
+        Err(e) => return error(StatusCode::BAD_GATEWAY, e.to_string()),
+    };
+    let run = &uuid::Uuid::new_v4().to_string()[..8];
+    let session_id = ticket_session_id(&project, &format!("dry-{id}-{run}"));
+    let subject = ticket["subject"].as_str().unwrap_or(&id).to_string();
+    if let Err(e) = support_cases::start_dry_run(home, &id, &subject, &session_id) {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
+    }
+    let title = format!("Dry run · {subject}");
+    if let Err(response) = crate::routes::projects::open_manager_session(&state, &project, &session_id, &title).await {
+        let _ = support_cases::end_dry_run(home, &id);
+        return response;
+    }
+    let prompt = format!(
+        "DRY RUN. This is a practice run on a real ticket: work it exactly as you would for real. Nothing you do reaches the ticket or the partner (replies are held, notes are kept on the run), so don't hold back on that account.\n\n{}",
+        support::triage_prompt(home, &ticket, &project)
+    );
+    if let Err(e) = send_to_session(&state, &session_id, prompt).await {
+        let _ = support_cases::end_dry_run(home, &id);
+        return error(StatusCode::INTERNAL_SERVER_ERROR, e);
+    }
+    Json(json!({ "sessionId": session_id })).into_response()
+}
+
+/// `DELETE /api/support/tickets/:id/dry-run` — ends the run and throws its case away.
+pub async fn end_dry_run(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
+    answer(support_cases::end_dry_run(&state.tendril_home, &id).map(|()| json!({ "ok": true })))
 }
 
 pub async fn discard_draft(State(state): State<Arc<AppState>>, Path((id, draft)): Path<(String, String)>) -> Response {

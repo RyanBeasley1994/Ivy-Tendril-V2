@@ -454,6 +454,10 @@ fn run(
         });
     }
 
+    if let Some(reason) = stacked_mission_shipped(&plan) {
+        return Ok(NativePrOutcome::Failed { reason });
+    }
+
     let worktrees = enumerate_worktree_directories(&plan_folder.join("Worktrees"));
     if worktrees.is_empty() {
         return Ok(NativePrOutcome::NeedsAgent {
@@ -718,6 +722,25 @@ fn run(
             ),
         })
     }
+}
+
+/// A stacked mission's integration plan has nothing of its own to ship: each milestone already has
+/// its pull request. Opening one for the whole mission branch would put every part up again at once.
+fn stacked_mission_shipped(plan: &crate::models::PlanYaml) -> Option<String> {
+    let link = crate::missions::model::mission_link(plan)
+        .filter(|l| l.role == crate::missions::model::MissionRole::Integration)?;
+    let mission = crate::missions::store::read_mission(Path::new(&link.folder)).ok()?;
+    let prs: Vec<String> = mission
+        .milestones
+        .iter()
+        .flat_map(|ms| ms.parts.values().filter_map(|p| p.pr.clone()))
+        .collect();
+    (mission.stacked && !prs.is_empty()).then(|| {
+        format!(
+            "This mission ships as stacked pull requests, one per milestone, and they are already open: {}. Review and merge those in order instead.",
+            prs.join(", ")
+        )
+    })
 }
 
 /// Tells the previous part's PR which PR comes next, so a reviewer can follow the chain either way.

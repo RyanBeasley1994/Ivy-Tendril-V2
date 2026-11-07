@@ -78,8 +78,36 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
             alert(state, &settings, t, &case).await;
         }
 
-        // 3. A partner's follow-up is passed on to the ticket's conversation.
+        // 3. A reply held for approval is offered on Telegram, with buttons, once.
+        for draft in case.drafts.iter().filter(|d| d.state == support_cases::DraftState::Pending) {
+            if !case.offered_drafts.contains(&draft.id) && crate::telegram::offer_draft(state, id, &case.subject, draft).await {
+                let draft_id = draft.id.clone();
+                let _ = support_cases::update_case(home, id, |c| c.offered_drafts.push(draft_id));
+            }
+        }
+
+        // 4. Waiting on us too long: one nudge per waiting stretch, before the response time runs out.
+        if let Some(waiting) = t["waitingSince"].as_str().filter(|_| t["needsReply"].as_bool() == Some(true)) {
+            let long = waiting.parse::<DateTime<Utc>>().is_ok_and(|w| Utc::now() - w >= chrono::Duration::hours(NUDGE_AFTER_HOURS));
+            if long && case.nudged_for.as_deref() != Some(waiting) {
+                nudge(state, &settings, t).await;
+                let waiting = waiting.to_string();
+                let _ = support_cases::update_case(home, id, |c| c.nudged_for = Some(waiting));
+            }
+        }
+
+        // 5. The partner wrote back after being told it was fixed: the fix did not hold, and the ticket
+        //    goes straight back to the manager as a regression.
         let partner_wrote = t["lastMessage"]["authorType"].as_str() == Some("PARTNER");
+        let wrote_at = t["lastMessage"]["createdAt"].as_str().and_then(|c| c.parse::<DateTime<Utc>>().ok());
+        if let (Some(resolved), Some(at), Some(project)) = (case.resolved_at(), wrote_at, &project) {
+            if partner_wrote && at > resolved && !case.reopened {
+                reopen(state, project, id, &t["lastMessage"]).await;
+                continue;
+            }
+        }
+
+        // 6. A partner's follow-up is passed on to the ticket's conversation.
         let open = t["handoff"]["doneAt"].is_null() && !t["handoff"].is_null();
         if case.triaged_at.is_some() && partner_wrote && open {
             let print = fingerprint(&t["lastMessage"]);
@@ -126,6 +154,47 @@ async fn triage(state: &Arc<AppState>, project: &str, id: &str) {
         let case = support_cases::load_case(home, id);
         alert(state, &support_cases::load_settings(home), &ticket, &case).await;
     }
+}
+
+/// Hours a ticket may wait on a reply from us before the operator is nudged, once.
+const NUDGE_AFTER_HOURS: i64 = 4;
+
+async fn nudge(state: &Arc<AppState>, settings: &support_cases::SupportSettings, ticket: &Value) {
+    let project = settings.manager_project.clone().unwrap_or_else(|| "Support".into());
+    let hours = ticket["waitingSince"]
+        .as_str()
+        .and_then(|w| w.parse::<DateTime<Utc>>().ok())
+        .map(|w| (Utc::now() - w).num_hours())
+        .unwrap_or(NUDGE_AFTER_HOURS);
+    let body = format!(
+        "{} ({}) has waited {hours}h for a reply.",
+        ticket["subject"].as_str().unwrap_or("A ticket"),
+        ticket["partner"]["name"].as_str().unwrap_or("unknown partner"),
+    );
+    crate::telegram::notify(state, &project, "Support ticket waiting", &body).await;
+}
+
+/// Back to the manager, as a regression: the partner says it is still broken after "resolved".
+async fn reopen(state: &Arc<AppState>, project: &str, id: &str, message: &Value) {
+    let home = &state.tendril_home;
+    let Ok(ticket) = support::get_ticket(home, id).await else { return };
+    let text = message["content"].as_str().unwrap_or_default().trim();
+    let note = format!(
+        "REGRESSION: the partner wrote back after being told this was resolved:\n\n> {}\n\nTreat it as the fix not holding. Investigate again (record a fresh investigation), check whether the fix actually shipped and covers what they describe, and keep to the triage rules. No new \"resolved\" until you are certain.",
+        text.replace('\n', "\n> ")
+    );
+    let print = fingerprint(message);
+    let _ = support_cases::update_case(home, id, |c| {
+        c.reopened = true;
+        c.handed_over = false;
+        c.last_forwarded = Some(print);
+    });
+    let first = format!("{note}\n\n{}", support::triage_prompt(home, &ticket, project));
+    match start_ticket_conversation(state, project, id, &ticket, first, Some(note)).await {
+        Ok(_) => tracing::info!("Support ticket {id} reopened as a regression for {project}'s manager"),
+        Err(_) => tracing::warn!("Support ticket {id} could not be reopened for {project}'s manager"),
+    }
+    let _ = support::set_status(home, id, "IN_PROGRESS").await;
 }
 
 async fn alert(state: &Arc<AppState>, settings: &support_cases::SupportSettings, ticket: &Value, case: &support_cases::Case) {

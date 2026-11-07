@@ -145,6 +145,8 @@ pub struct MissionCreateArgs {
     pub judge: Option<String>,
     #[arg(long, help = "Validator harness (final validation): agent[:model[:effort]]")]
     pub validator: Option<String>,
+    #[arg(long = "single-pr", help = "Ship the whole mission as one pull request at the end, instead of one stacked pull request per milestone")]
+    pub single_pr: bool,
     #[arg(long, help = "Print JSON")]
     pub json: bool,
 }
@@ -295,6 +297,7 @@ pub async fn handle_mission_command(cmd: MissionCommands, tendril_home: &Path) -
                         args.judge.as_deref(),
                         args.validator.as_deref(),
                     ),
+                    single_pr: args.single_pr,
                 },
             )?;
             nudge(tendril_home, &created.folder_name).await;
@@ -509,6 +512,14 @@ fn print_mission(file: &MissionFile, paths: &MissionPaths) {
     if let Some(branch) = &m.branch {
         println!("Mission branch: {} (every milestone works in the one shared worktree on it)", branch);
     }
+    println!(
+        "Ships as: {}",
+        if m.stacked {
+            "stacked pull requests, one per milestone, each opened when it passes"
+        } else {
+            "one pull request for the whole mission branch, at the end"
+        }
+    );
     if let Some(wait) = &m.rate_limit {
         println!(
             "Rate limited: resuming {}{} at {} UTC ({})",
@@ -604,6 +615,17 @@ fn print_mission(file: &MissionFile, paths: &MissionPaths) {
         }
         for (repo, commit) in &ms.base_commits {
             println!("    Base commit: {} in {} (this milestone's work is {}..<mission branch>)", commit, repo, &commit[..commit.len().min(12)]);
+        }
+        for (repo, part) in &ms.parts {
+            let status = match (&part.pr, part.merged) {
+                (Some(pr), true) => format!("merged {pr}"),
+                (Some(pr), false) => format!("open {pr} (on {})", part.base),
+                (None, _) => "not opened yet".to_string(),
+            };
+            println!("    Pull request: {} in {} — {}", part.branch, repo, status);
+            if let Some(e) = &part.error {
+                println!("      Last problem: {}", e);
+            }
         }
         if ms.attempts > 0 {
             println!("    Attempts: {}", ms.attempts);

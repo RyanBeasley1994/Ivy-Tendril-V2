@@ -1,16 +1,19 @@
 //! Missions: a goal broken into milestones by an AI orchestrator, run one after another on a shared
-//! branch, each judged against its acceptance criteria, and validated as a whole before it becomes a
-//! single pull request.
+//! branch, each judged against its acceptance criteria, and validated as a whole. A stacked mission
+//! (every new one) opens each milestone as its own pull request as it passes; an older one becomes a
+//! single pull request at the end.
 //!
 //! * [`model`] — `mission.yaml` and the link a plan keeps back to its mission.
 //! * [`store`] — reading and writing mission folders.
 //! * [`service`] — the file-level operations the CLI and the server share.
 //! * [`driver`] — the reconciler that starts each step's job and applies the orchestrator's decisions.
 //! * [`git`] — the mission branch.
+//! * [`parts`] — a stacked mission's per-milestone pull requests, and moving them as they merge.
 
 pub mod driver;
 pub mod git;
 pub mod model;
+pub mod parts;
 pub mod rate_limit;
 pub mod service;
 pub mod shared_worktree;

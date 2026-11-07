@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Box, Brain, GitBranch, GitPullRequest, Network, SquareTerminal } from "lucide-react";
+import { ArrowLeft, Box, Brain, GitBranch, GitPullRequest, History, Network, SquareTerminal } from "lucide-react";
 import {
   cn,
   DropdownMenu,
@@ -152,6 +152,7 @@ export const ProjectView: React.FC<Props> = ({ project, jobs, onBack, onOpenMiss
           <ProjectGitButton project={project.name} onOpenGit={onOpenGit} onOpenRepo={onOpenRepo} />
         )}
         <MyPrsButton project={project.name} />
+        <ActivityButton project={project.name} />
         {/* Below `lg` there is room for one half at a time. */}
         <Seg<Side>
           className="order-last w-full lg:hidden [&>*]:flex-1"
@@ -721,7 +722,7 @@ const MANAGER_COMMANDS = [{ name: "/clear", description: "Start the conversation
  */
 const isManagerNote = (m: ChatMessage): boolean =>
   m.role === "system" ||
-  (m.role === "assistant" && /^`?\[quiet\]`?\.?$/i.test(m.content.trim()));
+  (m.role === "assistant" && /^`?\[quiet\]/i.test(m.content.trim()));
 
 const ManagerChat: React.FC<{
   project: ProjectSummary;
@@ -789,6 +790,43 @@ const ManagerChat: React.FC<{
       samplePrompts={MANAGER_PROMPTS}
       draftPrompt={draft}
     />
+  );
+};
+
+/**
+ * What the manager did while nobody was asking: the patrol, its wake-ups, worker reports. Those turns
+ * stay out of the chat, so this is where to look when you want to know; it never asks for attention.
+ */
+const ActivityButton: React.FC<{ project: string }> = ({ project }) => {
+  const [open, setOpen] = React.useState(false);
+  const log = useAsync(() => (open ? bridge.getManagerActivity(project).catch(() => null) : Promise.resolve(null)), [project, open], 30_000);
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <GhostButton size="sm" title="What the manager did in the background" data-testid="project-manager-activity">
+          <History className="size-3.5" aria-hidden="true" />
+          <span className="hidden sm:inline">Activity</span>
+        </GhostButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-[60vh] w-[380px] overflow-y-auto p-1.5">
+        {!log ? (
+          <div className="px-2 py-3 text-[12px] text-muted-foreground">Loading…</div>
+        ) : log.entries.length === 0 ? (
+          <div className="px-2 py-3 text-[12px] text-muted-foreground">Nothing done in the background yet.</div>
+        ) : (
+          log.entries.map((e, i) => (
+            <div key={`${e.at}-${i}`} className="flex flex-col gap-0.5 rounded-md px-2 py-1.5 hover:bg-secondary/60">
+              <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+                <span className="font-mono">{formatAge(Date.now() - Date.parse(e.at))}</span>
+                <span className="truncate">· {e.trigger}</span>
+                {!e.quiet && <span className="ml-auto shrink-0 text-primary">told you</span>}
+              </div>
+              <div className="text-[12px] leading-snug text-foreground">{e.summary}</div>
+            </div>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

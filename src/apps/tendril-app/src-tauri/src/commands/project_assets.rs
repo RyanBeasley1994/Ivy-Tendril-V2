@@ -238,3 +238,8 @@ pub async fn cmd_import_repo_assets(
         )
         .await
 }
+
+#[tauri::command]
+pub async fn cmd_project_manager_activity(project_name: String) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.project_manager_activity(&project_name).await
+}

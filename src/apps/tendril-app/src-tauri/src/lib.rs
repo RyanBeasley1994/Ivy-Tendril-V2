@@ -298,6 +298,7 @@ pub fn run() {
             cmd_project_docker,
             cmd_list_manager_tasks,
             cmd_project_my_prs,
+            cmd_project_manager_activity,
             cmd_telegram,
             cmd_list_project_memory,
             cmd_get_project_memory,

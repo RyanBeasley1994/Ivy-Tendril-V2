@@ -221,6 +221,19 @@ impl TendrilClient {
         .await
     }
 
+    /// What the manager did on the turns the daemon started.
+    pub async fn project_manager_activity(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
+        self.project_assets_request(
+            reqwest::Method::GET,
+            &format!("/api/projects/{}/activity", path_segment(project_name)),
+            None,
+            "MANAGER_ACTIVITY_FAILED",
+            "load the manager's activity",
+            None,
+        )
+        .await
+    }
+
     /// The project's open pull requests that are the operator's or wait on their review.
     pub async fn project_my_prs(&self, project_name: &str) -> Result<serde_json::Value, BridgeError> {
         self.project_assets_request(

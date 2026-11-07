@@ -171,6 +171,40 @@ pub struct Milestone {
     /// repo path. Its work is the diff from here, and a re-plan that drops it resets back to here.
     #[serde(rename = "baseCommits", default, skip_serializing_if = "BTreeMap::is_empty")]
     pub base_commits: BTreeMap<String, String>,
+    /// For a stacked mission: this milestone's own pull request in each repo it changed, keyed by repo
+    /// path. Recorded when it passes; opened, and later moved, by [`crate::missions::parts`].
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub parts: BTreeMap<String, MilestonePart>,
+}
+
+/// One repo of one milestone shipped as its own pull request: a part of the mission's stack.
+///
+/// The worker still commits on the shared mission branch; the part's branch is cut from the previous
+/// part's branch and carries just this milestone's commits (`from..to` on the mission branch).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MilestonePart {
+    /// The part's own branch: the milestone plan's branch.
+    pub branch: String,
+    /// The mission-branch commit the milestone started from.
+    pub from: String,
+    /// The mission-branch commit it ended at. Moves forward when a quick fix lands on the last part.
+    pub to: String,
+    /// The branch its pull request targets: the previous part's, or `onto` for the lowest open part.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub base: String,
+    /// The commit of `base` the part's commits sit on: what a restack replays from.
+    #[serde(rename = "baseCommit", default, skip_serializing_if = "String::is_empty")]
+    pub base_commit: String,
+    /// The repo's own base branch, which the part moves onto once every part below it has merged.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub onto: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pr: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub merged: bool,
+    /// Why the last attempt to open or move it failed. Cleared when one succeeds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// One step of a milestone.
@@ -240,6 +274,7 @@ impl Milestone {
             provides: Vec::new(),
             consumes: Vec::new(),
             base_commits: BTreeMap::new(),
+            parts: BTreeMap::new(),
         }
     }
 }
@@ -536,6 +571,10 @@ pub struct MissionYaml {
     /// sending the mission back through planning.
     #[serde(rename = "quickFixes", default, skip_serializing_if = "Vec::is_empty")]
     pub quick_fixes: Vec<QuickFix>,
+    /// Ships as stacked pull requests, one per milestone, opened as each milestone passes. Missions
+    /// created before this existed have no key and keep their single pull request at the end.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub stacked: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -643,6 +682,7 @@ impl MissionYaml {
             change_requests: Vec::new(),
             messages: Vec::new(),
             quick_fixes: Vec::new(),
+            stacked: true,
         }
     }
 

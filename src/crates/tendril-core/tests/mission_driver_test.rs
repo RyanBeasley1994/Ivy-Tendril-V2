@@ -976,3 +976,49 @@ async fn a_milestone_that_committed_but_kept_no_records_still_delivered() {
     let outcome = tendril_core::jobs::deliverable::verify_deliverable(&w.paths.plans_dir, &mut job, &[]);
     assert!(matches!(outcome, tendril_core::jobs::deliverable::Deliverable::Missing { .. }));
 }
+
+#[tokio::test]
+async fn a_stacked_mission_records_each_passed_milestone_as_a_part() {
+    let w = world();
+    let folder = approved_mission(&w, None, None).await;
+    let m = read_mission(&folder).unwrap();
+    assert!(m.stacked, "new missions ship one pull request per milestone");
+    let base = git(&w.repo, &["rev-parse", m.branch.as_deref().unwrap()]);
+    run_to_review(&w, &folder).await;
+
+    let m = read_mission(&folder).unwrap();
+    let only = m.milestone("M1").unwrap();
+    let plan = w.paths.plans_dir.join(only.plan.as_deref().unwrap());
+    let part = only.parts.values().next().expect("the passed milestone is a part");
+    assert_eq!(part.branch, derive_branch_name(&plan));
+    assert_eq!(part.from, base);
+    assert_eq!(part.to, git(&w.repo, &["rev-parse", m.branch.as_deref().unwrap()]));
+    // The test repo has no GitHub origin: the part is not opened, and the mission carries on regardless.
+    assert!(part.pr.is_none());
+    assert!(part.error.as_deref().is_some_and(|e| e.contains("no GitHub origin")), "{:?}", part.error);
+    assert_eq!(m.state, MissionState::Review);
+}
+
+#[tokio::test]
+async fn a_single_pr_mission_records_no_parts() {
+    let w = world();
+    let created = service::create(
+        &w.paths,
+        &w.settings,
+        NewMission { title: "T".into(), goal: "G".into(), project: "P".into(), single_pr: true, ..Default::default() },
+    )
+    .unwrap();
+    let folder = PathBuf::from(&created.folder_path);
+    assert!(!created.mission.stacked);
+    w.driver.reconcile(&folder).await.unwrap();
+    let (plan_job, _) = w.jobs.last();
+    service::set_milestones(&folder, &w.paths.plans_dir, vec![milestone("Only")], MilestoneScope::All).unwrap();
+    w.jobs.finish(&plan_job, JobStatus::Completed, 0.0);
+    w.driver.reconcile(&folder).await.unwrap();
+    service::approve(&folder).unwrap();
+    w.driver.reconcile(&folder).await.unwrap();
+    let (_, args) = w.jobs.last();
+    assert!(matches!(&args, JobArgs::ExecutePlan(a) if a.note.as_deref().is_some_and(|n| n.contains("one pull request at the end"))));
+    run_to_review(&w, &folder).await;
+    assert!(read_mission(&folder).unwrap().milestones.iter().all(|ms| ms.parts.is_empty()));
+}

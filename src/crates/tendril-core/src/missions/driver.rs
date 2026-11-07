@@ -16,6 +16,7 @@ use crate::git::worktree::{cleanup_worktrees, derive_branch_name, derive_worktre
 use crate::jobs::firmware_values::find_project;
 use crate::jobs::manager::{apply_plan_state, sync_plan_state_to_db, JobManager, StartOptions};
 use crate::missions::git::{branch_tip, commits_between, create_mission_branch, ensure_branch_worktree, reset_worktree};
+use crate::missions::parts;
 use crate::missions::rate_limit;
 use crate::missions::service::consumed_items;
 use crate::missions::shared_worktree::shared_path;
@@ -30,6 +31,7 @@ use crate::plans::reader::read_plan_yaml;
 use crate::plans::revisions::write_revision;
 use crate::plans::writer::{create_plan, seed_plan_from_project, write_plan_yaml, CreatePlanOptions};
 use chrono::Utc;
+use std::collections::HashMap;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -70,6 +72,11 @@ pub type SettingsProvider = Arc<dyn Fn() -> TendrilSettings + Send + Sync>;
 /// row (settle a job, start the next); the cap only exists so a bug cannot spin.
 const MAX_STEPS_PER_RECONCILE: usize = 12;
 
+/// How often a stacked mission's open pull requests are asked whether they merged.
+const MERGE_CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(120);
+/// How long a part that failed to open or move waits before it is tried again.
+const PART_RETRY_AFTER: std::time::Duration = std::time::Duration::from_secs(300);
+
 pub struct MissionDriver {
     paths: MissionPaths,
     jobs: Arc<dyn MissionJobs>,
@@ -77,6 +84,9 @@ pub struct MissionDriver {
     /// One reconcile at a time across every mission: steps start jobs and move git refs, and two
     /// interleaved steps on one mission would start its next job twice.
     lock: tokio::sync::Mutex<()>,
+    /// When each stacked-part chore last ran or failed, so a push that keeps failing (or GitHub being
+    /// asked about merges) does not happen on every tick. Kept in memory: a restart just tries again.
+    stack_clock: std::sync::Mutex<HashMap<String, std::time::Instant>>,
 }
 
 /// A job that is still going: nothing to do until it settles.
@@ -94,6 +104,7 @@ impl MissionDriver {
             jobs,
             settings,
             lock: tokio::sync::Mutex::new(()),
+            stack_clock: std::sync::Mutex::new(HashMap::new()),
         }
     }
 
@@ -104,10 +115,17 @@ impl MissionDriver {
     /// Reconciles every mission that is not finished. Errors are logged per mission, never fatal.
     pub async fn reconcile_all(&self) {
         for mission in list_missions(&self.paths.missions_dir) {
+            let folder = PathBuf::from(&mission.folder_path);
             if mission.mission.state.is_terminal() {
+                // A finished mission's parts still merge one by one, and the ones above still move.
+                if mission.mission.state == MissionState::Completed && parts::has_open_parts(&mission.mission) {
+                    let _guard = self.lock.lock().await;
+                    if let Err(e) = self.maintain_stack(&folder).await {
+                        tracing::warn!("Mission {}: stacked pull requests: {}", mission.folder_name, e);
+                    }
+                }
                 continue;
             }
-            let folder = PathBuf::from(&mission.folder_path);
             if let Err(e) = self.reconcile(&folder).await {
                 tracing::warn!("Mission {}: reconcile failed: {}", mission.folder_name, e);
             }
@@ -134,7 +152,14 @@ impl MissionDriver {
     /// Takes every step the mission is ready for. Returns whether anything changed.
     pub async fn reconcile(&self, folder: &Path) -> Result<bool> {
         let _guard = self.lock.lock().await;
-        let mut changed = false;
+        // Opening and moving parts never pauses the mission: a failure is recorded on the part.
+        let mut changed = match self.maintain_stack(folder).await {
+            Ok(changed) => changed,
+            Err(e) => {
+                tracing::warn!("Mission {}: stacked pull requests: {}", folder.display(), e);
+                false
+            }
+        };
         for _ in 0..MAX_STEPS_PER_RECONCILE {
             match self.step(folder).await {
                 Ok(true) => changed = true,
@@ -749,12 +774,18 @@ impl MissionDriver {
         };
         let plan_name = folder_name(&plan_folder);
         let mission_id = folder_name(folder).chars().take(5).collect::<String>();
+        let shipping = if mission.stacked {
+            "Do not push, and do not open a pull request: when this milestone passes, Tendril opens it as its own pull request, stacked on the previous milestone's, so keep it to one reviewable change of about 400 changed lines (not counting tests, snapshots, lockfiles and generated files)."
+        } else {
+            "Do not push, and do not open a pull request; the mission lands everything in one pull request at the end."
+        };
         let note = format!(
-            "This plan is milestone {} of the mission \"{}\". It runs in the mission's single shared worktree, on the local mission branch `{}`, which already holds every earlier milestone. Never create another worktree or branch, never reset, and never delete this one. Work through the plan's Tasks in order and run `tendril mission task {} <TaskId>` as you finish each one. Make exactly one commit for the whole milestone when every task is done, then record it with `tendril plan add-commit` and record each verification you ran with `tendril plan set-verification` (and its report), as ExecutePlan always does. Honour the Contract section exactly. Do not push, and do not open a pull request; the mission lands everything in one pull request at the end. Acceptance criteria the orchestrator will judge this against:\n{}",
+            "This plan is milestone {} of the mission \"{}\". It runs in the mission's single shared worktree, on the local mission branch `{}`, which already holds every earlier milestone. Never create another worktree or branch, never reset, and never delete this one. Work through the plan's Tasks in order and run `tendril mission task {} <TaskId>` as you finish each one. Make exactly one commit for the whole milestone when every task is done, then record it with `tendril plan add-commit` and record each verification you ran with `tendril plan set-verification` (and its report), as ExecutePlan always does. Honour the Contract section exactly. {} Acceptance criteria the orchestrator will judge this against:\n{}",
             milestone.id,
             mission.title,
             branch,
             mission_id,
+            shipping,
             milestone.acceptance.iter().map(|a| format!("- {}", a)).collect::<Vec<_>>().join("\n")
         );
         let args = JobArgs::ExecutePlan(ExecutePlanArgs {
@@ -1006,10 +1037,35 @@ impl MissionDriver {
         // The milestone worked on the mission branch itself, so what it landed is everything from the
         // commit the branch stood at when it started.
         let mut commits = Vec::new();
+        // A stacked mission ships the milestone as its own part in each repo it changed: those
+        // commits, on a branch of their own. Opened by `maintain_stack` once this is written.
+        let mut new_parts = std::collections::BTreeMap::new();
+        let part_branch = plan_folder.as_deref().map(derive_branch_name).map(|b| {
+            if b == branch { format!("{}-{}", b, ms.id.to_ascii_lowercase()) } else { b }
+        });
         for repo in mission_repos(&self.paths, mission) {
             let key = repo.to_string_lossy().to_string();
             if let (Some(base), Some(tip)) = (ms.base_commits.get(&key), branch_tip(&repo, &branch)) {
-                commits.extend(commits_between(&repo, base, &tip));
+                let landed = commits_between(&repo, base, &tip);
+                if mission.stacked && !landed.is_empty() {
+                    if let Some(part_branch) = &part_branch {
+                        new_parts.insert(
+                            key.clone(),
+                            MilestonePart {
+                                branch: part_branch.clone(),
+                                from: base.clone(),
+                                to: tip.clone(),
+                                base: String::new(),
+                                base_commit: String::new(),
+                                onto: String::new(),
+                                pr: None,
+                                merged: false,
+                                error: None,
+                            },
+                        );
+                    }
+                }
+                commits.extend(landed);
             }
         }
 
@@ -1036,11 +1092,247 @@ impl MissionDriver {
                 ms.commits.extend(commits.iter().cloned());
                 ms.summary = decision.summary.clone().or_else(|| Some(decision.reason.clone()));
                 ms.feedback = None;
+                ms.parts.extend(new_parts.clone());
             }
             m.log(Some(milestone_id), format!("Accepted; {} commits landed on {}", count, branch));
             Ok(())
         })?;
         Ok(true)
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Stacked pull requests
+    // ---------------------------------------------------------------------------------------------
+
+    /// `true` once per `every` for `key`: records the time when it says yes.
+    fn due(&self, key: &str, every: std::time::Duration) -> bool {
+        let mut clock = self.stack_clock.lock().unwrap_or_else(|e| e.into_inner());
+        let now = std::time::Instant::now();
+        if clock.get(key).is_some_and(|at| now.duration_since(*at) < every) {
+            return false;
+        }
+        clock.insert(key.to_string(), now);
+        true
+    }
+
+    /// Whether `key` failed less than [`PART_RETRY_AFTER`] ago.
+    fn backing_off(&self, key: &str) -> bool {
+        let clock = self.stack_clock.lock().unwrap_or_else(|e| e.into_inner());
+        clock.get(key).is_some_and(|at| at.elapsed() < PART_RETRY_AFTER)
+    }
+
+    fn note(&self, key: &str, failed: bool) {
+        let mut clock = self.stack_clock.lock().unwrap_or_else(|e| e.into_inner());
+        if failed {
+            clock.insert(key.to_string(), std::time::Instant::now());
+        } else {
+            clock.remove(key);
+        }
+    }
+
+    /// The configured base branch of each of the mission's repos, keyed like the parts are.
+    fn configured_bases(&self, mission: &MissionYaml) -> HashMap<String, Option<String>> {
+        let settings = (self.settings)();
+        let project = find_project(&settings, &mission.project);
+        let raw = integration_folder(&self.paths, mission)
+            .and_then(|f| read_plan_yaml(&f).ok())
+            .map(|(p, _)| p.repos)
+            .unwrap_or_default();
+        raw.iter()
+            .zip(mission_repos(&self.paths, mission))
+            .map(|(raw, repo)| {
+                let base = project
+                    .and_then(|c| crate::jobs::firmware_values::find_repo_ref(c, raw))
+                    .and_then(|r| r.base_branch.clone());
+                (repo.to_string_lossy().to_string(), base)
+            })
+            .collect()
+    }
+
+    /// Writes one part back, logging what happened to it when that is news.
+    fn write_part(&self, folder: &Path, milestone: &str, repo: &str, part: Option<MilestonePart>, message: Option<String>) -> Result<()> {
+        update_mission(folder, |m| {
+            if let Some(ms) = m.milestone_mut(milestone) {
+                match &part {
+                    Some(p) => {
+                        ms.parts.insert(repo.to_string(), p.clone());
+                    }
+                    None => {
+                        ms.parts.remove(repo);
+                    }
+                }
+            }
+            if let Some(message) = &message {
+                m.log(Some(milestone), message.clone());
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    /// Keeps a stacked mission's pull requests in step with its milestones: notes which merged,
+    /// moves the parts above a merged one, opens the next passed milestone's part, and lands a quick
+    /// fix made in Review on the last part. One git or GitHub chore at a time, off the runtime.
+    async fn maintain_stack(&self, folder: &Path) -> Result<bool> {
+        let mission = read_mission(folder)?;
+        if !mission.stacked || mission.state == MissionState::Cancelled || parts::repos(&mission).is_empty() {
+            return Ok(false);
+        }
+        let key = folder.to_string_lossy().to_string();
+        let skip_hooks = (self.settings)().git.skip_push_hooks == Some(true);
+        let scratch_root = folder.join(".parts");
+        let mut changed = false;
+
+        // Which open parts merged.
+        if parts::has_open_parts(&mission) && self.due(&format!("{key}|merges"), MERGE_CHECK_EVERY) {
+            let open: Vec<(String, String, String)> = mission
+                .milestones
+                .iter()
+                .flat_map(|ms| {
+                    ms.parts
+                        .iter()
+                        .filter(|(_, p)| !p.merged)
+                        .filter_map(|(repo, p)| Some((ms.id.clone(), repo.clone(), p.pr.clone()?)))
+                })
+                .collect();
+            let merged: Vec<(String, String, String)> = tokio::task::spawn_blocking(move || {
+                open.into_iter()
+                    .filter(|(_, _, url)| {
+                        crate::plans::dependencies::get_gh_pr_state(url).is_ok_and(|s| s.eq_ignore_ascii_case("MERGED"))
+                    })
+                    .collect()
+            })
+            .await
+            .unwrap_or_default();
+            if !merged.is_empty() {
+                update_mission(folder, |m| {
+                    for (id, repo, url) in &merged {
+                        if let Some(p) = m.milestone_mut(id).and_then(|ms| ms.parts.get_mut(repo)) {
+                            p.merged = true;
+                        }
+                        m.log(Some(id), format!("Part merged: {url}"));
+                    }
+                    Ok(())
+                })?;
+                changed = true;
+            }
+        }
+
+        let bases = self.configured_bases(&mission);
+        for repo_key in parts::repos(&read_mission(folder)?) {
+            let repo = PathBuf::from(&repo_key);
+            let scratch = scratch_root.join(derive_worktree_relative_path(&repo));
+
+            // Move what sits on a part that merged.
+            let restack_key = format!("{key}|restack|{repo_key}");
+            let steps = parts::restack_plan(&read_mission(folder)?, &repo_key);
+            if !steps.is_empty() && !self.backing_off(&restack_key) {
+                for step in steps {
+                    let current = read_mission(folder)?;
+                    let Some(part) = current.milestone(&step.milestone).and_then(|ms| ms.parts.get(&repo_key)).cloned() else {
+                        break;
+                    };
+                    let (r, s, st) = (repo.clone(), scratch.clone(), step.clone());
+                    let p = part.clone();
+                    let moved = tokio::task::spawn_blocking(move || parts::move_part(&r, &p, &st, &s, skip_hooks, &parts::gh_retarget))
+                        .await
+                        .unwrap_or_else(|e| Err(e.to_string()));
+                    changed = true;
+                    match moved {
+                        Ok(after) => {
+                            self.write_part(folder, &step.milestone, &repo_key, Some(after), Some(format!("Part moved onto {}", step.new_base)))?;
+                        }
+                        Err(e) => {
+                            let news = part.error.as_deref() != Some(e.as_str());
+                            let failed = MilestonePart { error: Some(e.clone()), ..part };
+                            self.write_part(folder, &step.milestone, &repo_key, Some(failed), news.then(|| format!("Could not move its part: {e}")))?;
+                            self.note(&restack_key, true);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Open the next passed milestone's part.
+            let current = read_mission(folder)?;
+            if let Some(ms) = parts::next_to_open(&current, &repo_key).cloned() {
+                let open_key = format!("{key}|open|{}|{repo_key}", ms.id);
+                if let Some(part) = ms.parts.get(&repo_key).cloned().filter(|_| !self.backing_off(&open_key)) {
+                    let below = parts::part_below(&current, &ms.id, &repo_key).cloned();
+                    let onto = parts::base_branch(&repo, bases.get(&repo_key).cloned().flatten().as_deref());
+                    let mission_id: String = folder_name(folder).chars().take(5).collect();
+                    let title = parts::pr_title(&current, &mission_id, &ms);
+                    let body = parts::pr_body(&current, &ms, &repo_key);
+                    let (r, s, p) = (repo.clone(), scratch.clone(), part.clone());
+                    let outcome = tokio::task::spawn_blocking(move || {
+                        parts::open_part(&crate::pull_request::GhCli, &r, &p, below.as_ref(), &onto, &title, &body, &s, skip_hooks)
+                    })
+                    .await
+                    .unwrap_or_else(|e| parts::Opened::Failed(e.to_string()));
+                    changed = true;
+                    match outcome {
+                        parts::Opened::Opened(after) => {
+                            self.note(&open_key, false);
+                            let url = after.pr.clone().unwrap_or_default();
+                            if let Some(plan_folder) = ms.plan.as_ref().map(|p| self.paths.plans_dir.join(p)) {
+                                if let Ok((mut yaml, _)) = read_plan_yaml(&plan_folder) {
+                                    if !yaml.prs.contains(&url) {
+                                        yaml.prs.push(url.clone());
+                                        let _ = write_plan_yaml(&plan_folder, &yaml);
+                                        sync_plan_state_to_db(&self.paths.tendril_home, &plan_folder);
+                                    }
+                                }
+                            }
+                            let message = format!("Pull request opened: {url} (on {})", after.base);
+                            self.write_part(folder, &ms.id, &repo_key, Some(after), Some(message))?;
+                        }
+                        parts::Opened::Empty => {
+                            self.write_part(folder, &ms.id, &repo_key, None, Some(format!("Nothing to ship in {repo_key} on top of the part below")))?;
+                        }
+                        parts::Opened::Failed(e) => {
+                            self.note(&open_key, true);
+                            let news = part.error.as_deref() != Some(e.as_str());
+                            let failed = MilestonePart { error: Some(e.clone()), ..part };
+                            self.write_part(folder, &ms.id, &repo_key, Some(failed), news.then(|| format!("Could not open its pull request: {e}")))?;
+                        }
+                    }
+                }
+            }
+
+            // A quick fix in Review lands on the mission branch: carry it onto the last part.
+            let current = read_mission(folder)?;
+            let in_review = current.state == MissionState::Review
+                || (current.state == MissionState::Paused && current.paused_from == Some(MissionState::Review));
+            let last = current
+                .milestones
+                .iter()
+                .rev()
+                .filter(|ms| ms.state == MilestoneState::Passed)
+                .find_map(|ms| ms.parts.get(&repo_key).map(|p| (ms.id.clone(), p.clone())));
+            let tip = current.branch.as_deref().and_then(|b| branch_tip(&repo, b));
+            let tail_key = format!("{key}|tail|{repo_key}");
+            if let (true, Some((id, part)), Some(tip)) = (in_review, last, tip) {
+                if part.pr.is_some() && !part.merged && part.to != tip && !self.backing_off(&tail_key) {
+                    let (r, s, p) = (repo.clone(), scratch.clone(), part.clone());
+                    let extended = tokio::task::spawn_blocking(move || parts::extend_last_part(&r, &p, &tip, &s, skip_hooks))
+                        .await
+                        .unwrap_or_else(|e| Err(e.to_string()));
+                    match extended {
+                        Ok(Some(after)) => {
+                            changed = true;
+                            self.write_part(folder, &id, &repo_key, Some(after), Some("Quick fix pushed to its pull request".into()))?;
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            changed = true;
+                            self.note(&tail_key, true);
+                            self.write_part(folder, &id, &repo_key, Some(MilestonePart { error: Some(e.clone()), ..part }), Some(format!("Could not push the quick fix to its pull request: {e}")))?;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(changed)
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -1161,7 +1453,14 @@ impl MissionDriver {
                 c.state = ChangeRequestState::Done;
             }
             m.summary = Some(summary.clone());
-            m.log(None, "Validated; the integration plan is ready for review");
+            m.log(
+                None,
+                if m.stacked {
+                    "Validated; every milestone is its own pull request, ready for review in order"
+                } else {
+                    "Validated; the integration plan is ready for review"
+                },
+            );
             Ok(())
         })?;
 
@@ -1183,7 +1482,13 @@ impl MissionDriver {
                 for a in &ms.acceptance {
                     body.push_str(&format!("- [x] {}\n", a));
                 }
+                for pr in ms.parts.values().filter_map(|p| p.pr.as_ref()) {
+                    body.push_str(&format!("\nPull request: {}\n", pr));
+                }
                 body.push('\n');
+            }
+            if mission.stacked {
+                body.push_str("Shipped as stacked pull requests, one per milestone, each opened when its milestone passed. Review and merge them in order; Tendril moves the later ones as each merges.\n\n");
             }
             body.push_str("## Tests\n\nEvery project verification was run against this branch by the mission's final validation; see `Verification/`.\n");
             let _ = write_revision(&integration, &body, false);
@@ -1212,10 +1517,22 @@ impl MissionDriver {
         let Ok((plan, _)) = read_plan_yaml(&integration) else {
             return Ok(false);
         };
+        // A stacked mission is finished when every part it opened has merged.
+        if mission.stacked && parts::all_merged(mission) && parts::series(mission).iter().all(|ms| ms.state == MilestoneState::Passed) {
+            apply_plan_state(&integration, PlanStatus::Completed);
+            sync_plan_state_to_db(&self.paths.tendril_home, &integration);
+            update_mission(folder, |m| {
+                m.state = MissionState::Completed;
+                m.log(None, "Completed: every part's pull request merged");
+                Ok(())
+            })?;
+            return Ok(true);
+        }
         if PlanStatus::from_str_loose(&plan.state) != Some(PlanStatus::Completed) {
             return Ok(false);
         }
-        let prs = plan.prs.clone();
+        let mut prs = plan.prs.clone();
+        prs.extend(mission.milestones.iter().flat_map(|ms| ms.parts.values().filter_map(|p| p.pr.clone())));
         update_mission(folder, |m| {
             m.state = MissionState::Completed;
             m.log(
@@ -1255,6 +1572,9 @@ pub(crate) fn write_integration_summary(integration: &Path, mission: &MissionYam
         if !ms.commits.is_empty() {
             let short: Vec<String> = ms.commits.iter().map(|c| c.chars().take(8).collect()).collect();
             out.push_str(&format!("\nCommits: {}\n", short.join(", ")));
+        }
+        for pr in ms.parts.values().filter_map(|p| p.pr.as_ref()) {
+            out.push_str(&format!("Pull request: {}\n", pr));
         }
         out.push('\n');
     }

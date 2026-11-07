@@ -174,6 +174,90 @@ async fn send_to(token: &str, chat_id: i64, text: &str) -> Option<i64> {
     last
 }
 
+// ---- held support replies ------------------------------------------------------------------------
+
+/// The button's data for a held reply: `<a|d>:<ticket>:<first 8 of the draft id>`, inside Telegram's
+/// 64 bytes.
+pub fn draft_button(action: char, ticket: &str, draft: &str) -> String {
+    format!("{action}:{ticket}:{}", &draft[..draft.len().min(8)])
+}
+
+pub fn parse_draft_button(data: &str) -> Option<(bool, &str, &str)> {
+    let mut parts = data.splitn(3, ':');
+    let approve = match parts.next()? {
+        "a" => true,
+        "d" => false,
+        _ => return None,
+    };
+    Some((approve, parts.next().filter(|t| !t.is_empty())?, parts.next().filter(|d| !d.is_empty())?))
+}
+
+/// Offers a reply the support manager is holding for approval, with Approve and Discard buttons.
+/// Returns whether it was sent.
+pub async fn offer_draft(state: &AppState, ticket: &str, subject: &str, draft: &tendril_core::support_cases::Draft) -> bool {
+    let settings = load(&state.tendril_home);
+    let Some(chat_id) = settings.chat_id.filter(|_| settings.paired()) else { return false };
+    let close = if draft.close { "\n(Sending it also closes the ticket.)" } else { "" };
+    let text = format!("Support reply to approve · {subject}\n\n{}{close}", draft.content.trim());
+    let keyboard = json!({ "inline_keyboard": [[
+        { "text": "Approve and send", "callback_data": draft_button('a', ticket, &draft.id) },
+        { "text": "Discard", "callback_data": draft_button('d', ticket, &draft.id) },
+    ]] });
+    let body = json!({ "chat_id": chat_id, "text": text, "disable_web_page_preview": true, "reply_markup": keyboard });
+    match call(&settings.token, "sendMessage", body, Duration::from_secs(15)).await {
+        Ok(_) => true,
+        Err(e) => {
+            tracing::warn!("Telegram: could not offer a support reply: {e}");
+            false
+        }
+    }
+}
+
+/// A tap on Approve or Discard: decide the draft, answer the tap, and replace the buttons with what
+/// happened so the message cannot be tapped twice.
+async fn handle_button(state: &Arc<AppState>, query: &Value) {
+    let settings = load(&state.tendril_home);
+    let (Some(chat_id), Some(user_id)) = (query["message"]["chat"]["id"].as_i64(), query["from"]["id"].as_i64()) else {
+        return;
+    };
+    if !settings.is_operator(chat_id, user_id) {
+        return;
+    }
+    let answer = |text: String| {
+        let token = settings.token.clone();
+        let id = query["id"].as_str().unwrap_or_default().to_string();
+        async move {
+            let _ = call(&token, "answerCallbackQuery", json!({ "callback_query_id": id, "text": text }), Duration::from_secs(10)).await;
+        }
+    };
+    let Some((approve, ticket, prefix)) = query["data"].as_str().and_then(parse_draft_button) else {
+        return answer("That button is not one of mine any more.".into()).await;
+    };
+    let home = &state.tendril_home;
+    let draft = tendril_core::support_cases::load_case(home, ticket)
+        .drafts
+        .into_iter()
+        .find(|d| d.id.starts_with(prefix) && d.state == tendril_core::support_cases::DraftState::Pending);
+    let Some(draft) = draft else {
+        return answer("That reply was already dealt with.".into()).await;
+    };
+    let outcome = if approve {
+        tendril_core::support::send_draft(home, ticket, &draft.id, None).await.map(|_| "Sent.")
+    } else {
+        tendril_core::support::discard_draft(home, ticket, &draft.id).map(|_| "Discarded.")
+    };
+    let note = match outcome {
+        Ok(done) => done.to_string(),
+        Err(e) => format!("Couldn't: {e}"),
+    };
+    answer(note.clone()).await;
+    if let Some(message_id) = query["message"]["message_id"].as_i64() {
+        let text = format!("{}\n\n{note}", query["message"]["text"].as_str().unwrap_or_default());
+        let body = json!({ "chat_id": chat_id, "message_id": message_id, "text": text, "disable_web_page_preview": true });
+        let _ = call(&settings.token, "editMessageText", body, Duration::from_secs(10)).await;
+    }
+}
+
 // ---- what the operator typed ---------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -453,6 +537,10 @@ async fn handle_text(state: &Arc<AppState>, settings: &Settings, text: &str, rep
 /// One update from Telegram. Anything that is not the paired account in its private chat is dropped,
 /// except the one message that pairs it.
 async fn handle_update(state: &Arc<AppState>, update: &Value) {
+    if update["callback_query"].is_object() {
+        handle_button(state, &update["callback_query"]).await;
+        return;
+    }
     let message = &update["message"];
     let (Some(chat_id), Some(user_id), Some(text)) =
         (message["chat"]["id"].as_i64(), message["from"]["id"].as_i64(), message["text"].as_str())
@@ -625,7 +713,7 @@ async fn poll(state: Arc<AppState>) {
             tokio::time::sleep(Duration::from_secs(5)).await;
             continue;
         }
-        let body = json!({ "offset": settings.offset, "timeout": POLL_SECONDS, "allowed_updates": ["message"] });
+        let body = json!({ "offset": settings.offset, "timeout": POLL_SECONDS, "allowed_updates": ["message", "callback_query"] });
         match call(&settings.token, "getUpdates", body, Duration::from_secs(POLL_SECONDS + 15)).await {
             Ok(updates) => {
                 for update in updates.as_array().cloned().unwrap_or_default() {
@@ -732,6 +820,14 @@ pub async fn remove_handler(State(state): State<Arc<AppState>>) -> impl IntoResp
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_draft_button_fits_telegram_and_reads_back() {
+        let data = draft_button('a', "cmhx3k2q90001abcdxyz12345", "4f1c2a9e-0000-4000-8000-000000000000");
+        assert!(data.len() <= 64, "{data}");
+        assert_eq!(parse_draft_button(&data), Some((true, "cmhx3k2q90001abcdxyz12345", "4f1c2a9e")));
+        assert_eq!(parse_draft_button("x:t:d"), None);
+    }
 
     fn names() -> Vec<String> {
         ["YPF-Direct", "Monorepo-Propfirm", "Propfirm Docs", "Trading Platform"].iter().map(|s| s.to_string()).collect()

@@ -1269,6 +1269,15 @@ export const tauriClient = {
     return body.tasks ?? [];
   },
 
+  /** What the manager did on the turns the daemon started (patrol, wake-ups, worker reports), newest first. */
+  async getManagerActivity(this: void, projectName: string): Promise<ManagerActivityLog> {
+    return invokeOrFetch<ManagerActivityLog>(
+      "cmd_project_manager_activity",
+      { projectName },
+      `/api/projects/${encodeURIComponent(projectName)}/activity`,
+    );
+  },
+
   /** Open PRs in the project's repos that the operator opened, or is asked to review or has reviewed. */
   async getMyPullRequests(this: void, projectName: string): Promise<MyPullRequests> {
     return invokeOrFetch<MyPullRequests>(
@@ -1743,6 +1752,10 @@ export const bridge: TendrilClient = new Proxy({} as TendrilClient, {
     return Reflect.getOwnPropertyDescriptor(current as object, property);
   },
 });
+
+export interface ManagerActivityLog {
+  entries: { at: string; trigger: string; summary: string; quiet: boolean }[];
+}
 
 export interface MyPullRequests {
   count: number;

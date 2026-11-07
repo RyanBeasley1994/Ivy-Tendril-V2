@@ -92,6 +92,9 @@ export interface TriageCase {
   drafts: TriageDraft[];
   working?: string | null;
   handedOver?: boolean;
+  /** Set while a dry run is on: the run's conversation. */
+  dryRunSession?: string | null;
+  dryNotes?: string[];
 }
 
 export interface DataSourceView {
@@ -109,6 +112,16 @@ export interface TriageSettings {
   sources: DataSourceView[];
   kubernetes: boolean;
   kubeContext?: string | null;
+  /** Kinds sent without approval even while replies are approved one by one. */
+  autoKinds: ReplyKind[];
+  approvals: {
+    kind: ReplyKind;
+    decided: number;
+    unchanged: number;
+    edited: number;
+    discarded: number;
+    suggestAuto: boolean;
+  }[];
 }
 
 export interface DataSourceInput {
@@ -177,10 +190,13 @@ export const supportApi = {
     sources: DataSourceInput[];
     kubernetes: boolean;
     kubeContext: string | null;
+    autoKinds: ReplyKind[];
   }) =>
     call<TriageSettings>("PUT", "/api/support/settings", s),
   triageCase: (id: string) => call<TriageCase>("GET", ticket(id, "/case")),
   approveDraft: (id: string, draft: string, content?: string) =>
     call<TriageDraft>("POST", ticket(id, `/drafts/${encodeURIComponent(draft)}`), { content }),
+  startDryRun: (id: string) => call<{ sessionId: string }>("POST", ticket(id, "/dry-run")),
+  endDryRun: (id: string) => call<{ ok: boolean }>("DELETE", ticket(id, "/dry-run")),
   discardDraft: (id: string, draft: string) => call<TriageDraft>("DELETE", ticket(id, `/drafts/${encodeURIComponent(draft)}`)),
 };

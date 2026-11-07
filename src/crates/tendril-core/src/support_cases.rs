@@ -84,6 +84,9 @@ pub struct SupportSettings {
     pub kubernetes: bool,
     /// The kubeconfig context to use; the current one when empty.
     pub kube_context: Option<String>,
+    /// Kinds of reply sent without approval even while `reply_mode` is Approve: the operator turned
+    /// them on once they kept approving them unchanged.
+    pub auto_kinds: Vec<ReplyKind>,
 }
 
 /// A source as the UI sees it: the URL with any password masked, the header's value hidden.
@@ -106,6 +109,9 @@ pub struct SettingsView {
     pub sources: Vec<SourceView>,
     pub kubernetes: bool,
     pub kube_context: Option<String>,
+    pub auto_kinds: Vec<ReplyKind>,
+    /// How the operator has been deciding each kind of reply, to suggest sending one automatically.
+    pub approvals: Vec<KindStats>,
 }
 
 static URL_PASSWORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(://[^:/@\s]+):[^@/\s]+@").expect("url password regex"));
@@ -143,6 +149,8 @@ pub fn view(settings: &SupportSettings) -> SettingsView {
             .collect(),
         kubernetes: settings.kubernetes,
         kube_context: settings.kube_context.clone(),
+        auto_kinds: settings.auto_kinds.clone(),
+        approvals: Vec::new(),
     }
 }
 
@@ -170,6 +178,8 @@ pub struct SettingsInput {
     pub kubernetes: bool,
     #[serde(default)]
     pub kube_context: Option<String>,
+    #[serde(default)]
+    pub auto_kinds: Vec<ReplyKind>,
 }
 
 pub fn save_settings(home: &Path, input: SettingsInput) -> Result<SettingsView> {
@@ -213,6 +223,7 @@ pub fn save_settings(home: &Path, input: SettingsInput) -> Result<SettingsView> 
         sources,
         kubernetes: input.kubernetes,
         kube_context: input.kube_context.map(|c| c.trim().to_string()).filter(|c| !c.is_empty()),
+        auto_kinds: input.auto_kinds,
     };
     let path = settings_path(home);
     std::fs::create_dir_all(home)?;
@@ -346,11 +357,30 @@ pub struct Case {
     pub last_note_at: Option<DateTime<Utc>>,
     /// The manager left it to the operator (an internal note means it is below the bar to act on).
     pub handed_over: bool,
+    /// A dry run's conversation; the case is the run's, and nothing from it reached the ticket.
+    pub dry_run_session: Option<String>,
+    /// Internal notes a dry run would have left.
+    pub dry_notes: Vec<String>,
+    /// Held replies already offered on Telegram for approval.
+    pub offered_drafts: Vec<String>,
+    /// The partner wrote back after being told it was resolved; cleared by the next "resolved".
+    pub reopened: bool,
+    /// The waiting stretch (Operations' `waitingSince`) the operator was already nudged about.
+    pub nudged_for: Option<String>,
 }
 
 impl Case {
     pub fn pending_drafts(&self) -> usize {
         self.drafts.iter().filter(|d| d.state == DraftState::Pending).count()
+    }
+
+    /// When the partner was last told it was resolved.
+    pub fn resolved_at(&self) -> Option<DateTime<Utc>> {
+        self.drafts
+            .iter()
+            .filter(|d| d.kind == ReplyKind::Resolved && d.state == DraftState::Sent)
+            .filter_map(|d| d.decided_at)
+            .max()
     }
 
     fn sent(&self, kind: ReplyKind) -> bool {
@@ -360,7 +390,7 @@ impl Case {
     /// What the manager is doing on the ticket right now, for the "working on it" marker, or `None`
     /// when it is not (done, waiting on the operator, or a request it leaves alone).
     pub fn working(&self) -> Option<&'static str> {
-        if self.handed_over || self.pending_drafts() > 0 || self.sent(ReplyKind::Resolved) {
+        if self.handed_over || self.pending_drafts() > 0 || (self.sent(ReplyKind::Resolved) && !self.reopened) {
             return None;
         }
         let Some(inv) = &self.investigation else {
@@ -382,8 +412,54 @@ fn safe(id: &str) -> String {
     id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect()
 }
 
-fn case_path(home: &Path, ticket: &str) -> PathBuf {
+fn real_case_path(home: &Path, ticket: &str) -> PathBuf {
     cases_dir(home).join(format!("{}.json", safe(ticket)))
+}
+
+fn dry_case_path(home: &Path, ticket: &str) -> PathBuf {
+    cases_dir(home).join(format!("{}.dry.json", safe(ticket)))
+}
+
+/// While a dry run is on for a ticket, its case is a separate file: the run's lookups, findings and
+/// drafts land there, the real case is left as it was, and nothing is written to Operations.
+fn case_path(home: &Path, ticket: &str) -> PathBuf {
+    if is_dry(home, ticket) {
+        dry_case_path(home, ticket)
+    } else {
+        real_case_path(home, ticket)
+    }
+}
+
+/// Whether a dry run is on for `ticket`.
+pub fn is_dry(home: &Path, ticket: &str) -> bool {
+    !safe(ticket).is_empty() && dry_case_path(home, ticket).exists()
+}
+
+/// Starts a dry run: a fresh case for the ticket, marked as already alerted so a critical finding
+/// does not page the operator.
+pub fn start_dry_run(home: &Path, ticket: &str, subject: &str, session_id: &str) -> Result<()> {
+    if safe(ticket).is_empty() {
+        return Err(TendrilError::Validation("Not a ticket id".into()));
+    }
+    std::fs::create_dir_all(cases_dir(home))?;
+    let case = Case {
+        ticket_id: ticket.to_string(),
+        triaged_at: Some(Utc::now()),
+        subject: subject.to_string(),
+        alerted: true,
+        dry_run_session: Some(session_id.to_string()),
+        ..Default::default()
+    };
+    let json = serde_json::to_vec_pretty(&case).map_err(|e| TendrilError::Other(e.to_string()))?;
+    write_atomic(&dry_case_path(home, ticket), &json)
+}
+
+/// Ends a dry run and throws its case away.
+pub fn end_dry_run(home: &Path, ticket: &str) -> Result<()> {
+    match std::fs::remove_file(dry_case_path(home, ticket)) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
+        _ => Ok(()),
+    }
 }
 
 pub fn load_case(home: &Path, ticket: &str) -> Case {
@@ -415,6 +491,7 @@ pub fn all_cases(home: &Path) -> Vec<Case> {
         .map(|entries| {
             entries
                 .flatten()
+                .filter(|e| !e.file_name().to_string_lossy().ends_with(".dry.json"))
                 .filter_map(|e| std::fs::read_to_string(e.path()).ok())
                 .filter_map(|t| serde_json::from_str(&t).ok())
                 .collect()
@@ -670,14 +747,120 @@ pub fn add_draft(home: &Path, ticket: &str, request: &ReplyRequest) -> Result<Dr
 pub fn decide_draft(home: &Path, ticket: &str, draft_id: &str, state: DraftState, content: Option<&str>) -> Result<Draft> {
     let (_, found) = update_case(home, ticket, |c| {
         let d = c.drafts.iter_mut().find(|d| d.id == draft_id && d.state == DraftState::Pending)?;
+        let drafted = d.content.clone();
         if let Some(text) = content.map(str::trim).filter(|t| !t.is_empty()) {
             d.content = text.to_string();
         }
         d.state = state;
         d.decided_at = Some(Utc::now());
-        Some(d.clone())
+        Some((d.clone(), drafted))
     })?;
-    found.ok_or_else(|| TendrilError::Validation("That draft is not waiting any more".into()))
+    let (draft, drafted) = found.ok_or_else(|| TendrilError::Validation("That draft is not waiting any more".into()))?;
+    if !is_dry(home, ticket) {
+        record_decision(home, ticket, &draft, &drafted);
+    }
+    Ok(draft)
+}
+
+/* ------------------------------------------------------- the operator's decisions */
+
+/// One held reply the operator decided on. The text is kept only when they rewrote it: that pair is
+/// what teaches the manager their voice.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Decision {
+    pub at: DateTime<Utc>,
+    pub ticket_id: String,
+    pub kind: ReplyKind,
+    pub state: DraftState,
+    pub edited: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drafted: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sent: Option<String>,
+}
+
+/// How the operator has decided one kind of reply lately.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct KindStats {
+    pub kind: ReplyKind,
+    /// Out of the last [`STATS_WINDOW`] decisions.
+    pub decided: usize,
+    pub unchanged: usize,
+    pub edited: usize,
+    pub discarded: usize,
+    /// Approved unchanged often enough that sending this kind without approval is worth offering.
+    pub suggest_auto: bool,
+}
+
+const STATS_WINDOW: usize = 20;
+/// At least this many decisions, all but one of them approved as written, before auto is suggested.
+const SUGGEST_AFTER: usize = 10;
+
+fn decisions_path(home: &Path) -> PathBuf {
+    home.join("support-decisions.jsonl")
+}
+
+fn record_decision(home: &Path, ticket: &str, draft: &Draft, drafted: &str) {
+    use std::io::Write;
+    let edited = draft.state == DraftState::Sent && draft.content.trim() != drafted.trim();
+    let entry = Decision {
+        at: Utc::now(),
+        ticket_id: ticket.to_string(),
+        kind: draft.kind,
+        state: draft.state,
+        edited,
+        drafted: edited.then(|| drafted.to_string()),
+        sent: edited.then(|| draft.content.clone()),
+    };
+    let Ok(line) = serde_json::to_string(&entry) else { return };
+    let path = decisions_path(home);
+    let _ = with_file_lock(&path, || {
+        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(&path)?;
+        writeln!(f, "{line}")?;
+        Ok(())
+    });
+}
+
+pub fn load_decisions(home: &Path) -> Vec<Decision> {
+    std::fs::read_to_string(decisions_path(home))
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
+pub fn approval_stats(home: &Path) -> Vec<KindStats> {
+    let all = load_decisions(home);
+    [ReplyKind::Ack, ReplyKind::Answer, ReplyKind::Resolved]
+        .into_iter()
+        .map(|kind| {
+            let recent: Vec<&Decision> = all.iter().rev().filter(|d| d.kind == kind).take(STATS_WINDOW).collect();
+            let discarded = recent.iter().filter(|d| d.state == DraftState::Discarded).count();
+            let edited = recent.iter().filter(|d| d.edited).count();
+            let unchanged = recent.len() - discarded - edited;
+            KindStats {
+                kind,
+                decided: recent.len(),
+                unchanged,
+                edited,
+                discarded,
+                suggest_auto: recent.len() >= SUGGEST_AFTER && unchanged + 1 >= recent.len(),
+            }
+        })
+        .collect()
+}
+
+/// The operator's latest rewrites of the manager's replies, for the triage brief.
+pub fn render_rewrites(home: &Path, limit: usize) -> String {
+    load_decisions(home)
+        .iter()
+        .rev()
+        .filter(|d| d.edited)
+        .take(limit)
+        .filter_map(|d| Some(format!("- You wrote: \"{}\"\n  They sent: \"{}\"\n", d.drafted.as_deref()?.trim(), d.sent.as_deref()?.trim())))
+        .collect()
 }
 
 /// The other tickets following `ticket` as duplicates.
@@ -748,6 +931,10 @@ pub fn load_history(home: &Path) -> Vec<HistoryEntry> {
 
 pub fn remember(home: &Path, entry: &HistoryEntry) -> Result<()> {
     use std::io::Write;
+    // A dry run teaches nothing: what it did never happened.
+    if is_dry(home, &entry.ticket_id) {
+        return Ok(());
+    }
     std::fs::create_dir_all(home)?;
     let path = history_path(home);
     let line = serde_json::to_string(entry).map_err(|e| TendrilError::Other(e.to_string()))?;
@@ -899,6 +1086,31 @@ mod tests {
     }
 
     #[test]
+    fn decisions_teach_tone_and_suggest_auto_after_a_run_of_unchanged_approvals() {
+        let home = tempfile::tempdir().unwrap();
+        let draft = |content: &str, state| Draft {
+            id: "d".into(),
+            kind: ReplyKind::Ack,
+            content: content.into(),
+            close: false,
+            fix_pr: None,
+            test: None,
+            created_at: Utc::now(),
+            state,
+            decided_at: None,
+        };
+        for _ in 0..9 {
+            record_decision(home.path(), "t", &draft("We're on it.", DraftState::Sent), "We're on it.");
+        }
+        assert!(!approval_stats(home.path())[0].suggest_auto, "nine is not enough yet");
+        record_decision(home.path(), "t", &draft("Thanks, on it now!", DraftState::Sent), "We're on it.");
+        let ack = &approval_stats(home.path())[0];
+        assert_eq!((ack.decided, ack.unchanged, ack.edited), (10, 9, 1));
+        assert!(ack.suggest_auto);
+        assert!(render_rewrites(home.path(), 5).contains("They sent: \"Thanks, on it now!\""));
+    }
+
+    #[test]
     fn one_note_per_change_on_the_ticket() {
         let mut c = case(Category::Bug, 80, 1);
         assert!(check_note(&c, "Bigger than a micro fix, so it's yours. A worker has the cause.", None).is_ok());
@@ -985,6 +1197,7 @@ mod tests {
             }],
             kubernetes: false,
             kube_context: None,
+            auto_kinds: vec![],
         };
         let shown = save_settings(home.path(), input("mongodb://reader:hunter2@db:27017/prop", Some("X-Key: abc"))).unwrap();
         assert_eq!(shown.sources[0].url, "mongodb://reader:••••@db:27017/prop");

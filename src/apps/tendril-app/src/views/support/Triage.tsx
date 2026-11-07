@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Database, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, Database, FlaskConical, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import {
   cn,
   Dialog,
@@ -67,6 +67,7 @@ export const TriageSettingsDialog: React.FC<{
   const [sources, setSources] = React.useState<SourceRow[]>([]);
   const [kube, setKube] = React.useState(false);
   const [kubeContext, setKubeContext] = React.useState("");
+  const [autoKinds, setAutoKinds] = React.useState<ReplyKind[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -80,6 +81,7 @@ export const TriageSettingsDialog: React.FC<{
         setProject(s.managerProject ?? "");
         setAuto(s.autoTriage);
         setMode(s.replyMode);
+        setAutoKinds(s.autoKinds ?? []);
         setSources(s.sources.map((x) => ({ ...x, header: "" })));
         setKube(s.kubernetes);
         setKubeContext(s.kubeContext ?? "");
@@ -101,6 +103,7 @@ export const TriageSettingsDialog: React.FC<{
         sources: sources.map(({ name, kind, url, header, notes }) => ({ name, kind, url, header, notes })),
         kubernetes: kube,
         kubeContext: kubeContext.trim() || null,
+        autoKinds,
       });
       onClose();
     } catch (e) {
@@ -155,6 +158,33 @@ export const TriageSettingsDialog: React.FC<{
                 verified micro fix, and no reply to requests.
               </span>
             </div>
+
+            {mode === "approve" && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[12px] text-muted-foreground">Send these without asking me</span>
+                {(loaded.approvals ?? []).map((st) => (
+                  <label key={st.kind} className="flex items-center gap-2 text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={autoKinds.includes(st.kind)}
+                      onChange={(e) =>
+                        setAutoKinds((all) => (e.target.checked ? [...all, st.kind] : all.filter((k) => k !== st.kind)))
+                      }
+                    />
+                    {KIND_LABEL[st.kind]}
+                    <span className="text-[11.5px] text-muted-foreground">
+                      {st.decided === 0
+                        ? "none decided yet"
+                        : `${st.unchanged} of ${st.decided} approved as written${st.edited ? `, ${st.edited} edited` : ""}${st.discarded ? `, ${st.discarded} discarded` : ""}`}
+                    </span>
+                    {st.suggestAuto && !autoKinds.includes(st.kind) && <Pill tone="ok">suggested</Pill>}
+                  </label>
+                ))}
+                <span className="text-[11.5px] text-muted-foreground">
+                  Your edits are kept as examples, so the manager writes more like you over time.
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-foreground">
@@ -268,11 +298,13 @@ export const TriageSettingsDialog: React.FC<{
  * What the support manager found on a ticket and the replies waiting for approval, above the
  * conversation. Nothing shows for a ticket it never worked.
  */
-export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; onChanged: () => void }> = ({
-  ticketId,
-  refreshKey,
-  onChanged,
-}) => {
+export const TriageCaseBlock: React.FC<{
+  ticketId: string;
+  refreshKey: number;
+  onChanged: () => void;
+  /** The dry run's conversation while one is on, so the panel can show it in place of the hand-off's. */
+  onDryRun?: (sessionId: string | null) => void;
+}> = ({ ticketId, refreshKey, onChanged, onDryRun }) => {
   const [triage, setTriage] = React.useState<TriageCase | null>(null);
   const [showLookups, setShowLookups] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -282,10 +314,33 @@ export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; o
   }, [ticketId]);
   React.useEffect(load, [load, refreshKey]);
 
+  const dry = triage?.dryRunSession ?? null;
+  React.useEffect(() => onDryRun?.(dry), [dry, onDryRun]);
+  const dryRun = async (start: boolean) => {
+    setError(null);
+    try {
+      if (start) await supportApi.startDryRun(ticketId);
+      else await supportApi.endDryRun(ticketId);
+      load();
+      onChanged();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+
   if (!triage) return null;
   const inv = triage.investigation;
   const pending = triage.drafts.filter((d) => d.state === "pending");
-  if (!inv && pending.length === 0 && triage.lookups.length === 0 && !triage.triagedAt) return null;
+  if (!inv && pending.length === 0 && triage.lookups.length === 0 && !triage.triagedAt) {
+    return (
+      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <GhostButton size="sm" onClick={() => void dryRun(true)} title="Work this ticket the way triage would, without posting anything">
+          <FlaskConical className="size-3.5" aria-hidden="true" /> Dry run triage
+        </GhostButton>
+        {error && <span className="text-destructive">{error}</span>}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2" data-testid="support-triage-case">
@@ -293,6 +348,7 @@ export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; o
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           <ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />
           <span className="font-medium text-foreground">Triage</span>
+          {dry && <Pill tone="info">dry run · nothing posted</Pill>}
           {inv ? (
             <>
               <Pill tone="mute">{CATEGORY_LABEL[inv.category]}</Pill>
@@ -309,10 +365,20 @@ export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; o
           ) : (
             triage.handedOver && <span>· left to you</span>
           )}
+          <span className="ml-auto" />
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 hover:text-foreground"
+            onClick={() => void dryRun(!dry)}
+            title={dry ? "Throw the dry run away" : "Work this ticket again as a dry run, without posting anything"}
+          >
+            <FlaskConical className="size-3" aria-hidden="true" />
+            {dry ? "End dry run" : "Dry run"}
+          </button>
           {triage.lookups.length > 0 && (
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-1 hover:text-foreground"
+              className="inline-flex items-center gap-1 hover:text-foreground"
               onClick={() => setShowLookups((v) => !v)}
             >
               <Search className="size-3" aria-hidden="true" />
@@ -336,10 +402,17 @@ export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; o
           </ul>
         )}
       </div>
+      {triage.dryNotes?.map((n, i) => (
+        <div key={i} className="rounded-lg border border-warning/30 bg-warning/8 px-3 py-2 text-[12px] text-foreground">
+          <span className="mb-0.5 block text-[10.5px] text-warning">internal note it would have left</span>
+          {n}
+        </div>
+      ))}
       {pending.map((d) => (
         <DraftCard
           key={d.id}
           ticketId={ticketId}
+          dry={!!dry}
           draft={d}
           onDone={() => {
             load();
@@ -356,9 +429,11 @@ export const TriageCaseBlock: React.FC<{ ticketId: string; refreshKey: number; o
 const DraftCard: React.FC<{
   ticketId: string;
   draft: TriageCase["drafts"][number];
+  /** A dry run's draft is only shown: it can be discarded, never sent. */
+  dry?: boolean;
   onDone: () => void;
   onError: (e: string | null) => void;
-}> = ({ ticketId, draft, onDone, onError }) => {
+}> = ({ ticketId, draft, dry, onDone, onError }) => {
   const [text, setText] = React.useState(draft.content);
   const [busy, setBusy] = React.useState(false);
   const run = async (fn: () => Promise<unknown>) => {
@@ -376,7 +451,7 @@ const DraftCard: React.FC<{
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/6 px-3 py-2" data-testid="support-draft">
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span className="font-medium text-foreground">Reply waiting for you</span>
+        <span className="font-medium text-foreground">{dry ? "Reply it would have sent" : "Reply waiting for you"}</span>
         <Pill tone="warn">{KIND_LABEL[draft.kind]}</Pill>
         {draft.close && <span>· closes the ticket</span>}
         {draft.fixPr && (
@@ -400,7 +475,7 @@ const DraftCard: React.FC<{
         <GhostButton size="sm" disabled={busy} onClick={() => void run(() => supportApi.discardDraft(ticketId, draft.id))}>
           <X className="size-3.5" aria-hidden="true" /> Discard
         </GhostButton>
-        <PrimaryButton
+        {!dry && <PrimaryButton
           size="sm"
           className="ml-auto"
           disabled={busy || !text.trim()}
@@ -410,7 +485,7 @@ const DraftCard: React.FC<{
         >
           <Check className="size-3.5" aria-hidden="true" />
           {busy ? "Sending…" : draft.close ? "Approve, send and close" : "Approve and send"}
-        </PrimaryButton>
+        </PrimaryButton>}
       </div>
     </div>
   );

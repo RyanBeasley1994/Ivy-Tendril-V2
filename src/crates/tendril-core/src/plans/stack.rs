@@ -331,6 +331,14 @@ fn restack(plans_dir: &Path, plan_folder: &Path, new_parent: Option<&str>, outco
         if let Err(e) = git(&["rebase", "--onto", &onto, &base.commit]) {
             let _ = git(&["rebase", "--abort"]);
             report(false, format!("conflicts moving onto {onto}; rebase it by hand ({e})"));
+            record_conflict(plans_dir, &Conflict {
+                plan: name.clone(),
+                project: plan.project.clone(),
+                repo: repo.clone(),
+                branch: branch.clone(),
+                onto: onto.clone(),
+                prs: plan.prs.iter().filter(|u| u.contains("/pull/")).cloned().collect(),
+            });
             continue;
         }
         let pushed = plan.prs.iter().any(|u| u.contains("/pull/"));
@@ -374,6 +382,39 @@ fn restack(plans_dir: &Path, plan_folder: &Path, new_parent: Option<&str>, outco
     for child in children(plans_dir, &name) {
         restack(plans_dir, &child, Some(&branch), outcomes);
     }
+}
+
+/// A part that could not be moved onto its new base without conflicts. Queued for the daemon, which
+/// hands it to the project's manager to get resolved, instead of leaving it in a log nobody reads.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Conflict {
+    pub plan: String,
+    pub project: String,
+    pub repo: String,
+    pub branch: String,
+    pub onto: String,
+    pub prs: Vec<String>,
+}
+
+fn conflicts_path(plans_dir: &Path) -> std::path::PathBuf {
+    plans_dir.join(".restack-conflicts.jsonl")
+}
+
+fn record_conflict(plans_dir: &Path, conflict: &Conflict) {
+    use std::io::Write;
+    let Ok(line) = serde_json::to_string(conflict) else { return };
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(conflicts_path(plans_dir)) {
+        let _ = writeln!(f, "{line}");
+    }
+}
+
+/// Takes every queued conflict, leaving the queue empty.
+pub fn take_conflicts(plans_dir: &Path) -> Vec<Conflict> {
+    let path = conflicts_path(plans_dir);
+    let Ok(text) = std::fs::read_to_string(&path) else { return Vec::new() };
+    let _ = std::fs::remove_file(&path);
+    text.lines().filter_map(|l| serde_json::from_str(l).ok()).collect()
 }
 
 fn folder_name(path: &Path) -> String {

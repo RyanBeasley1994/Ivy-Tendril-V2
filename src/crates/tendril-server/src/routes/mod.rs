@@ -394,6 +394,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/projects/owners", get(projects::project_owners))
         .route("/api/projects/managers", get(projects::managers_status))
         .route("/api/projects/:name/my-prs", get(projects::my_pull_requests))
+        .route("/api/projects/:name/activity", get(projects::manager_activity))
         .route("/api/projects/:name/evidence", get(projects::project_evidence))
         .route(
             "/api/projects/:name/manager/wake",
@@ -434,6 +435,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/support/tickets/:id/handoff", post(support::handoff))
         .route("/api/support/settings", get(support::get_settings).put(support::put_settings))
         .route("/api/support/tickets/:id/case", get(support::get_case))
+        .route("/api/support/tickets/:id/dry-run", post(support::start_dry_run).delete(support::end_dry_run))
         .route(
             "/api/support/tickets/:id/drafts/:draft",
             post(support::approve_draft).delete(support::discard_draft),

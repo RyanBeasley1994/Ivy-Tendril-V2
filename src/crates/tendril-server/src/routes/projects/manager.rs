@@ -426,6 +426,18 @@ fn github_slug(remote: &str) -> Option<String> {
     (slug.split('/').count() == 2 && !slug.is_empty()).then(|| slug.to_string())
 }
 
+/// `GET /api/projects/:name/activity` — what the manager did on the turns the daemon started, newest
+/// first.
+pub async fn manager_activity(State(state): State<Arc<AppState>>, Path(name): Path<String>) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    let mut entries = crate::manager_activity::load(&state.tendril_home, &project.name, 100);
+    entries.reverse();
+    Json(serde_json::json!({ "entries": entries })).into_response()
+}
+
 static MY_PRS: std::sync::LazyLock<tokio::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, Value)>>> =
     std::sync::LazyLock::new(Default::default);
 

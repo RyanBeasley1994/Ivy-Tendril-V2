@@ -475,6 +475,7 @@ export const TicketPanel: React.FC<{
   const [mode, setMode] = React.useState<"reply" | "close">("reply");
   const [view, setView] = React.useState<"ticket" | "manager">("ticket");
   const [loads, setLoads] = React.useState(0);
+  const [drySession, setDrySession] = React.useState<string | null>(null);
   const bottom = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
@@ -588,6 +589,7 @@ export const TicketPanel: React.FC<{
       {view === "manager" && ticket && (
         <ManagerPane
           ticket={ticket}
+          drySession={drySession}
           projects={projects}
           onHandoff={(project, instructions) => act(() => supportApi.handoff(id, project, instructions))}
         />
@@ -599,6 +601,7 @@ export const TicketPanel: React.FC<{
         <TriageCaseBlock
           ticketId={id}
           refreshKey={loads}
+          onDryRun={setDrySession}
           onChanged={() => {
             void load();
             onChanged();
@@ -703,10 +706,12 @@ const TICKET_PROMPTS = [
  */
 const ManagerPane: React.FC<{
   ticket: TicketDetail;
+  /** A dry run's conversation, shown in place of the hand-off's while the run is on. */
+  drySession?: string | null;
   projects: ProjectSummary[];
   onHandoff: (project: string, instructions: string) => Promise<void>;
-}> = ({ ticket, projects, onHandoff }) => {
-  const sessionId = ticket.handoff?.sessionId;
+}> = ({ ticket, drySession, projects, onHandoff }) => {
+  const sessionId = drySession ?? ticket.handoff?.sessionId;
   if (!sessionId) {
     return (
       <div className="flex min-h-0 flex-1 flex-col justify-end gap-2 px-4 py-3">
