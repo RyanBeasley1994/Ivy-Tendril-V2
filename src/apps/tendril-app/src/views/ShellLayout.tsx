@@ -3,6 +3,7 @@ import { ForgeLogo } from "../components/ForgeLogo";
 import { MobileTabBar } from "./shell/MobileTabBar";
 import { useNeedsYouCount } from "../state/managerActivity";
 import { useSupportCount } from "../state/supportCount";
+import { isTauri } from "../utils/tauri";
 import { PRODUCT_NAME } from "../branding";
 import {
   TendrilShell,
@@ -457,6 +458,14 @@ export const ShellLayout: React.FC<ShellLayoutProps> = ({
 
   const managersNeedYou = useNeedsYouCount();
   const supportUnread = useSupportCount();
+  // The dock shows what waits on the operator: managers that need them plus unread support tickets.
+  const attention = managersNeedYou + supportUnread;
+  React.useEffect(() => {
+    if (!isTauri()) return;
+    void import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) => getCurrentWindow().setBadgeCount(attention > 0 ? attention : undefined))
+      .catch(() => undefined);
+  }, [attention]);
   const navItems = buildNavItems(
     activeNav,
     {

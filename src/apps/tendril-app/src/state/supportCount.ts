@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { supportApi } from "../api/support";
 import { playChime } from "../utils/chime";
+import { notificationsStore } from "./notificationsStore";
 
 /**
  * The Support badge: the operator's unread tickets in "Needs Us", as Operations counts them. One
@@ -16,10 +17,30 @@ let loaded = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 
+/** A notification for what just came in: the newest unread ticket, by name when it can be found. */
+const announce = async (added: number): Promise<void> => {
+  const { tickets } = await supportApi.list(false).catch(() => ({ tickets: [] }));
+  const newest = tickets
+    .filter((t) => t.hasUnread)
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+  const from = newest?.lastMessage?.authorName ?? newest?.partner?.name;
+  const said = newest?.lastMessage?.content?.replace(/\s+/g, " ").trim() ?? "";
+  notificationsStore.notifyManager({
+    title: newest ? `Support · ${newest.subject}` : "Support",
+    message: newest
+      ? `${from ? `${from}: ` : ""}${said.length > 140 ? `${said.slice(0, 139)}…` : said}` || "New activity on this ticket."
+      : `${added} new unread ticket${added === 1 ? "" : "s"}.`,
+    isSuccess: true,
+  });
+};
+
 export const refreshSupportCount = async (): Promise<void> => {
   try {
     const next = (await supportApi.count()).count;
-    if (loaded && next > count) playChime();
+    if (loaded && next > count) {
+      playChime();
+      void announce(next - count);
+    }
     loaded = true;
     if (next !== count) {
       count = next;

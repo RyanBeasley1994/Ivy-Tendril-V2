@@ -48,6 +48,8 @@ export const startManagerNotifier = (): (() => void) => {
     ]);
     const status = projectStatus(project, missions, jobsStore.getState().jobs);
     const reply = [...(session?.messages ?? [])].reverse().find((m) => m.role === "assistant" && m.content.trim());
+    // A background turn the manager marked "[quiet]" is for the activity log, not a notification.
+    if (reply && /^`?\[quiet\]/i.test(reply.content.trim())) return;
     const text = reply ? plain(reply.content) : "";
     const asked = reply ? lastParagraph(reply.content).endsWith("?") : false;
     // Retries and re-plans are the manager's to handle; only a mission waiting on a person counts.
