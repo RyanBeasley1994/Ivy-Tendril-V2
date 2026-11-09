@@ -9,8 +9,10 @@
 //!   Until `/end`, every message typed is handed to that manager exactly as typing it in the app would,
 //!   and what that manager says comes back. Messages sent to the manager, whether typed here, in the
 //!   app or by the scheduler, and daemon events are not relayed.
-//! * A manager that needs the operator, or whose work is complete, sends a notice here whether or not
-//!   the chat is bound, with the pull request's link when it names one. Replying to a notice sends that
+//! * Unless the chat is bound, a manager's progress, pull requests and finished work stay in the app:
+//!   only a manager that needs the operator sends a notice here, with the pull request's link when it
+//!   names one. Support tickets always come through: new ones, the partner writing, replies sent or
+//!   held for approval, and tickets left to the operator. Replying to a notice sends that
 //!   one message to its manager and brings back the one answer; it does not start a conversation. Only
 //!   `/manager` does that.
 //! * `/status` is answered by the daemon from what it already knows, so it costs no manager turn.
@@ -615,7 +617,7 @@ pub fn enabled(tendril_home: &Path) -> bool {
     load(tendril_home).paired()
 }
 
-/// A manager needs the operator, or its work is complete. Not sent while the chat is bound to that
+/// A manager needs the operator. Not sent while the chat is bound to that
 /// manager: its reply has already arrived as part of the conversation.
 pub async fn notify(state: &AppState, project: &str, title: &str, body: &str) {
     let settings = load(&state.tendril_home);
@@ -624,6 +626,17 @@ pub async fn notify(state: &AppState, project: &str, title: &str, body: &str) {
     }
     // Already brought back as the answer to a one-off reply.
     if was_sent(project, body) {
+        return;
+    }
+    remember_sent(project, body);
+    send_notice(state, &settings, project, title, body).await;
+}
+
+/// Something on a support ticket: a new one, the partner writing, a reply sent, one left to the
+/// operator. Sent whether or not the chat is bound, since none of it is in a manager's conversation.
+pub async fn notify_support(state: &AppState, project: &str, title: &str, body: &str) {
+    let settings = load(&state.tendril_home);
+    if !settings.paired() || was_sent(project, body) {
         return;
     }
     remember_sent(project, body);

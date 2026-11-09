@@ -397,6 +397,12 @@ pub async fn agent_reply(home: &Path, id: &str, req: support_cases::ReplyRequest
         return Ok(ReplyOutcome::Queued { draft });
     }
     send_draft(home, id, &draft.id, None).await?;
+    let draft_id = draft.id.clone();
+    support_cases::update_case(home, id, |c| {
+        if let Some(d) = c.drafts.iter_mut().find(|d| d.id == draft_id) {
+            d.auto = true;
+        }
+    })?;
     Ok(ReplyOutcome::Sent)
 }
 

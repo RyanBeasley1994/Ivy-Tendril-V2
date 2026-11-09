@@ -374,7 +374,7 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool, had_work: 
     let text = crate::push::plain(&reply.content);
     if briefing {
         let _ = crate::push::send(&cfg, &format!("{project} · morning briefing"), &crate::push::clip(&text, 900), false).await;
-        crate::telegram::notify(state, project, &format!("{project} · morning briefing"), reply.content.trim()).await;
+        // Telegram gets only what needs the operator; the briefing is read in the app.
         return;
     }
 
@@ -433,8 +433,9 @@ async fn on_turn_end(state: &AppState, project: &str, briefing: bool, had_work: 
         }
         Some(crate::push::TurnOutcome::WorkComplete) if !something_finished => {}
         Some(crate::push::TurnOutcome::WorkComplete) => {
+            // Not on Telegram: finished work and pull requests are news there only while the operator is
+            // talking to this manager, and then the reply has already been forwarded.
             let _ = crate::push::send(&cfg, &format!("{project} · work complete"), &crate::push::clip(&text, 300), false).await;
-            crate::telegram::notify(state, project, &format!("{project} · work complete"), reply.content.trim()).await;
         }
         None => {}
     }

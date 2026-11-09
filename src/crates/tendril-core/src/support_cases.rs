@@ -337,6 +337,9 @@ pub struct Draft {
     pub state: DraftState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decided_at: Option<DateTime<Utc>>,
+    /// Sent by the manager on its own, not approved by the operator.
+    #[serde(default)]
+    pub auto: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -367,6 +370,9 @@ pub struct Case {
     pub reopened: bool,
     /// The waiting stretch (Operations' `waitingSince`) the operator was already nudged about.
     pub nudged_for: Option<String>,
+    /// What the operator was already told on Telegram: replies sent on its own (`sent:<draft>`) and
+    /// hand-overs (`handover:<note time>`).
+    pub told: Vec<String>,
 }
 
 impl Case {
@@ -730,6 +736,7 @@ pub fn add_draft(home: &Path, ticket: &str, request: &ReplyRequest) -> Result<Dr
         created_at: Utc::now(),
         state: DraftState::Pending,
         decided_at: None,
+        auto: false,
     };
     let saved = draft.clone();
     update_case(home, ticket, |c| {
@@ -1098,6 +1105,7 @@ mod tests {
             created_at: Utc::now(),
             state,
             decided_at: None,
+            auto: false,
         };
         for _ in 0..9 {
             record_decision(home.path(), "t", &draft("We're on it.", DraftState::Sent), "We're on it.");

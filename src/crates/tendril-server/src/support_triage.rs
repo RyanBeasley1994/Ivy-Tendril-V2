@@ -78,8 +78,11 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
             alert(state, &settings, t, &case).await;
         }
 
+        // A dry run's drafts and notes never reach anyone.
+        let dry = case.dry_run_session.is_some();
+
         // 3. A reply held for approval is offered on Telegram, with buttons, once.
-        for draft in case.drafts.iter().filter(|d| d.state == support_cases::DraftState::Pending) {
+        for draft in case.drafts.iter().filter(|d| !dry && d.state == support_cases::DraftState::Pending) {
             if !case.offered_drafts.contains(&draft.id) && crate::telegram::offer_draft(state, id, &case.subject, draft).await {
                 let draft_id = draft.id.clone();
                 let _ = support_cases::update_case(home, id, |c| c.offered_drafts.push(draft_id));
@@ -94,6 +97,11 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
                 let waiting = waiting.to_string();
                 let _ = support_cases::update_case(home, id, |c| c.nudged_for = Some(waiting));
             }
+        }
+
+        // 4b. What the manager did on its own: a reply it sent, or a ticket it left to the operator.
+        if let Some(to) = project.as_ref().filter(|_| !dry) {
+            tell(state, to, id, &case).await;
         }
 
         // 5. The partner wrote back after being told it was fixed: the fix did not hold, and the ticket
@@ -120,6 +128,9 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
                     );
                     if send_to_session(state, session, prompt).await.is_ok() {
                         let _ = support_cases::update_case(home, id, |c| c.last_forwarded = Some(print));
+                        let body = format!("{} ({})\n{}", case.subject, partner(t), clip(text, 400));
+                        let to = project.clone().unwrap_or_else(|| "Support".into());
+                        crate::telegram::notify_support(state, &to, "Partner replied", &body).await;
                     }
                 }
             }
@@ -150,9 +161,49 @@ async fn triage(state: &Arc<AppState>, project: &str, id: &str) {
         Ok(_) => tracing::info!("Support ticket {id} ({subject}) handed to {project}'s manager for triage"),
         Err(_) => tracing::warn!("Support ticket {id} could not be handed to {project}'s manager"),
     }
+    if ticket["priority"].as_str() != Some("CRITICAL") {
+        let first = ticket["messages"].as_array().and_then(|m| m.first()).and_then(|m| m["content"].as_str()).unwrap_or_default();
+        let body = format!("{subject} ({})\n{}", partner(&ticket), clip(first, 400));
+        crate::telegram::notify_support(state, project, "New support ticket", &body).await;
+    }
     if ticket["priority"].as_str() == Some("CRITICAL") {
         let case = support_cases::load_case(home, id);
         alert(state, &support_cases::load_settings(home), &ticket, &case).await;
+    }
+}
+
+fn partner(ticket: &Value) -> &str {
+    ticket["partner"]["name"].as_str().unwrap_or("unknown partner")
+}
+
+fn clip(text: &str, max: usize) -> String {
+    let text = text.trim();
+    if text.chars().count() <= max {
+        return text.to_string();
+    }
+    format!("{}…", text.chars().take(max - 1).collect::<String>())
+}
+
+/// Tells the operator, once each, about a reply the manager sent without asking and a ticket it
+/// left to them. A hand-over older than an hour is not news (it predates these notices).
+async fn tell(state: &Arc<AppState>, project: &str, id: &str, case: &support_cases::Case) {
+    let home = &state.tendril_home;
+    for d in case.drafts.iter().filter(|d| d.auto && d.state == support_cases::DraftState::Sent) {
+        let key = format!("sent:{}", d.id);
+        if case.told.contains(&key) {
+            continue;
+        }
+        let body = format!("{}\n{}", case.subject, clip(&d.content, 600));
+        crate::telegram::notify_support(state, project, "Forge replied on a ticket", &body).await;
+        let _ = support_cases::update_case(home, id, |c| c.told.push(key));
+    }
+    if let Some(at) = case.last_note_at.filter(|at| case.handed_over && Utc::now() - *at < chrono::Duration::hours(1)) {
+        let key = format!("handover:{}", at.timestamp());
+        if !case.told.contains(&key) {
+            let body = format!("{}\nForge left a note on it and handed it to you.", case.subject);
+            crate::telegram::notify_support(state, project, "Support ticket left to you", &body).await;
+            let _ = support_cases::update_case(home, id, |c| c.told.push(key));
+        }
     }
 }
 
@@ -171,7 +222,7 @@ async fn nudge(state: &Arc<AppState>, settings: &support_cases::SupportSettings,
         ticket["subject"].as_str().unwrap_or("A ticket"),
         ticket["partner"]["name"].as_str().unwrap_or("unknown partner"),
     );
-    crate::telegram::notify(state, &project, "Support ticket waiting", &body).await;
+    crate::telegram::notify_support(state, &project, "Support ticket waiting", &body).await;
 }
 
 /// Back to the manager, as a regression: the partner says it is still broken after "resolved".
@@ -190,6 +241,8 @@ async fn reopen(state: &Arc<AppState>, project: &str, id: &str, message: &Value)
         c.last_forwarded = Some(print);
     });
     let first = format!("{note}\n\n{}", support::triage_prompt(home, &ticket, project));
+    let body = format!("{} ({})\n{}", ticket["subject"].as_str().unwrap_or("A ticket"), partner(&ticket), clip(text, 400));
+    crate::telegram::notify_support(state, project, "Reopened: partner says it is still broken", &body).await;
     match start_ticket_conversation(state, project, id, &ticket, first, Some(note)).await {
         Ok(_) => tracing::info!("Support ticket {id} reopened as a regression for {project}'s manager"),
         Err(_) => tracing::warn!("Support ticket {id} could not be reopened for {project}'s manager"),
@@ -210,6 +263,6 @@ async fn alert(state: &Arc<AppState>, settings: &support_cases::SupportSettings,
         ticket["partner"]["name"].as_str().unwrap_or("unknown partner"),
         why
     );
-    crate::telegram::notify(state, &project, "Critical support ticket", &body).await;
+    crate::telegram::notify_support(state, &project, "Critical support ticket", &body).await;
     let _ = support_cases::update_case(&state.tendril_home, id, |c| c.alerted = true);
 }
