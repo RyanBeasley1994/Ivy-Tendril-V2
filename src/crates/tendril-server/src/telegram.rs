@@ -11,8 +11,9 @@
 //!   app or by the scheduler, and daemon events are not relayed.
 //! * Unless the chat is bound, a manager's progress, pull requests and finished work stay in the app:
 //!   only a manager that needs the operator sends a notice here, with the pull request's link when it
-//!   names one. Support tickets always come through: new ones, the partner writing, replies sent or
-//!   held for approval, and tickets left to the operator. Replying to a notice sends that
+//!   names one. Support tickets come through by their first message only, plus what needs the
+//!   operator: replies held for approval, tickets left to them, critical, waiting too long and
+//!   reopened. The partner's later messages and replies already sent stay in the app. Replying to a notice sends that
 //!   one message to its manager and brings back the one answer; it does not start a conversation. Only
 //!   `/manager` does that.
 //! * `/status` is answered by the daemon from what it already knows, so it costs no manager turn.
@@ -195,17 +196,24 @@ pub fn parse_draft_button(data: &str) -> Option<(bool, &str, &str)> {
 }
 
 /// Offers a reply the support manager is holding for approval, with Approve and Discard buttons.
-/// Returns whether it was sent.
+/// Returns whether the buttons were sent. A draft too long for one message is sent in pieces, the
+/// buttons on the last, so a long reply still gets them.
 pub async fn offer_draft(state: &AppState, ticket: &str, subject: &str, draft: &tendril_core::support_cases::Draft) -> bool {
     let settings = load(&state.tendril_home);
     let Some(chat_id) = settings.chat_id.filter(|_| settings.paired()) else { return false };
+    let subject = if subject.trim().is_empty() { "a support ticket" } else { subject.trim() };
     let close = if draft.close { "\n(Sending it also closes the ticket.)" } else { "" };
     let text = format!("Support reply to approve · {subject}\n\n{}{close}", draft.content.trim());
     let keyboard = json!({ "inline_keyboard": [[
         { "text": "Approve and send", "callback_data": draft_button('a', ticket, &draft.id) },
         { "text": "Discard", "callback_data": draft_button('d', ticket, &draft.id) },
     ]] });
-    let body = json!({ "chat_id": chat_id, "text": text, "disable_web_page_preview": true, "reply_markup": keyboard });
+    let mut pieces = split_message(&text, MAX_MESSAGE_CHARS);
+    let last = pieces.pop().unwrap_or_else(|| format!("Support reply to approve · {subject}"));
+    for piece in pieces {
+        send_to(&settings.token, chat_id, &piece).await;
+    }
+    let body = json!({ "chat_id": chat_id, "text": last, "disable_web_page_preview": true, "reply_markup": keyboard });
     match call(&settings.token, "sendMessage", body, Duration::from_secs(15)).await {
         Ok(_) => true,
         Err(e) => {
@@ -213,6 +221,44 @@ pub async fn offer_draft(state: &AppState, ticket: &str, subject: &str, draft: &
             false
         }
     }
+}
+
+/// Offers every held support reply on Telegram with its buttons: each one not yet offered, and again
+/// any whose ticket `text` names (a manager saying "the reply to <subject> is waiting for you"), so an
+/// ask for approval always has buttons under it. Dry runs never reach Telegram.
+pub async fn offer_pending_drafts(state: &AppState, text: Option<&str>) {
+    use tendril_core::support_cases::{self, DraftState};
+    if !enabled(&state.tendril_home) {
+        return;
+    }
+    let mentioned = |case: &support_cases::Case| {
+        text.is_some_and(|t| {
+            let t = t.to_lowercase();
+            t.contains(&case.ticket_id.to_lowercase())
+                || (case.subject.trim().len() >= 6 && t.contains(&case.subject.trim().to_lowercase()))
+        })
+    };
+    for case in support_cases::all_cases(&state.tendril_home) {
+        if case.dry_run_session.is_some() {
+            continue;
+        }
+        let again = mentioned(&case);
+        for draft in case.drafts.iter().filter(|d| d.state == DraftState::Pending) {
+            if (again || !case.offered_drafts.contains(&draft.id))
+                && offer_draft(state, &case.ticket_id, &case.subject, draft).await
+                && !case.offered_drafts.contains(&draft.id)
+            {
+                let id = draft.id.clone();
+                let _ = support_cases::update_case(&state.tendril_home, &case.ticket_id, |c| c.offered_drafts.push(id));
+            }
+        }
+    }
+}
+
+/// Whether a manager's words ask the operator to approve something.
+fn asks_approval(text: &str) -> bool {
+    let t = text.to_lowercase();
+    t.contains("approv") || t.contains("held for") || t.contains("draft")
 }
 
 /// A tap on Approve or Discard: decide the draft, answer the tap, and replace the buttons with what
@@ -659,6 +705,9 @@ async fn send_notice(state: &AppState, settings: &Settings, project: &str, title
         })
         .await;
     }
+    if asks_approval(body) {
+        offer_pending_drafts(state, Some(body)).await;
+    }
 }
 
 /// How a message in the bound manager's chat reads in Telegram, or `None` for one not worth sending.
@@ -716,6 +765,9 @@ async fn forward_chat(state: Arc<AppState>) {
         }
         let links = pr_links(&state, &project, &text).await;
         send(&settings, &with_links(&text, &links)).await;
+        if asks_approval(&text) {
+            offer_pending_drafts(&state, Some(&text)).await;
+        }
     }
 }
 

@@ -81,19 +81,16 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
         // A dry run's drafts and notes never reach anyone.
         let dry = case.dry_run_session.is_some();
 
-        // 3. A reply held for approval is offered on Telegram, with buttons, once.
-        for draft in case.drafts.iter().filter(|d| !dry && d.state == support_cases::DraftState::Pending) {
-            if !case.offered_drafts.contains(&draft.id) && crate::telegram::offer_draft(state, id, &case.subject, draft).await {
-                let draft_id = draft.id.clone();
-                let _ = support_cases::update_case(home, id, |c| c.offered_drafts.push(draft_id));
-            }
-        }
-
-        // 4. Waiting on us too long: one nudge per waiting stretch, before the response time runs out.
-        if let Some(waiting) = t["waitingSince"].as_str().filter(|_| t["needsReply"].as_bool() == Some(true)) {
+        // 4. A new ticket nobody has answered yet: one nudge once it has waited too long. A ticket we
+        //    already replied on, or one that was sitting there before, is not nudged.
+        let fresh = created.is_some_and(|c| Utc::now() - c < chrono::Duration::hours(NUDGE_ONLY_WITHIN_HOURS));
+        if let Some(waiting) = t["waitingSince"].as_str().filter(|_| fresh && t["needsReply"].as_bool() == Some(true)) {
             let long = waiting.parse::<DateTime<Utc>>().is_ok_and(|w| Utc::now() - w >= chrono::Duration::hours(NUDGE_AFTER_HOURS));
-            if long && case.nudged_for.as_deref() != Some(waiting) {
-                nudge(state, &settings, t).await;
+            if long && case.nudged_for.is_none() {
+                if !team_replied(home, id).await {
+                    nudge(state, &settings, t).await;
+                }
+                // Checked once either way, so a ticket we answered is not fetched again every minute.
                 let waiting = waiting.to_string();
                 let _ = support_cases::update_case(home, id, |c| c.nudged_for = Some(waiting));
             }
@@ -126,16 +123,18 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
                         "The partner wrote again on this ticket:\n\n> {}\n\nInvestigate anything new before replying, and keep to the triage rules.",
                         text.replace('\n', "\n> ")
                     );
+                    // Not on Telegram: only a ticket's first message goes there, not each reply.
                     if send_to_session(state, session, prompt).await.is_ok() {
                         let _ = support_cases::update_case(home, id, |c| c.last_forwarded = Some(print));
-                        let body = format!("{} ({})\n{}", case.subject, partner(t), clip(text, 400));
-                        let to = project.clone().unwrap_or_else(|| "Support".into());
-                        crate::telegram::notify_support(state, &to, "Partner replied", &body).await;
                     }
                 }
             }
         }
     }
+
+    // 3. Every reply held for approval is offered on Telegram with its buttons, on whichever ticket it
+    //    sits, including one no longer on the open board. A send that failed is tried again next pass.
+    crate::telegram::offer_pending_drafts(state, None).await;
     Ok(())
 }
 
@@ -184,19 +183,11 @@ fn clip(text: &str, max: usize) -> String {
     format!("{}…", text.chars().take(max - 1).collect::<String>())
 }
 
-/// Tells the operator, once each, about a reply the manager sent without asking and a ticket it
-/// left to them. A hand-over older than an hour is not news (it predates these notices).
+/// Tells the operator, once, about a ticket the manager left to them. Replies it sent stay in the app:
+/// Telegram gets a ticket's first message, not each reply. A hand-over older than an hour is not news
+/// (it predates these notices).
 async fn tell(state: &Arc<AppState>, project: &str, id: &str, case: &support_cases::Case) {
     let home = &state.tendril_home;
-    for d in case.drafts.iter().filter(|d| d.auto && d.state == support_cases::DraftState::Sent) {
-        let key = format!("sent:{}", d.id);
-        if case.told.contains(&key) {
-            continue;
-        }
-        let body = format!("{}\n{}", case.subject, clip(&d.content, 600));
-        crate::telegram::notify_support(state, project, "Forge replied on a ticket", &body).await;
-        let _ = support_cases::update_case(home, id, |c| c.told.push(key));
-    }
     if let Some(at) = case.last_note_at.filter(|at| case.handed_over && Utc::now() - *at < chrono::Duration::hours(1)) {
         let key = format!("handover:{}", at.timestamp());
         if !case.told.contains(&key) {
@@ -207,8 +198,21 @@ async fn tell(state: &Arc<AppState>, project: &str, id: &str, case: &support_cas
     }
 }
 
-/// Hours a ticket may wait on a reply from us before the operator is nudged, once.
+/// Hours a new ticket may wait on a first reply from us before the operator is nudged, once.
 const NUDGE_AFTER_HOURS: i64 = 4;
+/// A ticket older than this was already sitting there: it is not nudged.
+const NUDGE_ONLY_WITHIN_HOURS: i64 = 24;
+
+/// Whether anyone on the team has answered the partner on this ticket. Internal notes do not count.
+/// When the ticket cannot be read, it counts as answered: no nudge rather than a wrong one.
+async fn team_replied(home: &std::path::Path, id: &str) -> bool {
+    let Ok(ticket) = support::get_ticket(home, id).await else { return true };
+    ticket["messages"].as_array().is_some_and(|messages| {
+        messages
+            .iter()
+            .any(|m| m["authorType"].as_str() != Some("PARTNER") && !m["isInternal"].as_bool().unwrap_or(false))
+    })
+}
 
 async fn nudge(state: &Arc<AppState>, settings: &support_cases::SupportSettings, ticket: &Value) {
     let project = settings.manager_project.clone().unwrap_or_else(|| "Support".into());
