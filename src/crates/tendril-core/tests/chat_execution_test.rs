@@ -2384,3 +2384,32 @@ async fn a_manager_opens_one_claude_session_and_resumes_it() {
 
     let _ = std::fs::remove_dir_all(&test_dir);
 }
+
+/// Listing the chats parses a file only when it is new or changed, and still sees a change made on
+/// disk behind the manager's back (the CLI writes chat files directly).
+#[tokio::test]
+async fn listing_the_chats_rereads_only_what_changed() {
+    let test_dir = std::env::temp_dir().join(format!("tendril-chat-list-test-{}", uuid::Uuid::new_v4().simple()));
+    std::fs::create_dir_all(&test_dir).unwrap();
+    let mgr = ChatExecutionManager::new(test_dir.clone());
+    let a = mgr.create_session(Some("Alpha".into()), None, None, None, None).await.unwrap();
+    let b = mgr.create_session(Some("Beta".into()), None, None, None, None).await.unwrap();
+
+    let first = mgr.list_sessions().await.unwrap();
+    assert_eq!(first.len(), 2);
+
+    // Changed on disk by someone else: the next list picks it up.
+    std::thread::sleep(Duration::from_millis(20));
+    tendril_core::chat::storage::rename_session(&test_dir, &a.id, "Alpha renamed").unwrap();
+    let second = mgr.list_sessions().await.unwrap();
+    let title = |list: &[tendril_core::chat::models::ChatSession], id: &str| {
+        list.iter().find(|s| s.id == id).map(|s| s.title.clone()).unwrap_or_default()
+    };
+    assert_eq!(title(&second, &a.id), "Alpha renamed");
+    assert_eq!(title(&second, &b.id), "Beta");
+
+    // A file that disappeared is no longer listed.
+    tendril_core::chat::storage::delete_session(&test_dir, &b.id).unwrap();
+    assert_eq!(mgr.list_sessions().await.unwrap().len(), 1);
+    let _ = std::fs::remove_dir_all(&test_dir);
+}

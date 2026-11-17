@@ -10,7 +10,7 @@ use super::prompt::ChatSpawnedJob;
 use crate::agents::providers::{build_agent_spec, AgentLaunchConfig, AgentProcessSpec};
 use crate::chat::models::{ChatMessage, ChatQueuedItem, ChatSession};
 use crate::chat::storage::{
-    delete_session as storage_delete, load_all_sessions, load_session,
+    delete_session as storage_delete, load_session,
     rename_session as storage_rename, sanitize_title, save_session,
 };
 use crate::error::{Result, TendrilError};
@@ -76,6 +76,35 @@ pub struct ChatExecutionManager {
     pub(super) spec_builder: SpecBuilder,
     pub(super) event_tx: broadcast::Sender<ChatEvent>,
     pub(super) persist_interval: Duration,
+    /// Each chat file's modified time and size when it was last parsed, so listing the chats parses
+    /// only the files that changed since. See [`Self::list_sessions`].
+    disk_stamps: Arc<std::sync::Mutex<HashMap<String, DiskStamp>>>,
+}
+
+/// What says whether a chat file changed: its modified time and length.
+type DiskStamp = (std::time::SystemTime, u64);
+
+/// The chat files in `dir`: id, path, and what says whether each one changed.
+fn chat_files(dir: &std::path::Path) -> Result<Vec<(String, PathBuf, DiskStamp)>> {
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let Ok(entry) = entry else { continue };
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+        let Some(id) = path.file_stem().and_then(|s| s.to_str()).map(str::to_string) else { continue };
+        let Ok(meta) = entry.metadata() else { continue };
+        if !meta.is_file() {
+            continue;
+        }
+        let modified = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+        out.push((id, path, (modified, meta.len())));
+    }
+    Ok(out)
 }
 
 impl ChatExecutionManager {
@@ -91,6 +120,7 @@ impl ChatExecutionManager {
             spec_builder: Arc::new(build_agent_spec),
             event_tx,
             persist_interval: Duration::from_secs(1),
+            disk_stamps: Arc::new(std::sync::Mutex::new(HashMap::new())),
         }
     }
 
@@ -108,14 +138,69 @@ impl ChatExecutionManager {
         self.event_tx.subscribe()
     }
 
+    /// Every chat on disk, newest first.
+    ///
+    /// Opening a manager lists the chats, and every worker task is a chat of its own, so on a daemon
+    /// that has run for a while this is hundreds of files, some of them megabytes. It used to read and
+    /// parse every one of them on every call, on the async runtime, which is what made opening a
+    /// project slow and stalled other requests while it ran. Now a file is parsed only when it is new
+    /// or its modified time or size changed since it was last parsed (the CLI writes chat files
+    /// directly, so the disk can change under us), and the reading happens off the runtime.
+    ///
+    /// A chat that is mid-turn is never replaced by its file: the turn saves on a timer, so the copy
+    /// in memory is the newer one. Replacing it is what the old version did.
     pub async fn list_sessions(&self) -> Result<Vec<ChatSession>> {
-        let mut list = load_all_sessions(&self.tendril_home)?;
-        let mut sessions_map = self.sessions.write().await;
-        for s in &list {
-            sessions_map.insert(s.id.clone(), s.clone());
+        let dir = crate::chat::storage::get_chats_dir(&self.tendril_home);
+        let on_disk = tokio::task::spawn_blocking(move || chat_files(&dir))
+            .await
+            .map_err(|e| TendrilError::Chat(e.to_string()))??;
+        let generating = self.generating_sessions.read().await.clone();
+
+        let mut out = Vec::with_capacity(on_disk.len());
+        let mut to_parse = Vec::new();
+        {
+            let map = self.sessions.read().await;
+            let stamps = self.disk_stamps.lock().unwrap_or_else(|e| e.into_inner());
+            for (id, path, stamp) in on_disk {
+                match map.get(&id) {
+                    Some(s) if generating.contains(&id) || stamps.get(&id) == Some(&stamp) => out.push(s.clone()),
+                    _ => to_parse.push((id, path, stamp)),
+                }
+            }
         }
-        list.sort_by_key(|a| std::cmp::Reverse(a.updated_at));
-        Ok(list)
+
+        if !to_parse.is_empty() {
+            let parsed = tokio::task::spawn_blocking(move || {
+                to_parse
+                    .into_iter()
+                    .filter_map(|(id, path, stamp)| {
+                        let raw = std::fs::read(&path).ok()?;
+                        let session = serde_json::from_slice::<ChatSession>(&raw).ok()?;
+                        Some((id, stamp, session))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .await
+            .map_err(|e| TendrilError::Chat(e.to_string()))?;
+            let mut map = self.sessions.write().await;
+            let generating = self.generating_sessions.read().await;
+            let mut stamps = self.disk_stamps.lock().unwrap_or_else(|e| e.into_inner());
+            for (id, stamp, session) in parsed {
+                // A turn that started while the file was being read keeps its own copy.
+                let session = match map.get(&id) {
+                    Some(live) if generating.contains(&id) => live.clone(),
+                    _ => {
+                        map.insert(id.clone(), session.clone());
+                        session
+                    }
+                };
+                stamps.insert(id, stamp);
+                out.push(session);
+            }
+        }
+
+        out.sort_by_key(|a| std::cmp::Reverse(a.updated_at));
+        Ok(out)
     }
 
     pub async fn get_session(&self, id: &str) -> Result<ChatSession> {
