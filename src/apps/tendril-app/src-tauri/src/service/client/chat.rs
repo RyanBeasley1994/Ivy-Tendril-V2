@@ -253,6 +253,21 @@ impl TendrilClient {
         Ok(resp.json().await?)
     }
 
+    /// The sessions the daemon says are in the middle of a turn.
+    pub async fn chat_generating(&self) -> Result<Vec<String>, BridgeError> {
+        let url = format!("{}/api/chat/generating", self.base_url);
+        let resp = self.client.get(&url).headers(self.headers()).send().await?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            return Err(BridgeError::new("CHAT_GENERATING_FAILED", format!("Failed to read working chats ({status})")));
+        }
+        let body: serde_json::Value = resp.json().await?;
+        Ok(body["sessions"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+            .unwrap_or_default())
+    }
+
     pub async fn get_chat_queue(&self, id: &str) -> Result<Vec<ChatQueuedItemDto>, BridgeError> {
         let url = format!(
             "{}/api/chat/sessions/{}/queue",

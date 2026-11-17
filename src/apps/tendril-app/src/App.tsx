@@ -392,6 +392,7 @@ export const App: React.FC = () => {
         if (lostSince) {
           void chatStore.fetchSessions().catch(() => {});
           void chatStore.refreshActiveSession().catch(() => {});
+          void chatStore.reconcileGenerating();
           jobsStore.fetchJobs().catch(() => {});
           plansStore.fetchPlans().catch(() => {});
         }

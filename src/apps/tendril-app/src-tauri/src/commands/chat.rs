@@ -93,6 +93,12 @@ pub async fn cmd_answer_chat_questions(
         .await
 }
 
+/// The sessions the daemon says are in the middle of a turn.
+#[tauri::command]
+pub async fn cmd_chat_generating() -> Result<Vec<String>, BridgeError> {
+    get_client_from_master()?.chat_generating().await
+}
+
 #[tauri::command]
 pub async fn cmd_get_chat_queue(id: String) -> Result<Vec<ChatQueuedItemDto>, BridgeError> {
     get_client_from_master()?.get_chat_queue(&id).await

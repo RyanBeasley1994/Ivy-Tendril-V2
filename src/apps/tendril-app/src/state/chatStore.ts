@@ -112,6 +112,10 @@ const liveChatStores = new Set<ChatStore>();
 
 /** Messages fetched when a conversation opens (and re-read): its newest window. */
 const MESSAGE_WINDOW = 60;
+/** How often the "working" spinners are checked against the daemon (see `reconcileGenerating`). */
+const RECONCILE_EVERY_MS = 10_000;
+/** A session marked working this recently is left alone: its turn may not have registered yet. */
+const RECONCILE_GRACE_MS = 15_000;
 /** Messages fetched per step when scrolling back through older ones. */
 const EARLIER_PAGE = 50;
 
@@ -207,6 +211,9 @@ export class ChatStore {
    * away from a working chat no longer leaves the composer stuck in its stop-and-queue state.
    */
   private generatingSessionIds: Set<string> = new Set();
+  /** When each session was last seen working here (its start, or its latest stream event). */
+  private generatingSeenAt: Map<string, number> = new Map();
+  private reconcileTimer: ReturnType<typeof setInterval> | null = null;
   private completedSessionIds: Set<string> = new Set();
   /**
    * Sessions whose stop has been asked for but whose turn has not ended. Per session, and not a
@@ -417,6 +424,8 @@ export class ChatStore {
     }
     if (generation !== this.generation) return;
     await this.fetchSessions();
+    this.startReconciling();
+    void this.reconcileGenerating();
   }
 
   /**
@@ -680,8 +689,10 @@ export class ChatStore {
       // is not a turn that stopped, so only the branch below - the turn actually ending - retires
       // the pending stop.
       this.generatingSessionIds.add(sessionId);
+      this.generatingSeenAt.set(sessionId, Date.now());
     } else {
       this.generatingSessionIds.delete(sessionId);
+      this.generatingSeenAt.delete(sessionId);
       this.completedSessionIds.add(sessionId);
       // The run this stop was asked about is over, whether the cancel ended it, the agent finished
       // first, or the daemon said so. Either way there is nothing left to be pending about.
@@ -893,8 +904,51 @@ export class ChatStore {
    * plan page from leaving another `chat-event` listener behind. The `init()` memo goes with it, so a
    * remount subscribes again rather than believing it already had.
    */
+  /**
+   * Checks the "working" state against the daemon's. It is otherwise learned only from events, so a
+   * turn whose end was missed (the connection dropped as it finished, or the event was lost in a
+   * burst) left its spinner on for good. A session the daemon says is idle, and that has shown no
+   * sign of life here for a little while, is marked finished and re-read; one the daemon says is
+   * working is marked working. The grace period keeps a message just sent, which is marked working
+   * before the daemon has registered its turn, from being cleared.
+   */
+  public async reconcileGenerating(): Promise<void> {
+    let working: string[];
+    try {
+      working = await chatApi.generatingSessions();
+    } catch {
+      return; // A daemon too old to say, or out of reach: keep what we have.
+    }
+    const server = new Set(working);
+    const now = Date.now();
+    let changed = false;
+    for (const id of Array.from(this.generatingSessionIds)) {
+      if (server.has(id)) continue;
+      if (now - (this.generatingSeenAt.get(id) ?? 0) < RECONCILE_GRACE_MS) continue;
+      this.setSessionGenerating(id, false);
+      if (this.state.activeSessionId === id) void this.refreshActiveSession().catch(() => {});
+      changed = true;
+    }
+    for (const id of server) {
+      if (!this.generatingSessionIds.has(id)) {
+        this.setSessionGenerating(id, true);
+        changed = true;
+      }
+    }
+    if (changed) this.notify();
+  }
+
+  private startReconciling(): void {
+    if (this.reconcileTimer) return;
+    this.reconcileTimer = setInterval(() => void this.reconcileGenerating(), RECONCILE_EVERY_MS);
+  }
+
   public destroy(): void {
     this.generation += 1;
+    if (this.reconcileTimer) {
+      clearInterval(this.reconcileTimer);
+      this.reconcileTimer = null;
+    }
     this.detachStorageListener();
     if (this.eventUnsubscribe) {
       this.eventUnsubscribe();

@@ -149,8 +149,14 @@ impl ChatExecutionManager {
         let initial_prompt = user_prompt.to_string();
         let initial_assistant_msg_id = assistant_msg_id.clone();
 
-        // Spawn async runner task
+        // Spawn async runner task. The turn runs inside `catch_unwind` so that however it ends, a panic
+        // included, the session leaves the generating set: otherwise one panic left a manager
+        // "working" for good, on the server and in every app, and queued every later message behind
+        // a turn that was no longer running.
+        let guard_mgr = Arc::clone(&mgr);
+        let guard_id = s_id.clone();
         tokio::spawn(async move {
+          let body = async move {
             let mut current_prompt = initial_prompt;
             // Only the turn that was injected is an event: a prompt dequeued afterwards is the user's.
             let mut current_role = role;
@@ -650,10 +656,17 @@ impl ChatExecutionManager {
                 }
             }
 
+          };
+            if futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(body)).await.is_err() {
+                tracing::error!("Chat turn for {guard_id} panicked; clearing its working state");
+                guard_mgr.live_turns.lock().await.remove(&guard_id);
+                guard_mgr.active_cancellations.lock().await.remove(&guard_id);
+            }
+
             // Clean up generating state
-            mgr.generating_sessions.write().await.remove(&s_id);
-            let _ = mgr.event_tx.send(ChatEvent::GeneratingState {
-                session_id: s_id.clone(),
+            guard_mgr.generating_sessions.write().await.remove(&guard_id);
+            let _ = guard_mgr.event_tx.send(ChatEvent::GeneratingState {
+                session_id: guard_id.clone(),
                 is_generating: false,
             });
         });

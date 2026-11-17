@@ -282,6 +282,15 @@ export const chatApi = {
     });
   },
 
+  /** The sessions the daemon says are in the middle of a turn right now. */
+  async generatingSessions(): Promise<string[]> {
+    if (!isTauri()) {
+      const body = (await httpJson("/api/chat/generating", "CHAT_GENERATING_FAILED")) as { sessions?: string[] } | null;
+      return body?.sessions ?? [];
+    }
+    return await invoke<string[]>("cmd_chat_generating");
+  },
+
   async getQueue(id: string): Promise<ChatQueuedItem[]> {
     if (!isTauri()) {
       const items = await httpJson(sessionPath(id, "/queue"), "GET_CHAT_QUEUE_FAILED");

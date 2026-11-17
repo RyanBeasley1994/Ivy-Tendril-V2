@@ -641,6 +641,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/models/status", get(models::models_status))
         .route("/api/models/refresh", post(models::refresh_models))
         // Chat
+        .route("/api/chat/generating", get(chat::generating_handler))
         .route(
             "/api/chat/sessions",
             get(chat::list_sessions_handler).post(chat::create_session_handler),

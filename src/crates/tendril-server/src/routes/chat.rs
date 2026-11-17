@@ -120,6 +120,11 @@ pub fn summary_json(mut session: tendril_core::chat::ChatSession) -> serde_json:
     value
 }
 
+/// `GET /api/chat/generating` — the sessions in the middle of a turn right now.
+pub async fn generating_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    Json(json!({ "sessions": state.chat_manager.generating_ids().await }))
+}
+
 pub async fn list_sessions_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<ListQuery>,

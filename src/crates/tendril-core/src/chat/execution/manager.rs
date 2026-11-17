@@ -340,6 +340,14 @@ impl ChatExecutionManager {
         Ok(())
     }
 
+    /// Every session in the middle of a turn: what the app checks its "working" spinners against, so
+    /// one whose end it never heard about (a dropped connection) does not spin for ever.
+    pub async fn generating_ids(&self) -> Vec<String> {
+        let mut ids: Vec<String> = self.generating_sessions.read().await.iter().cloned().collect();
+        ids.sort();
+        ids
+    }
+
     pub async fn is_generating(&self, id: &str) -> bool {
         self.generating_sessions.read().await.contains(id)
     }

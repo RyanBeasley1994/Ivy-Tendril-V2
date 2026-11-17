@@ -239,6 +239,7 @@ pub fn run() {
             cmd_cancel_chat_turn,
             cmd_answer_chat_questions,
             cmd_get_chat_queue,
+            cmd_chat_generating,
             cmd_enqueue_chat_message,
             cmd_clear_chat_queue,
             cmd_delete_queued_chat_item,
