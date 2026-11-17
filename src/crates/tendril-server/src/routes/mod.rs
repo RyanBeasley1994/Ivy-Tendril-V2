@@ -405,6 +405,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             post(projects::watch_pull_request),
         )
         .route(
+            "/api/projects/:name/manager/tabs",
+            get(projects::list_manager_tabs).post(projects::open_manager_tab),
+        )
+        .route(
+            "/api/projects/:name/manager/tabs/:tab",
+            post(projects::update_manager_tab),
+        )
+        .route(
             "/api/projects/:name/manager/tasks",
             get(projects::list_manager_tasks).post(projects::start_manager_task),
         )
@@ -428,6 +436,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/support/tickets", get(support::list_tickets))
         .route("/api/support/tickets/:id", get(support::get_ticket))
         .route("/api/support/tickets/:id/read", post(support::mark_read))
+        .route("/api/support/tickets/:id/attachments/:message/:index", get(support::get_attachment))
         .route("/api/support/tickets/:id/reply", post(support::reply))
         .route("/api/support/tickets/:id/status", post(support::set_status))
         .route("/api/support/tickets/:id/type", post(support::set_type))

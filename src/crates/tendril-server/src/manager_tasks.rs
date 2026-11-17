@@ -21,14 +21,10 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tendril_core::chat::execution::ChatTurnOptions;
-use tendril_core::chat::manager_brief::manager_session_id;
 use tendril_core::git::service::run_git;
 use tendril_core::missions::model::{MissionFile, MissionState};
 use tokio::sync::Mutex;
 
-/// Tasks running at once in one project. They skip the job queue, so this is the only thing between a
-/// keen manager and a dozen agents drawing on one rate limit.
-pub const MAX_RUNNING: usize = 2;
 /// How much of the worker's last message the manager is shown.
 const REPORT_CHARS: usize = 1500;
 /// A finished task whose worktree is still there after this long is a loose end.
@@ -70,6 +66,10 @@ pub struct Task {
     /// Why its worker was stopped, when it did not stop by itself.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<String>,
+    /// The manager session that asked (a tab or a ticket conversation), so the news goes back to it.
+    /// None for the project's main manager.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manager_session: Option<String>,
 }
 
 impl Task {
@@ -171,16 +171,11 @@ pub async fn start(
     instruction: &str,
     dir: Option<&str>,
     from: Option<&str>,
+    manager_session: Option<String>,
 ) -> Result<Task, String> {
     let instruction = instruction.trim();
     if instruction.is_empty() {
         return Err("A task needs an instruction".into());
-    }
-    let running = list(&state.tendril_home, project).iter().filter(|t| t.running()).count();
-    if running >= MAX_RUNNING {
-        return Err(format!(
-            "{running} tasks are already running in this project, which is the limit. Wait for one to finish (you are woken when it does), or fold this into the next one."
-        ));
     }
     let id: String = uuid::Uuid::new_v4().simple().to_string().chars().take(8).collect();
     let title = if title.trim().is_empty() { instruction.chars().take(60).collect::<String>() } else { title.trim().to_string() };
@@ -247,6 +242,7 @@ pub async fn start(
         created_at: chrono::Utc::now().to_rfc3339(),
         finished_at: None,
         stopped: None,
+        manager_session,
     };
     let prompt = worker_prompt(project, &dir, task.branch.as_deref(), own_worktree, instruction);
     if let Err(e) = run_turn(state, &task, &prompt).await {
@@ -445,7 +441,9 @@ pub async fn report_finished(state: &AppState) {
             }
             write(&state.tendril_home, &file);
         }
-        let manager = manager_session_id(&task.project);
+        let Some(manager) = crate::manager_tabs::deliver_to(state, &task.project, task.manager_session.as_deref()).await else {
+            continue;
+        };
         if let Err(e) = state.chat_manager.notify_event(&manager, &finished_message(&task, &report, &left)).await {
             tracing::debug!("Could not tell manager {manager} that task {} finished: {e}", task.id);
         }
@@ -673,6 +671,7 @@ mod tests {
             created_at: chrono::Utc::now().to_rfc3339(),
             finished_at: None,
             stopped: None,
+            manager_session: None,
         }
     }
 

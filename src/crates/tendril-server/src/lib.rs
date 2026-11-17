@@ -5,6 +5,7 @@ pub mod event_buffer;
 pub mod local_file_guard;
 pub mod manager_activity;
 pub mod manager_scheduler;
+pub mod manager_tabs;
 pub mod manager_tasks;
 pub mod telegram;
 pub mod master;

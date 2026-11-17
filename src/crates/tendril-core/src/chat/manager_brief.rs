@@ -126,9 +126,21 @@ pub fn ticket_session_id(project: &str, ticket_id: &str) -> String {
     format!("{}{TICKET_MARKER}{ticket}", manager_session_id(project))
 }
 
-/// The project manager's own id for any manager session, ticket conversations included.
+/// What separates a project's manager id from one of its extra manager tabs.
+const TAB_MARKER: &str = "--tab-";
+
+/// One more manager for a project, opened by the operator as a tab beside the main one: a manager in
+/// every respect, with its own conversation. The main manager stays the one the scheduler, the morning
+/// briefing and Telegram talk to.
+pub fn tab_session_id(project: &str, tab_id: &str) -> String {
+    let tab: String = tab_id.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    format!("{}{TAB_MARKER}{tab}", manager_session_id(project))
+}
+
+/// The project manager's own id for any manager session, ticket conversations and tabs included.
 pub fn base_manager_session_id(session_id: &str) -> &str {
-    session_id.split(TICKET_MARKER).next().unwrap_or(session_id)
+    let base = session_id.split(TICKET_MARKER).next().unwrap_or(session_id);
+    base.split(TAB_MARKER).next().unwrap_or(base)
 }
 
 /// Bumped whenever the briefing changes, so an existing manager's copy is replaced on next open.
@@ -252,7 +264,7 @@ back on": use another way, or delegate it, and carry on.
   you are woken with its report. `--from <branch>` builds on a branch not merged yet; `--in <directory>`
   works somewhere that already exists (a mission's worktree, a PR's branch); `--continue <task-id>
   "<what is wrong>"` sends it back; `tendril manager task-stop --project {project} <task-id>` stops one.
-  Two at once per project at most. The operator sees tasks in the project's Tasks tab, and the daemon
+  Leave tasks other managers (tabs) started to them. The operator sees tasks in the project's Tasks tab, and the daemon
   stops a worker that writes nothing for 20 minutes or runs past two hours, then wakes you. Never say a
   worker is running because you were told so earlier: say what the snapshot says now. The instruction is all the worker
   gets: say what to change and where, what must be true when it is done, and how to check it.
@@ -463,6 +475,9 @@ mod tests {
         assert!(is_manager_session(&ticket));
         assert_eq!(base_manager_session_id(&ticket), manager_session_id("Monorepo-Propfirm"));
         assert_eq!(base_manager_session_id(&manager_session_id("P")), manager_session_id("P"));
+        let tab = tab_session_id("Monorepo-Propfirm", "a1b2c3");
+        assert!(is_manager_session(&tab));
+        assert_eq!(base_manager_session_id(&tab), manager_session_id("Monorepo-Propfirm"));
         // Nothing that writes into a repository, builds, commits, merges or pushes.
         for forbidden in ["Write", "Edit", "Bash(git commit", "Bash(git push", "Bash(git merge ", "Bash(git merge)", "Bash(pnpm", "Bash(npm", "Bash(cargo", "Bash(rm *)", "Bash(sudo"] {
             assert!(

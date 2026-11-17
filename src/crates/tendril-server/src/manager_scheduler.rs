@@ -33,6 +33,9 @@ pub struct Wake {
     /// RFC 3339.
     pub due_at: String,
     pub note: String,
+    /// The manager session that asked (a tab or a ticket conversation), so it is the one woken.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manager_session: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -64,6 +67,7 @@ pub async fn add_wake(
     project: &str,
     after_seconds: u64,
     note: &str,
+    manager_session: Option<String>,
 ) -> std::io::Result<Wake> {
     let seconds = after_seconds.clamp(MIN_WAKE_SECONDS, MAX_WAKE_SECONDS);
     let wake = Wake {
@@ -71,6 +75,7 @@ pub async fn add_wake(
         project: project.to_string(),
         due_at: (chrono::Utc::now() + chrono::Duration::seconds(seconds as i64)).to_rfc3339(),
         note: note.trim().to_string(),
+        manager_session,
     };
     let _guard = FILE_LOCK.lock().await;
     let mut file = read_wakes(tendril_home);
@@ -508,7 +513,9 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
 
             // 2. Wake-ups the managers scheduled for themselves.
             for wake in take_due(&state.tendril_home).await {
-                let Some(manager) = manager_exists(&state, &wake.project).await else { continue };
+                let Some(manager) = crate::manager_tabs::deliver_to(&state, &wake.project, wake.manager_session.as_deref()).await else {
+                    continue;
+                };
                 let message = format!(
                     "Wake-up you scheduled for yourself: {}",
                     if wake.note.is_empty() { "(no note)" } else { &wake.note }
@@ -587,7 +594,7 @@ pub fn spawn_manager_scheduler(state: Arc<AppState>) {
                     Ok(status) => {
                         if let Some(message) = crate::pr_watch::wake_message(&watch, &status, age) {
                             crate::pr_watch::remove_watch(&state.tendril_home, &watch.id).await;
-                            if let Some(manager) = manager_exists(&state, &watch.project).await {
+                            if let Some(manager) = crate::manager_tabs::deliver_to(&state, &watch.project, watch.manager_session.as_deref()).await {
                                 if let Err(e) = state.chat_manager.notify_event(&manager, &message).await {
                                     tracing::debug!("Could not wake manager {manager}: {e}");
                                 }
@@ -670,7 +677,7 @@ mod tests {
     async fn a_wake_is_clamped_and_only_comes_due_when_its_time_arrives() {
         let home = temp_home();
         // Asked for one second: clamped up, so it is not due yet.
-        let wake = add_wake(&home, "Acme", 1, "check CI").await.unwrap();
+        let wake = add_wake(&home, "Acme", 1, "check CI", None).await.unwrap();
         let due_at = chrono::DateTime::parse_from_rfc3339(&wake.due_at).unwrap();
         assert!(due_at > chrono::Utc::now() + chrono::Duration::seconds(20));
         assert!(take_due(&home).await.is_empty());
@@ -683,6 +690,7 @@ mod tests {
             project: "Acme".into(),
             due_at: (chrono::Utc::now() - chrono::Duration::seconds(5)).to_rfc3339(),
             note: "look at the deploy".into(),
+            manager_session: None,
         });
         write_wakes(&home, &file).unwrap();
         let due = take_due(&home).await;

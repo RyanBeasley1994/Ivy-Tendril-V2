@@ -83,6 +83,28 @@ pub async fn cmd_telegram(action: String, token: Option<String>) -> Result<serde
     get_client_from_master()?.telegram(&action, token).await
 }
 
+/// Writes a file the operator chose to save (a support ticket's attachment) where they picked in the
+/// save dialog.
+#[tauri::command]
+pub async fn cmd_save_file(path: String, data_base64: String) -> Result<(), BridgeError> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data_base64.as_bytes())
+        .map_err(|e| BridgeError::new("SAVE_FAILED", format!("The file's data was unreadable: {e}")))?;
+    std::fs::write(&path, bytes).map_err(|e| BridgeError::new("SAVE_FAILED", format!("Could not save to {path}: {e}")))
+}
+
+/// A project's extra manager tabs: `list`, `open` a new one, or `close` / `reopen` / `rename` one.
+#[tauri::command]
+pub async fn cmd_manager_tabs(
+    project_name: String,
+    action: String,
+    tab_id: Option<String>,
+    title: Option<String>,
+) -> Result<serde_json::Value, BridgeError> {
+    get_client_from_master()?.manager_tabs(&project_name, &action, tab_id.as_deref(), title).await
+}
+
 #[tauri::command]
 pub async fn cmd_list_manager_tasks(project_name: String) -> Result<serde_json::Value, BridgeError> {
     get_client_from_master()?

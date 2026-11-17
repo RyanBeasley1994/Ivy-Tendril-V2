@@ -20,6 +20,7 @@ pub mod onboarding;
 pub mod plans;
 pub mod project_links;
 pub mod support;
+pub mod support_attachments;
 pub mod support_cases;
 pub mod support_data;
 pub mod support_kube;

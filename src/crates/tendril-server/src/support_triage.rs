@@ -120,7 +120,7 @@ async fn pass(state: &Arc<AppState>) -> Result<(), String> {
                 if let Some(session) = t["handoff"]["sessionId"].as_str() {
                     let text = t["lastMessage"]["content"].as_str().unwrap_or_default().trim();
                     let prompt = format!(
-                        "The partner wrote again on this ticket:\n\n> {}\n\nInvestigate anything new before replying, and keep to the triage rules.",
+                        "The partner wrote again on this ticket:\n\n> {}\n\nInvestigate anything new before replying, and keep to the triage rules. If they attached anything, `tendril support attachments <ticket>` saves it and says where.",
                         text.replace('\n', "\n> ")
                     );
                     // Not on Telegram: only a ticket's first message goes there, not each reply.

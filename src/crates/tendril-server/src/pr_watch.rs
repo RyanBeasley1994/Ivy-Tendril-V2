@@ -29,6 +29,9 @@ pub struct PrWatch {
     pub repo: Option<String>,
     pub created_at: String,
     pub next_check_at: String,
+    /// The manager session that asked (a tab or a ticket conversation), so it is the one woken.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manager_session: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -53,7 +56,7 @@ fn write(tendril_home: &Path, file: &WatchFile) {
     let _ = std::fs::write(path(tendril_home), serde_json::to_vec_pretty(file).unwrap_or_default());
 }
 
-pub async fn add_watch(tendril_home: &Path, project: &str, pr: u64, repo: Option<String>) -> PrWatch {
+pub async fn add_watch(tendril_home: &Path, project: &str, pr: u64, repo: Option<String>, manager_session: Option<String>) -> PrWatch {
     let now = chrono::Utc::now().to_rfc3339();
     let watch = PrWatch {
         id: uuid::Uuid::new_v4().to_string(),
@@ -62,6 +65,7 @@ pub async fn add_watch(tendril_home: &Path, project: &str, pr: u64, repo: Option
         repo: repo.filter(|r| !r.trim().is_empty()),
         created_at: now.clone(),
         next_check_at: now,
+        manager_session,
     };
     let _guard = FILE_LOCK.lock().await;
     let mut file = read(tendril_home);
@@ -251,6 +255,7 @@ mod tests {
             repo: None,
             created_at: String::new(),
             next_check_at: String::new(),
+            manager_session: None,
         }
     }
 
@@ -323,8 +328,8 @@ mod tests {
     async fn watching_the_same_pr_twice_is_one_watch_and_due_ones_are_pushed_back() {
         let home = std::env::temp_dir().join(format!("tendril-watch-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&home).unwrap();
-        add_watch(&home, "Acme", 46, None).await;
-        add_watch(&home, "Acme", 46, None).await;
+        add_watch(&home, "Acme", 46, None, None).await;
+        add_watch(&home, "Acme", 46, None, None).await;
         assert_eq!(read(&home).watches.len(), 1);
         assert_eq!(due_watches(&home).await.len(), 1, "a new watch is due straight away");
         assert!(due_watches(&home).await.is_empty(), "and then not again for a minute");

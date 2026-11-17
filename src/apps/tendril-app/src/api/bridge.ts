@@ -105,6 +105,7 @@ import type {
   ProjectMemoryEntry,
   ProjectLink,
   ProjectLinkInput,
+  ManagerTab,
   ManagerTask,
   ProjectDocker,
   TelegramStatus,
@@ -1257,6 +1258,42 @@ export const tauriClient = {
             ? ["/api/telegram", { method: "DELETE" }]
             : [`/api/telegram/${action}`, { method: "POST" }];
     return invokeOrFetch<TelegramStatus>("cmd_telegram", { action, token: token ?? null }, path, init);
+  },
+
+  /** The project's extra manager tabs, open and closed. */
+  async listManagerTabs(this: void, projectName: string): Promise<ManagerTab[]> {
+    const body = await invokeOrFetch<{ tabs?: ManagerTab[] }>(
+      "cmd_manager_tabs",
+      { projectName, action: "list", tabId: null, title: null },
+      `/api/projects/${encodeURIComponent(projectName)}/manager/tabs`,
+    );
+    return body.tabs ?? [];
+  },
+
+  /** Opens one more manager for the project, briefed like the main one. */
+  async openManagerTab(this: void, projectName: string, title?: string): Promise<ManagerTab> {
+    return invokeOrFetch<ManagerTab>(
+      "cmd_manager_tabs",
+      { projectName, action: "open", tabId: null, title: title ?? null },
+      `/api/projects/${encodeURIComponent(projectName)}/manager/tabs`,
+      { method: "POST", body: JSON.stringify({ title: title ?? null }) },
+    );
+  },
+
+  /** Closes (archives), reopens or renames a manager tab. */
+  async updateManagerTab(
+    this: void,
+    projectName: string,
+    tabId: string,
+    action: "close" | "reopen" | "rename",
+    title?: string,
+  ): Promise<ManagerTab> {
+    return invokeOrFetch<ManagerTab>(
+      "cmd_manager_tabs",
+      { projectName, action, tabId, title: title ?? null },
+      `/api/projects/${encodeURIComponent(projectName)}/manager/tabs/${encodeURIComponent(tabId)}`,
+      { method: "POST", body: JSON.stringify({ action, title: title ?? null }) },
+    );
   },
 
   /** The tasks the project's manager handed straight to an agent: running, and finished but not cleaned up. */

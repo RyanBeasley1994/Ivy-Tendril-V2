@@ -58,6 +58,19 @@ export interface DockerContainer {
   ports: string;
 }
 
+/**
+ * One more manager for a project, opened as a tab beside the main one. The main manager is never a tab:
+ * it is always there. Closing a tab archives it; `closedAt` is set and it can be reopened.
+ */
+export interface ManagerTab {
+  id: string;
+  title: string;
+  /** The chat session its manager talks in. */
+  sessionId: string;
+  createdAt: string;
+  closedAt?: string;
+}
+
 /** A small job the project's manager handed straight to one agent (`tendril manager task`). */
 export interface ManagerTask {
   id: string;

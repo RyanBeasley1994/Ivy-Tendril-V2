@@ -204,6 +204,30 @@ impl TendrilClient {
             .await
     }
 
+    /// A project's extra manager tabs: `list` them, `open` a new one, or `close` / `reopen` / `rename` one.
+    pub async fn manager_tabs(
+        &self,
+        project_name: &str,
+        action: &str,
+        tab_id: Option<&str>,
+        title: Option<String>,
+    ) -> Result<serde_json::Value, BridgeError> {
+        let base = format!("/api/projects/{}/manager/tabs", path_segment(project_name));
+        let (method, path, body) = match (action, tab_id) {
+            ("list", _) => (reqwest::Method::GET, base, None),
+            ("open", _) => (reqwest::Method::POST, base, Some(serde_json::json!({ "title": title }))),
+            ("close" | "reopen" | "rename", Some(id)) => (
+                reqwest::Method::POST,
+                format!("{base}/{}", path_segment(id)),
+                Some(serde_json::json!({ "action": action, "title": title })),
+            ),
+            (other, _) => {
+                return Err(BridgeError::new("MANAGER_TABS_FAILED", format!("'{other}' is not something a manager tab can do")))
+            }
+        };
+        self.project_assets_request(method, &path, body, "MANAGER_TABS_FAILED", "change the manager tabs", None).await
+    }
+
     /// The tasks the project's manager handed straight to an agent: running, and finished but not yet
     /// cleaned up.
     pub async fn list_manager_tasks(

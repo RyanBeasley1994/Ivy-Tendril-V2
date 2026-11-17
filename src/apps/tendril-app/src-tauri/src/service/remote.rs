@@ -59,6 +59,21 @@ struct Active {
 
 static ACTIVE: RwLock<Option<Active>> = RwLock::new(None);
 
+/// When the session token was last obtained, in wall-clock seconds since the epoch. The refresh loop
+/// judges the token's age by this rather than by a sleep: tokio's timers do not run while the Mac is
+/// asleep, so after an hour's sleep a 10-minute sleep could still have most of its time to go while
+/// the token had long expired, and every reconnect was refused until it finally ran.
+static TOKEN_AT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn wall_secs() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+/// Whether the token should be renewed now: the last attempt failed, or the one we hold is getting old.
+fn refresh_due(healthy: bool, token_at: u64, now: u64) -> bool {
+    !healthy || now.saturating_sub(token_at) >= REFRESH_EVERY.as_secs()
+}
+
 /// Accepts what an operator is likely to type: `1.2.3.4`, `my-vps:5010`, `http://host:5010`, or a
 /// tunnel's `https://name.trycloudflare.com`. Without a scheme it is `http` on port 5010; with one,
 /// the scheme's own default port applies, which is what a tunnel or reverse proxy URL needs.
@@ -200,15 +215,18 @@ pub fn init_at_startup(home: &Path) {
         last_error,
     });
 
+    if current().is_some_and(|a| a.token.is_some()) {
+        TOKEN_AT.store(wall_secs(), std::sync::atomic::Ordering::SeqCst);
+    }
     tauri::async_runtime::spawn(async {
         loop {
+            // A short tick, and the decision by the wall clock (see `TOKEN_AT`), so waking from sleep
+            // or getting the network back renews an expired token within seconds.
+            tokio::time::sleep(RETRY_EVERY).await;
             let healthy = current().is_some_and(|a| a.token.is_some() && a.last_error.is_none());
-            tokio::time::sleep(if healthy {
-                REFRESH_EVERY
-            } else {
-                RETRY_EVERY
-            })
-            .await;
+            if !refresh_due(healthy, TOKEN_AT.load(std::sync::atomic::Ordering::SeqCst), wall_secs()) {
+                continue;
+            }
             let Some(active) = current() else { return };
             let result = login(
                 &active.origin,
@@ -222,6 +240,7 @@ pub fn init_at_startup(home: &Path) {
                     Ok(token) => {
                         active.token = Some(token);
                         active.last_error = None;
+                        TOKEN_AT.store(wall_secs(), std::sync::atomic::Ordering::SeqCst);
                     }
                     Err(e) => {
                         tracing::warn!("Remote login refresh failed: {e}");
@@ -293,6 +312,14 @@ pub fn status() -> RemoteStatusDto {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_token_is_renewed_by_its_real_age_or_after_a_failure() {
+        assert!(!refresh_due(true, 1_000, 1_000 + 60));
+        assert!(refresh_due(true, 1_000, 1_000 + REFRESH_EVERY.as_secs()), "old enough");
+        assert!(refresh_due(true, 1_000, 1_000 + 3_600), "an hour asleep");
+        assert!(refresh_due(false, 1_000, 1_000), "the last attempt failed");
+    }
 
     #[test]
     fn a_bare_host_or_ip_is_http_on_tendrils_port() {

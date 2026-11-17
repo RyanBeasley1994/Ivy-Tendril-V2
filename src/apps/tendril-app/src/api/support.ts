@@ -164,6 +164,15 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 const ticket = (id: string, rest = "") => `/api/support/tickets/${encodeURIComponent(id)}${rest}`;
 
+/** One attachment's bytes, fetched by the daemon with the operator's Operations login. */
+export interface TicketAttachmentData {
+  filename: string;
+  contentType: string;
+  image: boolean;
+  size: number;
+  dataBase64: string;
+}
+
 export const supportApi = {
   status: () => call<SupportStatus>("GET", "/api/support/status"),
   connect: (baseUrl: string, email: string, password: string) =>
@@ -173,6 +182,11 @@ export const supportApi = {
   list: (includeDone: boolean) =>
     call<{ tickets: TicketSummary[]; total: number }>("GET", `/api/support/tickets?includeDone=${includeDone}`),
   get: (id: string) => call<TicketDetail>("GET", ticket(id)),
+  attachment: (id: string, messageId: string, index: number) =>
+    call<TicketAttachmentData>(
+      "GET",
+      ticket(id, `/attachments/${encodeURIComponent(messageId)}/${index}`),
+    ),
   markRead: (id: string) => call<unknown>("POST", ticket(id, "/read")),
   reply: (id: string, content: string, internal: boolean) =>
     call<unknown>("POST", ticket(id, "/reply"), { content, internal }),

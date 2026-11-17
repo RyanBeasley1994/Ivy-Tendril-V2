@@ -13,6 +13,27 @@ use tokio_tungstenite::tungstenite::Message;
 /// (Cloudflare after 100s), and the daemon itself never pings. Well inside that, so an idle
 /// connection stays up rather than cycling through disconnected/reconnecting.
 const PING_EVERY: Duration = Duration::from_secs(30);
+/// Nothing at all from the daemon for this long (not even the pong to our ping) means the connection
+/// is dead, even though the socket never said so: after the network drops, a write still lands in the
+/// kernel's buffer and a read just waits, so without this the bridge sat "connected" for ever.
+const DEAD_AFTER: Duration = Duration::from_secs(75);
+/// A connect that has not finished by now (a TLS handshake into a dead network) is given up and retried.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Seconds since the epoch, by the wall clock: unlike `Instant` on macOS, it keeps counting while the
+/// machine sleeps, so a connection that went quiet across a sleep is seen as dead at once on waking.
+fn wall_secs() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+/// The URL to (re)connect to: with `since` the last event seen, the daemon replays what was missed
+/// while the connection was down before carrying on live.
+fn with_since(url: &str, since: Option<u64>) -> String {
+    match since {
+        Some(seq) if seq > 0 => format!("{url}{}since={seq}", if url.contains('?') { '&' } else { '?' }),
+        _ => url.to_string(),
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WSClientMessage {
@@ -48,9 +69,11 @@ impl WsBridge {
         tauri::async_runtime::spawn(async move {
             let mut backoff = Duration::from_millis(500);
             let max_backoff = Duration::from_secs(10);
+            // The last event's sequence number, so a reconnect is replayed what it missed.
+            let mut last_seq: Option<u64> = None;
 
             loop {
-                let mut req = match ws_url.as_str().into_client_request() {
+                let mut req = match with_since(&ws_url, last_seq).as_str().into_client_request() {
                     Ok(r) => r,
                     Err(e) => {
                         tracing::error!("Invalid WebSocket URL: {e}");
@@ -75,7 +98,11 @@ impl WsBridge {
 
                 let _ = app_handle.emit("service-status", "reconnecting");
 
-                match connect_async(req).await {
+                let connected = match tokio::time::timeout(CONNECT_TIMEOUT, connect_async(req)).await {
+                    Ok(result) => result.map_err(|e| e.to_string()),
+                    Err(_) => Err(format!("no answer within {CONNECT_TIMEOUT:?}")),
+                };
+                match connected {
                     Ok((ws_stream, _)) => {
                         backoff = Duration::from_millis(500);
                         is_connected_clone.store(true, Ordering::SeqCst);
@@ -84,10 +111,15 @@ impl WsBridge {
                         let (mut write, mut read) = ws_stream.split();
                         let mut ping = tokio::time::interval(PING_EVERY);
                         ping.tick().await;
+                        let mut heard_at = wall_secs();
 
                         loop {
                             tokio::select! {
                                 _ = ping.tick() => {
+                                    if wall_secs().saturating_sub(heard_at) >= DEAD_AFTER.as_secs() {
+                                        tracing::warn!("WebSocket silent for {DEAD_AFTER:?}; reconnecting");
+                                        break;
+                                    }
                                     if write.send(Message::Ping(Vec::new().into())).await.is_err() {
                                         break;
                                     }
@@ -100,10 +132,16 @@ impl WsBridge {
                                     }
                                 }
                                 msg_opt = read.next() => {
+                                    if matches!(msg_opt, Some(Ok(_))) {
+                                        heard_at = wall_secs();
+                                    }
                                     match msg_opt {
                                         Some(Ok(Message::Text(txt))) => {
                                             let text_str = txt.to_string();
                                             let (event_name, payload) = route_ws_message(&text_str);
+                                            if let Some(seq) = payload.get("seq").and_then(|s| s.as_u64()) {
+                                                last_seq = Some(last_seq.map_or(seq, |l| l.max(seq)));
+                                            }
                                             let _ = app_handle.emit(event_name, &payload);
                                         }
                                         Some(Ok(Message::Close(_))) | None | Some(Err(_)) => {
@@ -178,6 +216,14 @@ pub fn route_ws_message(text_str: &str) -> (&'static str, serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_reconnect_asks_for_what_it_missed() {
+        assert_eq!(with_since("wss://h:443/ws", None), "wss://h:443/ws");
+        assert_eq!(with_since("wss://h:443/ws", Some(0)), "wss://h:443/ws");
+        assert_eq!(with_since("wss://h:443/ws", Some(42)), "wss://h:443/ws?since=42");
+        assert_eq!(with_since("wss://h/ws?token=t", Some(7)), "wss://h/ws?token=t&since=7");
+    }
 
     #[test]
     fn test_route_chat_events() {

@@ -17,6 +17,7 @@ import { ChatStore } from "../../state/chatStore";
 import type { ChatMessage } from "../../types/chat";
 import { ChatView } from "../ChatView";
 import { TriageCaseBlock, TriagePills, TriageSettingsDialog } from "./Triage";
+import { TicketAttachments } from "./TicketAttachments";
 import { formatAge } from "../../utils/commandCenter";
 import { Page, PageHeader } from "../../components/page/Page";
 import { Card, GhostButton, IconButton, Pill, PrimaryButton, Seg, type Tone } from "../../components/page/kit";
@@ -637,9 +638,9 @@ export const TicketPanel: React.FC<{
                 <span className="ml-auto font-mono">{ago(m.createdAt)}</span>
               </div>
               <div className="whitespace-pre-wrap break-words text-[12.5px] text-foreground">{m.content}</div>
-              {m.attachments?.map((a) => (
-                <span key={a.url} className="truncate font-mono text-[11px] text-info">{a.filename}</span>
-              ))}
+              {ticket && m.attachments && m.attachments.length > 0 && (
+                <TicketAttachments ticketId={ticket.id} messageId={m.id} attachments={m.attachments} />
+              )}
             </div>
           );
         })}

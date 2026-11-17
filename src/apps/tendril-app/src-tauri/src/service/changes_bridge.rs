@@ -40,9 +40,14 @@ impl ChangeBridge {
         tauri::async_runtime::spawn(async move {
             let mut backoff = Duration::from_millis(500);
             let max_backoff = Duration::from_secs(10);
-            // No timeout: an idle change stream is normal, and the keep-alive comments are what
-            // distinguish "quiet" from "dead".
-            let client = reqwest::Client::new();
+            // No overall timeout: an idle change stream is normal. The daemon's keep-alive comment every
+            // 15 s is what tells "quiet" from "dead", so a read that hears nothing for
+            // `super::STREAM_DEAD_AFTER` gives the connection up; after the network drops, the read
+            // would otherwise wait for ever and the stream never come back.
+            let client = reqwest::Client::builder()
+                .connect_timeout(super::STREAM_CONNECT_TIMEOUT)
+                .build()
+                .unwrap_or_default();
             let discovery = super::MasterDiscovery::new();
             let mut origin = base_url.trim_end_matches('/').to_string();
             let mut secret = secret;
@@ -75,7 +80,11 @@ impl ChangeBridge {
                         let mut response = response;
                         let mut buffer = String::new();
                         loop {
-                            match response.chunk().await {
+                            let Ok(chunk) = tokio::time::timeout(super::STREAM_DEAD_AFTER, response.chunk()).await else {
+                                tracing::warn!("Change stream silent for {:?}; reconnecting", super::STREAM_DEAD_AFTER);
+                                break;
+                            };
+                            match chunk {
                                 Ok(Some(bytes)) => {
                                     buffer.push_str(&String::from_utf8_lossy(&bytes));
                                     for (name, data) in parse_sse_frames(&mut buffer) {

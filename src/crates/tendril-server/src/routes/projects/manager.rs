@@ -103,6 +103,92 @@ pub async fn get_or_create_project_manager(
     }
 }
 
+/// `GET /api/projects/:name/manager/tabs` — the project's extra manager tabs, open and closed (see
+/// `crate::manager_tabs`). The main manager is not one of them; it is always there.
+pub async fn list_manager_tabs(State(state): State<Arc<AppState>>, Path(name): Path<String>) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    Json(json!({ "tabs": crate::manager_tabs::list(&state.tendril_home, &project.name) })).into_response()
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+pub struct TabRequest {
+    #[serde(default)]
+    pub title: Option<String>,
+    /// For an existing tab: `close`, `reopen` or `rename`.
+    #[serde(default)]
+    pub action: Option<String>,
+}
+
+fn tab_title(project: &str, tab: &crate::manager_tabs::Tab) -> String {
+    format!("Manager · {project} · {}", tab.title)
+}
+
+/// `POST /api/projects/:name/manager/tabs` — opens one more manager for the project, briefed like the
+/// main one, and returns its tab.
+pub async fn open_manager_tab(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    body: Option<Json<TabRequest>>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    let title = body.and_then(|Json(b)| b.title);
+    let tab = match crate::manager_tabs::add(&state.tendril_home, &project.name, title.as_deref()).await {
+        Ok(tab) => tab,
+        Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e),
+    };
+    if let Err(response) = open_manager_session(&state, &project.name, &tab.session_id, &tab_title(&project.name, &tab)).await {
+        return response;
+    }
+    (StatusCode::OK, Json(json!(tab))).into_response()
+}
+
+/// `POST /api/projects/:name/manager/tabs/:tab` — closes (archives), reopens or renames a tab. Closing
+/// keeps the conversation, and leaves anything its manager started running: what would have woken it
+/// goes to the main manager until it is reopened.
+pub async fn update_manager_tab(
+    State(state): State<Arc<AppState>>,
+    Path((name, tab_id)): Path<(String, String)>,
+    Json(body): Json<TabRequest>,
+) -> impl IntoResponse {
+    let project = match find_project(&state, &name) {
+        Ok(p) => p,
+        Err(response) => return response,
+    };
+    let home = &state.tendril_home;
+    let result = match body.action.as_deref().unwrap_or_default() {
+        "close" => {
+            let now = Utc::now().to_rfc3339();
+            crate::manager_tabs::update(home, &project.name, &tab_id, |t| t.closed_at = Some(now)).await
+        }
+        "reopen" => crate::manager_tabs::update(home, &project.name, &tab_id, |t| t.closed_at = None).await,
+        "rename" => {
+            let Some(title) = body.title.as_deref().map(str::trim).filter(|t| !t.is_empty()).map(str::to_string) else {
+                return error(StatusCode::BAD_REQUEST, "A tab needs a name");
+            };
+            crate::manager_tabs::update(home, &project.name, &tab_id, |t| t.title = title).await
+        }
+        other => return error(StatusCode::BAD_REQUEST, format!("'{other}' is not something a tab can do: close, reopen or rename")),
+    };
+    let tab = match result {
+        Ok(tab) => tab,
+        Err(e) => return error(StatusCode::NOT_FOUND, e),
+    };
+    if tab.open() {
+        // Reopened (or renamed while open): its conversation is there again, briefed as of now.
+        if let Err(response) = open_manager_session(&state, &project.name, &tab.session_id, &tab_title(&project.name, &tab)).await {
+            return response;
+        }
+        let _ = state.chat_manager.rename_session(&tab.session_id, &tab_title(&project.name, &tab)).await;
+    }
+    (StatusCode::OK, Json(json!(tab))).into_response()
+}
+
 /// Opens (or creates, briefed and on the project's manager engine) a manager session for `project`
 /// under `id`: the project's own manager, or a ticket conversation (`manager_brief::ticket_session_id`).
 /// Returns whether it was created.
@@ -270,12 +356,23 @@ pub async fn managers_status(State(state): State<Arc<AppState>>) -> impl IntoRes
     Json(Value::Object(out))
 }
 
+/// The manager session a request came from, kept only when it is one of this project's own managers
+/// other than the main one (whose news goes to it anyway).
+fn asker(project: &str, session: Option<String>) -> Option<String> {
+    session
+        .map(|s| s.trim().to_string())
+        .filter(|s| crate::manager_tabs::belongs_to(project, s) && *s != manager_session_id(project))
+}
+
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WakeRequest {
     pub after_seconds: u64,
     #[serde(default)]
     pub note: String,
+    /// The manager session asking (`$TENDRIL_CHAT_SESSION_ID`), so the answer goes back to that tab.
+    #[serde(default)]
+    pub session: Option<String>,
 }
 
 /// `POST /api/projects/:name/manager/wake` — the manager asks to be woken later, with a note.
@@ -288,7 +385,7 @@ pub async fn schedule_manager_wake(
         Ok(p) => p,
         Err(response) => return response,
     };
-    match crate::manager_scheduler::add_wake(&state.tendril_home, &project.name, body.after_seconds, &body.note).await {
+    match crate::manager_scheduler::add_wake(&state.tendril_home, &project.name, body.after_seconds, &body.note, asker(&project.name, body.session)).await {
         Ok(wake) => (StatusCode::OK, Json(json!(wake))).into_response(),
         Err(e) => error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     }
@@ -299,6 +396,9 @@ pub struct WatchPrRequest {
     pub pr: u64,
     #[serde(default)]
     pub repo: Option<String>,
+    /// The manager session asking (`$TENDRIL_CHAT_SESSION_ID`), so the answer goes back to that tab.
+    #[serde(default)]
+    pub session: Option<String>,
 }
 
 /// `POST /api/projects/:name/manager/watch` — the manager asks the daemon to watch a pull request's
@@ -312,7 +412,7 @@ pub async fn watch_pull_request(
         Ok(p) => p,
         Err(response) => return response,
     };
-    let watch = crate::pr_watch::add_watch(&state.tendril_home, &project.name, body.pr, body.repo).await;
+    let watch = crate::pr_watch::add_watch(&state.tendril_home, &project.name, body.pr, body.repo, asker(&project.name, body.session)).await;
     (StatusCode::OK, Json(json!(watch))).into_response()
 }
 
@@ -331,6 +431,9 @@ pub struct TaskRequest {
     /// The id of a finished task to send back with `prompt`, instead of starting a new one.
     #[serde(default, rename = "continue")]
     pub continue_id: Option<String>,
+    /// The manager session asking (`$TENDRIL_CHAT_SESSION_ID`), so the answer goes back to that tab.
+    #[serde(default)]
+    pub session: Option<String>,
 }
 
 /// `POST /api/projects/:name/manager/tasks` — the manager hands a small job straight to one agent, or
@@ -358,6 +461,7 @@ pub async fn start_manager_task(
                 &body.prompt,
                 body.dir.as_deref(),
                 body.from.as_deref(),
+                asker(&project.name, body.session),
             )
             .await
         }

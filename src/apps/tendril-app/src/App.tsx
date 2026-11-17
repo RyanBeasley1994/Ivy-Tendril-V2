@@ -15,6 +15,7 @@ import { seedChatSessionCount, useChatSessionCount } from "./state/chatSessionCo
 import { AGENT_APP_ID, toAddressArgs } from "./state/navigation";
 import { isPlanId, nextAfterRemoval, plansStore } from "./state/plansStore";
 import { jobsStore } from "./state/jobsStore";
+import { chatStore } from "./state/chatStore";
 import { notificationsStore } from "./state/notificationsStore";
 import { serviceStore } from "./state/serviceStore";
 import { bridge } from "./api/bridge";
@@ -376,10 +377,27 @@ export const App: React.FC = () => {
     let unsubChange: (() => void) | undefined;
     let unsubChangeStatus: (() => void) | undefined;
 
+    // Whether the connection has been up before, so a *re*connection can catch up on what it missed.
+    let everConnected = false;
+    let lostSince = false;
     onServiceStatus((st) => {
       serviceStore.setStatus(
         st === "connected" ? "online" : st === "reconnecting" ? "reconnecting" : "offline",
       );
+      if (st === "disconnected" && everConnected) lostSince = true;
+      if (st === "connected") {
+        // Back after the network dropped: the bridge asks the daemon to replay missed events, but an
+        // outage longer than its buffer, or a turn that ended while away, is only caught by reading
+        // again. Without this the open chat stayed as it was when the connection went.
+        if (lostSince) {
+          void chatStore.fetchSessions().catch(() => {});
+          void chatStore.refreshActiveSession().catch(() => {});
+          jobsStore.fetchJobs().catch(() => {});
+          plansStore.fetchPlans().catch(() => {});
+        }
+        everConnected = true;
+        lostSince = false;
+      }
       // The mount effect's `initLanguage` fails if the daemon is not up yet, and a `language` edit made
       // while it was out of reach raised no change event this session heard: read it again on every
       // (re)connection, or the UI would stay in the wrong language until the next config change.

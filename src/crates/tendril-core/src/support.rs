@@ -72,7 +72,7 @@ pub fn load_connection(home: &Path) -> Option<SupportConnection> {
     (!conn.email.is_empty() && !conn.password.is_empty()).then_some(conn)
 }
 
-fn save_connection(home: &Path, conn: &SupportConnection) -> Result<()> {
+pub(crate) fn save_connection(home: &Path, conn: &SupportConnection) -> Result<()> {
     let path = connection_path(home);
     let json = serde_json::to_vec_pretty(conn).map_err(|e| TendrilError::Other(e.to_string()))?;
     write_atomic(&path, &json)?;
@@ -122,7 +122,7 @@ pub async fn connect(home: &Path, base_url: &str, email: &str, password: &str) -
     Ok(status(home))
 }
 
-async fn login(conn: &mut SupportConnection) -> Result<()> {
+pub(crate) async fn login(conn: &mut SupportConnection) -> Result<()> {
     let resp = http()
         .post(format!("{}/api/auth/login", conn.base_url))
         .json(&json!({ "email": conn.email, "password": conn.password }))
@@ -574,6 +574,12 @@ pub fn handoff_prompt(ticket: &Value, project: &str, instructions: &str) -> Stri
         let kind = if m["isInternal"].as_bool().unwrap_or(false) { " (internal note)" } else { "" };
         let at = m["createdAt"].as_str().unwrap_or_default().get(..16).unwrap_or_default().replace('T', " ");
         s.push_str(&format!("- [{at}] {who}{kind}: {}\n", m["content"].as_str().unwrap_or_default().trim()));
+        s.push_str(&crate::support_attachments::prompt_lines(m));
+    }
+    if !crate::support_attachments::list(Path::new(""), ticket).is_empty() {
+        s.push_str(&format!(
+            "\nThe partner attached files. `tendril support attachments {id}` saves them and prints where each one is: open the images with your file reader to look at them, and read the logs and documents. They are often the clearest evidence of what went wrong.\n"
+        ));
     }
     if !instructions.trim().is_empty() {
         s.push_str(&format!("\n## From the operator\n{}\n", instructions.trim()));

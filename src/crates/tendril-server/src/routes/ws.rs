@@ -111,7 +111,16 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, since: Option<u6
         }
     });
 
-    while let Some(Ok(Message::Text(text))) = receiver.next().await {
+    // Every frame is read, not only text: the desktop app pings every 30 s to keep a tunnel from
+    // dropping the connection, and a `while let Some(Ok(Message::Text(..)))` loop ended at the first
+    // ping. Nothing was read after that, so no pong went back, and the app could not tell this
+    // connection from a dead one. Reading is also what answers each ping.
+    while let Some(frame) = receiver.next().await {
+        let text = match frame {
+            Ok(Message::Text(text)) => text,
+            Ok(Message::Close(_)) | Err(_) => break,
+            Ok(_) => continue,
+        };
         if let Ok(msg) = serde_json::from_str::<WSClientMessage>(&text) {
             match msg.action.as_str() {
                 "start" => {

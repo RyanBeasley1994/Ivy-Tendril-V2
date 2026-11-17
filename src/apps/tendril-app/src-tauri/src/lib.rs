@@ -297,6 +297,8 @@ pub fn run() {
             cmd_set_project_engine,
             cmd_project_docker,
             cmd_list_manager_tasks,
+            cmd_manager_tabs,
+            cmd_save_file,
             cmd_project_my_prs,
             cmd_project_manager_activity,
             cmd_telegram,

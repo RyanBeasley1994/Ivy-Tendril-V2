@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Box, Brain, GitBranch, GitPullRequest, History, Network, SquareTerminal } from "lucide-react";
+import { ArrowLeft, Box, Brain, GitBranch, GitPullRequest, History, Network, Plus, SquareTerminal, X } from "lucide-react";
 import {
   cn,
   DropdownMenu,
@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@ivy-interactive/components/ui";
 import type { Job, Mission, ProjectSummary } from "../../types/api";
-import type { ManagerTask, ProjectDocker, ProjectMemoryEntry } from "../../types/projectAssets";
+import type { ManagerTab, ManagerTask, ProjectDocker, ProjectMemoryEntry } from "../../types/projectAssets";
 import { bridge } from "../../api/bridge";
 import { openUrl } from "../../utils/opener";
 import { usePortForwards } from "../../api/portForwards";
@@ -724,6 +724,41 @@ const isManagerNote = (m: ChatMessage): boolean =>
   m.role === "system" ||
   (m.role === "assistant" && /^`?\[quiet\]/i.test(m.content.trim()));
 
+/** The tab picked last on each project, so coming back opens the same one. A convenience only. */
+const ACTIVE_TAB_KEY = "forge.managerTab.";
+const rememberTab = (project: string, tab: string) => {
+  try {
+    localStorage.setItem(ACTIVE_TAB_KEY + project, tab);
+  } catch {
+    /* storage unavailable: the main manager opens next time */
+  }
+};
+const rememberedTab = (project: string): string | null => {
+  try {
+    return localStorage.getItem(ACTIVE_TAB_KEY + project);
+  } catch {
+    return null;
+  }
+};
+
+/** A tab's "working" dot. It listens to the chat store itself, so a streaming reply re-renders only it. */
+const WorkingDot: React.FC<{ session: string }> = ({ session }) => {
+  const working = React.useSyncExternalStore(
+    (listener) => chatStore.subscribe(listener),
+    () => chatStore.isSessionGenerating(session),
+  );
+  return working ? (
+    <span className="text-success" title="Working">
+      <Dot live />
+    </span>
+  ) : null;
+};
+
+/**
+ * The managers of one project, as browser-like tabs: the main manager first and always there, then any
+ * the operator opened with `+`. Each is a full manager with its own conversation; what one starts
+ * reports back to it. Closing a tab archives it, and the clock menu at the end brings it back.
+ */
 const ManagerChat: React.FC<{
   project: ProjectSummary;
   onOpenPlan: (planId: string) => void;
@@ -731,25 +766,26 @@ const ManagerChat: React.FC<{
 }> = ({ project, onOpenPlan, draft }) => {
   const [error, setError] = React.useState<string | null>(null);
   const [ready, setReady] = React.useState(false);
-  const sessionId = React.useRef<string | null>(null);
+  const [mainId, setMainId] = React.useState<string | null>(null);
+  const [tabs, setTabs] = React.useState<ManagerTab[]>([]);
+  /** "main" or a tab's id. */
+  const [active, setActive] = React.useState<string>("main");
+  const [renaming, setRenaming] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
 
-  /** `/clear` starts the manager's conversation over: the session is replaced, briefing included. */
-  const onCommand = React.useCallback(
-    async (text: string): Promise<boolean> => {
-      if (text.trim().toLowerCase() !== "/clear") return false;
-      const id = sessionId.current;
-      if (!id) return true;
-      try {
-        if (chatStore.isSessionGenerating(id)) await chatStore.cancelGeneration();
-        await chatStore.deleteSession(id);
-        const fresh = await bridge.getProjectManager(project.name);
-        sessionId.current = fresh.id;
-        await chatStore.fetchSessions();
-        await chatStore.selectSession(fresh.id);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-      return true;
+  const openTabs = tabs.filter((t) => !t.closedAt);
+  const closedTabs = tabs.filter((t) => t.closedAt).reverse();
+  const activeTab = openTabs.find((t) => t.id === active);
+  const sessionId = active === "main" ? mainId : (activeTab?.sessionId ?? mainId);
+
+  const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
+
+  const show = React.useCallback(
+    async (tab: string, session: string, refresh = false) => {
+      if (refresh) await chatStore.fetchSessions();
+      await chatStore.selectSession(session);
+      setActive(tab);
+      rememberTab(project.name, tab);
     },
     [project.name],
   );
@@ -758,38 +794,230 @@ const ManagerChat: React.FC<{
     let live = true;
     setReady(false);
     setError(null);
+    setActive("main");
     (async () => {
       try {
-        const session = await bridge.getProjectManager(project.name);
-        sessionId.current = session.id;
+        const [session, list] = await Promise.all([
+          bridge.getProjectManager(project.name),
+          bridge.listManagerTabs(project.name).catch(() => [] as ManagerTab[]),
+        ]);
         // `init` already lists the sessions the first time; asking again on every open re-downloads
         // every conversation in full just to show one.
         await chatStore.init();
-        await chatStore.selectSession(session.id);
+        if (!live) return;
+        setMainId(session.id);
+        setTabs(list);
+        const last = rememberedTab(project.name);
+        const reopen = list.find((t) => t.id === last && !t.closedAt);
+        if (reopen) await show(reopen.id, reopen.sessionId);
+        else await show("main", session.id);
         if (live) setReady(true);
       } catch (e) {
-        if (live) setError(e instanceof Error ? e.message : String(e));
+        if (live) fail(e);
       }
     })();
     return () => {
       live = false;
     };
-  }, [project.name]);
+  }, [project.name, show]);
+
+  const addTab = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const tab = await bridge.openManagerTab(project.name);
+      setTabs((all) => [...all, tab]);
+      await show(tab.id, tab.sessionId, true);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const closeTab = async (tab: ManagerTab) => {
+    try {
+      const closed = await bridge.updateManagerTab(project.name, tab.id, "close");
+      setTabs((all) => all.map((t) => (t.id === tab.id ? closed : t)));
+      if (active === tab.id && mainId) {
+        // The neighbour to the left, as a browser does; the main manager when there is none.
+        const i = openTabs.findIndex((t) => t.id === tab.id);
+        const next = openTabs[i - 1];
+        if (next) await show(next.id, next.sessionId);
+        else await show("main", mainId);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const reopenTab = async (tab: ManagerTab) => {
+    try {
+      const open = await bridge.updateManagerTab(project.name, tab.id, "reopen");
+      // Back where it would have been, by when it was made.
+      setTabs((all) => all.map((t) => (t.id === tab.id ? open : t)));
+      await show(open.id, open.sessionId, true);
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const renameTab = async (tab: ManagerTab, title: string) => {
+    setRenaming(null);
+    const name = title.trim();
+    if (!name || name === tab.title) return;
+    try {
+      const renamed = await bridge.updateManagerTab(project.name, tab.id, "rename", name);
+      setTabs((all) => all.map((t) => (t.id === tab.id ? renamed : t)));
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  /** `/clear` starts this tab's conversation over: the session is replaced, briefing included. */
+  const onCommand = React.useCallback(
+    async (text: string): Promise<boolean> => {
+      if (text.trim().toLowerCase() !== "/clear") return false;
+      const id = sessionId;
+      if (!id) return true;
+      try {
+        if (chatStore.isSessionGenerating(id)) await chatStore.cancelGeneration();
+        await chatStore.deleteSession(id);
+        if (activeTab) {
+          // Reopening a tab whose conversation is gone briefs a fresh one under the same id.
+          await bridge.updateManagerTab(project.name, activeTab.id, "reopen");
+          await show(activeTab.id, activeTab.sessionId, true);
+        } else {
+          const fresh = await bridge.getProjectManager(project.name);
+          setMainId(fresh.id);
+          await show("main", fresh.id, true);
+        }
+      } catch (e) {
+        fail(e);
+      }
+      return true;
+    },
+    [project.name, sessionId, activeTab, show],
+  );
 
   if (error) return <div className="p-6 text-[13px] text-destructive">Could not open the manager: {error}</div>;
-  if (!ready) return <div className="p-6 text-[13px] text-muted-foreground">Opening the manager…</div>;
+  if (!ready || !mainId) return <div className="p-6 text-[13px] text-muted-foreground">Opening the manager…</div>;
+
+  const tabButton = (key: string, title: string, session: string, tab?: ManagerTab) => {
+    const selected = active === key;
+    return (
+      <div
+        key={key}
+        role="tab"
+        aria-selected={selected}
+        data-testid={`manager-tab-${key}`}
+        className={cn(
+          "group relative flex h-8 min-w-0 max-w-[180px] shrink-0 items-center gap-1.5 rounded-t-md border border-b-0 px-2.5 text-[12px] transition-colors",
+          selected
+            ? "border-border/70 bg-background text-foreground"
+            : "border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+        )}
+      >
+        <WorkingDot session={session} />
+        {tab && renaming === tab.id ? (
+          <input
+            autoFocus
+            defaultValue={tab.title}
+            aria-label="Tab name"
+            className="w-[120px] min-w-0 bg-transparent text-[12px] text-foreground outline-none"
+            onBlur={(e) => void renameTab(tab, e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") setRenaming(null);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 truncate text-left"
+            title={tab ? `${title} (double-click to rename)` : title}
+            onClick={() => void show(key, session)}
+            onDoubleClick={() => tab && setRenaming(tab.id)}
+          >
+            {title}
+          </button>
+        )}
+        {tab && (
+          <button
+            type="button"
+            aria-label={`Close ${title}`}
+            title="Close (it can be reopened)"
+            onClick={() => void closeTab(tab)}
+            className={cn(
+              "-mr-1 grid size-4 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground",
+              selected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            <X className="size-3" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <ChatView
-      embedded
-      onOpenPlan={onOpenPlan}
-      greeting={`Manager · ${project.name}`}
-      headline="What should we build?"
-      hideMessage={isManagerNote}
-      onCommand={onCommand}
-      commands={MANAGER_COMMANDS}
-      samplePrompts={MANAGER_PROMPTS}
-      draftPrompt={draft}
-    />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        role="tablist"
+        aria-label="Managers"
+        className="flex shrink-0 items-end gap-0.5 overflow-x-auto border-b border-border/70 bg-muted/20 px-2 pt-1.5"
+      >
+        {tabButton("main", "Main", mainId)}
+        {openTabs.map((t) => tabButton(t.id, t.title, t.sessionId, t))}
+        <button
+          type="button"
+          aria-label="New manager"
+          title="New manager"
+          data-testid="manager-tab-new"
+          disabled={busy}
+          onClick={() => void addTab()}
+          className="mb-1 ml-0.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+        </button>
+        {closedTabs.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Closed managers"
+                title="Reopen a closed manager"
+                className="mb-1 ml-auto grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <History className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {closedTabs.map((t) => (
+                <DropdownMenuItem key={t.id} onSelect={() => void reopenTab(t)}>
+                  <span className="truncate">{t.title}</span>
+                  <span className="ml-3 text-[11px] text-muted-foreground">
+                    {t.closedAt ? `closed ${ago(t.closedAt)} ago` : ""}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      <ChatView
+        key={sessionId ?? "main"}
+        embedded
+        onOpenPlan={onOpenPlan}
+        greeting={activeTab ? `${activeTab.title} · ${project.name}` : `Manager · ${project.name}`}
+        headline="What should we build?"
+        hideMessage={isManagerNote}
+        onCommand={onCommand}
+        commands={MANAGER_COMMANDS}
+        samplePrompts={MANAGER_PROMPTS}
+        draftPrompt={active === "main" ? draft : undefined}
+      />
+    </div>
   );
 };
 

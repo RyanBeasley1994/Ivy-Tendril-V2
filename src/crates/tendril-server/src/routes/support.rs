@@ -91,6 +91,32 @@ pub async fn get_ticket(State(state): State<Arc<AppState>>, Path(id): Path<Strin
     answer(support::get_ticket(&state.tendril_home, &id).await)
 }
 
+/// `GET /api/support/tickets/:id/attachments/:message/:index` — one attachment, fetched (once) by the
+/// daemon with the operator's Operations session, as base64 in JSON: the app cannot sign in to
+/// Operations itself, and every support call already goes through the same JSON bridge.
+pub async fn get_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((id, message, index)): Path<(String, String, usize)>,
+) -> Response {
+    use base64::Engine;
+    let home = &state.tendril_home;
+    let ticket = match support::get_ticket(home, &id).await {
+        Ok(t) => t,
+        Err(e) => return failed(e),
+    };
+    match tendril_core::support_attachments::read(home, &ticket, &message, index).await {
+        Ok((a, bytes)) => Json(json!({
+            "filename": a.filename,
+            "contentType": a.content_type,
+            "image": a.image,
+            "size": bytes.len(),
+            "dataBase64": base64::engine::general_purpose::STANDARD.encode(&bytes),
+        }))
+        .into_response(),
+        Err(e) => failed(e),
+    }
+}
+
 pub async fn mark_read(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> Response {
     answer(support::mark_read(&state.tendril_home, &id).await.map(|()| json!({ "ok": true })))
 }

@@ -133,7 +133,17 @@ pub fn parse_duration_seconds(input: &str) -> Option<u64> {
     Some(total)
 }
 
-async fn post_to_manager(tendril_home: &Path, project: &str, action: &str, body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+/// The manager chat this command runs in, when it runs in one: the daemon sends what it asked for (a
+/// worker's report, a wake-up, a PR's checks) back to that conversation, so a manager in a second tab
+/// hears about its own work.
+fn asking_session() -> Option<String> {
+    std::env::var("TENDRIL_CHAT_SESSION_ID").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+async fn post_to_manager(tendril_home: &Path, project: &str, action: &str, mut body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    if let (Some(map), Some(session)) = (body.as_object_mut(), asking_session()) {
+        map.entry("session").or_insert(serde_json::Value::String(session));
+    }
     let master = read_master(tendril_home)
         .ok_or_else(|| anyhow::anyhow!("The Tendril daemon is not running, so there is nothing to wake the manager."))?;
     let url = format!("{}/api/projects/{}/manager/{}", master.base_url(), project.replace(' ', "%20"), action);
@@ -295,7 +305,7 @@ pub async fn handle_manager_command(cmd: ManagerCommands, tendril_home: &Path) -
             let resp = daemon_client(tendril_home)
                 .post(&url)
                 .bearer_auth(&master.secret)
-                .json(&serde_json::json!({ "afterSeconds": seconds, "note": note }))
+                .json(&serde_json::json!({ "afterSeconds": seconds, "note": note, "session": asking_session() }))
                 .send()
                 .await?;
             if !resp.status().is_success() {

@@ -70,7 +70,9 @@ pub async fn subscribe<R: tauri::Runtime>(
     // 15 s keep-alive comment is what distinguishes "quiet" from "dead". A `TendrilClient` cannot be
     // used here for exactly that reason — its client carries a 10 s request timeout, which for a
     // streaming body is a 10 s cap on the whole job.
-    let client = reqwest::Client::new();
+    // A read that hears nothing, not even a keep-alive, for `super::STREAM_DEAD_AFTER` is a dead
+    // connection (see `pump`), and a connect gets `super::STREAM_CONNECT_TIMEOUT`.
+    let client = reqwest::Client::builder().connect_timeout(super::STREAM_CONNECT_TIMEOUT).build().unwrap_or_default();
     let mut next_line = since_line.unwrap_or(0);
 
     let response = connect(&client, &discovery, &job_id, kinds.as_deref(), next_line).await?;
@@ -212,7 +214,11 @@ async fn pump<R: tauri::Runtime>(
     let mut buffer = String::new();
 
     loop {
-        match response.chunk().await {
+        let Ok(chunk) = tokio::time::timeout(super::STREAM_DEAD_AFTER, response.chunk()).await else {
+            tracing::warn!("Job {job_id} event stream silent for {:?}; reconnecting", super::STREAM_DEAD_AFTER);
+            return Outcome::Dropped;
+        };
+        match chunk {
             Ok(Some(bytes)) => {
                 buffer.push_str(&String::from_utf8_lossy(&bytes));
                 for frame in parse_frames(&mut buffer) {

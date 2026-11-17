@@ -29,6 +29,13 @@ pub enum SupportCommands {
         json: bool,
     },
 
+    #[command(about = "Save the files and images attached to a ticket and print where each one is. Open an image with your file reader to look at it")]
+    Attachments {
+        id: String,
+        #[arg(long, help = "Print JSON")]
+        json: bool,
+    },
+
     #[command(about = "Reply to the partner. Checked against the triage rules, and held for the operator's approval while approval is on")]
     Reply {
         id: String,
@@ -244,6 +251,32 @@ pub async fn handle_support_command(cmd: SupportCommands, home: &Path) -> anyhow
                     internal,
                     m["content"].as_str().unwrap_or_default().trim()
                 );
+                print!("{}", tendril_core::support_attachments::prompt_lines(m));
+            }
+            if !tendril_core::support_attachments::list(home, &t).is_empty() {
+                println!("\n`tendril support attachments {id}` saves the attachments and prints where they are.");
+            }
+        }
+        SupportCommands::Attachments { id, json } => {
+            let t = support::get_ticket(home, &id).await?;
+            let saved = tendril_core::support_attachments::ensure_all(home, &t).await;
+            if json {
+                let rows: Vec<serde_json::Value> = saved
+                    .iter()
+                    .map(|(a, problem)| serde_json::json!({ "attachment": a, "error": problem }))
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+                return Ok(());
+            }
+            if saved.is_empty() {
+                println!("Nothing is attached to this ticket.");
+            }
+            for (a, problem) in saved {
+                let kind = if a.image { "image" } else { "file" };
+                match problem {
+                    None => println!("{kind} from {}: {} -> {}", a.author, a.filename, a.path.display()),
+                    Some(why) => println!("{kind} from {}: {} could not be saved: {why}", a.author, a.filename),
+                }
             }
         }
         SupportCommands::Reply { id, message, kind, fix_pr, test, close, internal } => {
